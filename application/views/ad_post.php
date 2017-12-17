@@ -3,11 +3,10 @@
 		<?php $this->load->view('layouts/v_home_head');?>
 	<!--End-head-->
   <body>
-	<!-- header -->
-	<!-- header -->
-		<?php $this->load->view('layouts/v_home_header');?>
-	<!-- header -->
-
+	
+	
+		<?php $this->load->view('inc/v_navbar');?>
+	
 	<!-- post-page -->
 	<section id="main" class="clearfix ad-post-page">
 		<div class="container">
@@ -41,7 +40,7 @@
 								</a></li>
 
 
-								
+
 										<?php
 									}
 								?>

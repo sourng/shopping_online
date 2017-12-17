@@ -3,10 +3,8 @@
 		<?php $this->load->view('layouts/v_home_head');?>
 	<!--End-head-->
   <body>
-	<!-- header -->
-	<!-- header -->
-		<?php $this->load->view('layouts/v_home_header');?>
-	<!-- header -->
+	
+		<?php $this->load->view('inc/v_navbar');?>	
 	<!-- main -->
 	<section id="main" class="clearfix ad-details-page">
 		<div class="container">
