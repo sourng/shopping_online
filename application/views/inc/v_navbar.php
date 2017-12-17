@@ -43,7 +43,7 @@
 					<!-- sign-in -->					
 					<ul class="sign-in">
 						<li><i class="fa fa-user"></i></li>
-						<li><a href="<?php echo site_url(); ?>categories/login"> Sign In </a></li>
+						<li><a href="<?php echo site_url(); ?>login"> Sign In </a></li>
 						<li><a href="signup.html">Register</a></li>
 					</ul><!-- sign-in -->					
 
