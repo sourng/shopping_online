@@ -39,6 +39,11 @@ class Categories extends CI_Controller {
 		//$this->load->view('layouts/v_home', $data);
 		$this->load->view('v_details',$data);	
 			
+	}
+	public function login(){	
+		$this->load->view('login/v_login');	
+			
 	}	
+	
 
 }
