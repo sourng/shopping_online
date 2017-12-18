@@ -168,19 +168,19 @@
                                                                 
 									
 									<?php 
-                                                                            foreach($getProducts as $rows){
-                                                                                ?>
-                                                                            <!-- featured -->
+                                    foreach($getProducts as $rows){
+                                        ?>
+                                    <!-- featured -->
 									<div class="featured">
 										<div class="featured-image">
-											<a href="details.html"><img src="<?php echo base_url(); ?>public/images/slider/<?php echo $rows['featured_image']; ?>" alt="" class="img-respocive"></a>
-											<a href="#" class="verified" data-toggle="tooltip" data-placement="left" title="Verified"><i class="fa fa-check-square-o"></i></a>
+											<a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><img src="<?php echo base_url(); ?>public/images/slider/<?php echo $rows['featured_image']; ?>" alt="" class="img-respocive"></a>
+											<a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>" class="verified" data-toggle="tooltip" data-placement="left" title="Verified"><i class="fa fa-check-square-o"></i></a>
 										</div>
 										
 										<!-- ad-info -->
 										<div class="ad-info">
 											<h3 class="item-price">$<?php echo $rows['pro_sell_price']; ?></h3>
-											<h4 class="item-title"><a href="#"><?php echo $rows['pro_name']; ?></a></h4>
+											<h4 class="item-title"><a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><?php echo $rows['pro_name']; ?></a></h4>
 											<div class="item-cat">
 												<span><a href="#"><?php echo $rows['cat_name']; ?></a></span> 
 											</div>
@@ -281,7 +281,7 @@
 										<div class="item-image-box col-sm-4">
 											<!-- item-image -->
 											<div class="item-image">
-												<a href="<?php echo site_url(); ?>Welcome/details"><img src="<?php echo base_url(); ?>public/images/trending/2.jpg" alt="Image" class="img-responsive"></a>
+												<a href="<?php echo site_url(); ?>home/details"><img src="<?php echo base_url(); ?>public/images/trending/2.jpg" alt="Image" class="img-responsive"></a>
 											</div><!-- item-image -->
 										</div><!-- item-image-box -->
 										
@@ -290,7 +290,7 @@
 											<!-- ad-info -->
 											<div class="ad-info">
 												<h3 class="item-price">$250.00 <span>(Negotiable)</span></h3>
-												<h4 class="item-title"><a href="<?php echo site_url(); ?>Welcome/details">Bark Furniture, Handmade Bespoke Furniture</a></h4>
+												<h4 class="item-title"><a href="<?php echo site_url(); ?>home/details">Bark Furniture, Handmade Bespoke Furniture</a></h4>
 												<div class="item-cat">
 													<span><a href="#">Home Appliances</a></span> /
 													<span><a href="#">Sofa</a></span>
