@@ -8,7 +8,7 @@
 					<span class="icon-bar"></span>
 					<span class="icon-bar"></span>
 					</button>
-					<a class="navbar-brand" href="index.html"><img class="img-responsive" src="<?php echo base_url(); ?>public/images/logo.png" alt="Logo"></a>
+					<a class="navbar-brand" href="<?php echo site_url(); ?>"><img class="img-responsive" src="<?php echo base_url(); ?>public/images/logo.png" alt="Logo"></a>
 				</div>
 				<!-- /navbar-header -->
 				
@@ -47,7 +47,7 @@
 						<li><a href="signup.html">Register</a></li>
 					</ul><!-- sign-in -->					
 
-					<a href="ad-post.html" class="btn">Post Your Ad</a>
+					<a href="<?php echo site_url(); ?>ad" class="btn">Post Your Ad</a>
 				</div>
 				<!-- nav-right -->
 			</div><!-- container -->

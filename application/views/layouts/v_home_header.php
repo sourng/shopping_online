@@ -91,7 +91,7 @@
 						<li><a href="signup.html">Register</a></li>
 					</ul><!-- sign-in -->					
 
-					<a href="ad-post.html" class="btn">Post Your Ad</a>
+					<a href="<?php echo site_url(); ?>ad/index" class="btn">Post Your Ad</a>
 				</div>
 				<!-- nav-right -->
 			</div><!-- container -->
