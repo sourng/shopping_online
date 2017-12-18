@@ -43,13 +43,12 @@
 					<!-- sign-in -->					
 					<ul class="sign-in">
 						<li><i class="fa fa-user"></i></li>
-<<<<<<< HEAD
 						<li><a href="signin.html"> Sign In </a></li>
 						<li><a href="<?php echo site_url(); ?>Register">Register</a></li>
-=======
+
 						<li><a href="<?php echo site_url(); ?>login"> Sign In </a></li>
 						<li><a href="signup.html">Register</a></li>
->>>>>>> 1cbeecf8b627c64fcd106ca3848766e779c713d7
+
 					</ul><!-- sign-in -->					
 
 					<a href="<?php echo site_url(); ?>ad" class="btn">Post Your Ad</a>
