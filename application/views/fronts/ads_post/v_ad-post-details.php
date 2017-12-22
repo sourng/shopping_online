@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD:application/views/ad_post_details.php
 	<!--head-->
 		<?php $this->load->view('layouts/v_home_head');?>
 	<!--End-head-->
@@ -9,6 +10,8 @@
 	<?php $this->load->view('inc/v_navbar'); ?>
 </header>
 	<!-- header -->
+=======
+>>>>>>> 095501b2348dbc8a53640386f91a9a02d7adc726:application/views/fronts/ads_post/v_ad-post-details.php
 	<!-- main -->
 	<section id="main" class="clearfix ad-details-page">
 		<div class="container">
@@ -16,7 +19,7 @@
 			<div class="breadcrumb-section">
 				<!-- breadcrumb -->
 				<ol class="breadcrumb">
-					<li><a href="<?echo site_url();?>">Home</a></li>
+					<li><a href="index.html">Home</a></li>
 					<li>Ad Post</li>
 				</ol><!-- breadcrumb -->						
 				<h2 class="title">Mobile Phones</h2>
@@ -34,7 +37,7 @@
 											<li>
 												<a href="ad-post.html">
 													<span class="select">
-														<img src="<?php echo base_url();?>public/images/icon/2.png" alt="Images" class="img-responsive">
+														<img src="images/icon/2.png" alt="Images" class="img-responsive">
 													</span>
 													Electronics & Gedgets
 												</a>
@@ -51,7 +54,6 @@
 										<div class="col-sm-9 user-type">
 											<input type="radio" name="sellType" value="newsell" id="newsell"> <label for="newsell">I want to sell </label>
 											<input type="radio" name="sellType" value="newbuy" id="newbuy"> <label for="newbuy">want to buy</label>	
-											<input type="radio" name="sellType" value="newrent" id="newrent"> <label for="newrent">want to rent</label>	
 										</div>
 									</div>
 									<div class="row form-group add-title">
@@ -243,47 +245,4 @@
 		</div><!-- container -->
 	</section><!-- main -->
 	
-<!-- footer -->
-	<?php $this->load->view('layouts/v_home_footer');?>
-	<!-- footer -->
-
-	<!--/Preset Style Chooser--> 
-	<div class="style-chooser">
-		<div class="style-chooser-inner">
-			<a href="#" class="toggler"><i class="fa fa-life-ring fa-spin"></i></a>
-			<h4>Presets</h4>
-			<ul class="preset-list clearfix">
-				<li class="preset1 active" data-preset="1"><a href="#" data-color="preset1"></a></li>
-				<li class="preset2" data-preset="2"><a href="#" data-color="preset2"></a></li>
-				<li class="preset3" data-preset="3"><a href="#" data-color="preset3"></a></li>        
-				<li class="preset4" data-preset="4"><a href="#" data-color="preset4"></a></li>
-			</ul>
-		</div>
-	</div>
-	<!--/End:Preset Style Chooser-->
 	
-    <!-- JS -->
-    <script src="js/jquery.min.js"></script>
-    <script src="js/modernizr.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-	<script src="http://maps.google.com/maps/api/js?sensor=true"></script>
-	<script src="js/gmaps.min.js"></script>
-    <script src="js/owl.carousel.min.js"></script>
-    <script src="js/smoothscroll.min.js"></script>
-    <script src="js/scrollup.min.js"></script>
-    <script src="js/price-range.js"></script>
-    <script src="js/jquery.countdown.js"></script>    
-    <script src="js/custom.js"></script>
-	<script src="js/switcher.js"></script>
-	<script>
-	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-	  ga('create', 'UA-73239902-1', 'auto');
-	  ga('send', 'pageview');
-
-	</script>
-  </body>
-</html>
