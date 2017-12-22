@@ -5,7 +5,6 @@
   <body>
 	<!-- header -->
 	<!-- header -->
-		<?php $this->load->view('layouts/v_home_header');?>
 	<!-- header -->
 
 	<!-- post-page -->

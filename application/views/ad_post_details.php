@@ -5,7 +5,9 @@
   <body>
 	<!-- header -->
 	<!-- header -->
-		<?php $this->load->view('layouts/v_home_header');?>
+		<header id="header" class="clearfix">
+	<?php $this->load->view('inc/v_navbar'); ?>
+</header>
 	<!-- header -->
 	<!-- main -->
 	<section id="main" class="clearfix ad-details-page">

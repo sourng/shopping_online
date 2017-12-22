@@ -7,7 +7,7 @@ class Login extends CI_Controller {
         $this->load->helper('text');
         $this->load->database();   
         $this->load->helper('url');
-        $this->load->model('M_Categories','m_cat');
+        //$this->load->model('M_Categories','m_cat');
        
     }
 	

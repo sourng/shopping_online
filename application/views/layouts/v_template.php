@@ -3,9 +3,9 @@
 <!--End_head-->
   <body>
 <!-- header -->
-<header id="header" class="clearfix">
+
 	<?php $this->load->view('inc/v_navbar'); ?>
-</header>
+
 <!-- header -->
 
 <!-- main -->
