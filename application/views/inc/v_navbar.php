@@ -20,6 +20,30 @@
 							<li><a href="<?php echo site_url(); ?>categories/details">all ads</a></li>
 							<li><a href="<?php echo site_url(); ?>categories/faq">Help/Support</a></li> 
 							<li><a href="<?php echo site_url(); ?>categories/about-us">ABout Us</a></li>
+							<li class="active dropdown"><a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown">Pages <span class="caret"></span></a>
+								<ul class="dropdown-menu">
+									<li class="active"><a href="about-us.html">ABout Us</a></li>
+									<li><a href="contact-us.html">Contact Us</a></li>
+									<li><a href="ad-post.html">Ad post</a></li>
+									<li><a href="ad-post-details.html">Ad post Details</a></li>
+									<li><a href="categories-main.html">Category Ads</a></li>
+									<li><a href="details.html">Ad Details</a></li>
+									<li><a href="my-ads.html">My Ads</a></li>
+									<li><a href="my-profile.html">My Profile</a></li>
+									<li><a href="favourite-ads.html">Favourite Ads</a></li>
+									<li><a href="archived-ads.html">Archived Ads</a></li>
+									<li><a href="pending-ads.html">Pending Ads</a></li>
+									<li><a href="delete-account.html">Close Account</a></li>
+									<li><a href="published.html">Ad Publised</a></li>
+									<li><a href="signup.html">Sign Up</a></li>
+									<li><a href="signin.html">Sign In</a></li>
+									<li><a href="faq.html">FAQ</a></li>	
+									<li><a href="coming-soon.html">Coming Soon <span class="badge">New</span></a></li>
+									<li><a href="pricing.html">Pricing<span class="badge">New</span></a></li>
+									<li><a href="500-page.html">500 Opsss<span class="badge">New</span></a></li>
+									<li><a href="404-page.html">404 Error<span class="badge">New</span></a></li>
+								</ul>
+							</li>
 												
 						
 						</ul>

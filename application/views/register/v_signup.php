@@ -53,4 +53,4 @@
 
 	<!-- footer -->
 	<?php $this->load->view('layouts/v_home_footer'); ?>
-<!-- footer -->
+	<!-- footer -->
