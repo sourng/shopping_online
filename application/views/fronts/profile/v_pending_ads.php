@@ -31,14 +31,9 @@
 						</div>								
 					</div><!-- user-profile -->
 							
-					<ul class="user-menu">
-						<li><a href="my-profile.html">Profile</a></li>
-						<li><a href="my-ads.html">My ads</a></li>
-						<li><a href="favourite-ads.html">Favourite ads</a></li>
-						<li><a href="archived-ads.html">Archived ads </a></li>
-						<li class="active"><a href="pending-ads.html">Pending approval</a></li>
-						<li><a href="delete-account.html">Close account</a></li>
-					</ul>
+					<?php 
+					include_once('menu_profile.php');
+					?>
 			
 			</div><!-- ad-profile -->			
 			

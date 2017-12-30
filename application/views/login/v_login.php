@@ -1,5 +1,9 @@
 <!--head-->
-	<?php $this->load->view('layouts/v_home_head');?>
+	<?php 
+	//$this->load->view('layouts/v_home_head');
+	include_once('header_signup.php');
+	
+	?>
 <!--End_head-->
   <body>
 <!-- header -->
@@ -41,4 +45,6 @@
 			</div><!-- row -->	
 		</div><!-- container -->
 	</section><!-- signin-page -->
-	<?php $this->load->view('layouts/v_home_footer'); ?>
+	<?php include_once('footer_signup.php'); 
+	//$this->load->view('layouts/v_home_footer'); 
+	?>

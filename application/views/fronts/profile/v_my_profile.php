@@ -31,14 +31,10 @@
 					</div>								
 				</div><!-- user-profile -->
 						
-				<ul class="user-menu">
-					<li class="active"><a href="my-profile.html">Profile</a></li>
-					<li><a href="<?php echo base_url() ?>fronts/ads_post/v_my_ads">My ads</a></li>
-					<li><a href="<?php echo base_url() ?>fronts/ads_post/v_favourite_ads">Favourite ads</a></li>
-					<li><a href="<?php echo base_url() ?>fronts/ads_post/v_archived_ads">Archived ads </a></li>
-					<li><a href="<?php echo base_url() ?>fronts/ads_post/v_pending_ads">Pending approval</a></li>
-					<li><a href="<?php echo base_url() ?>fronts/ads_post/v_delete_account">Close account</a></li>
-				</ul>
+				<?php 
+					include_once('menu_profile.php');
+					// $this->load->view('fronts/profile/menu_profile');
+				?>
 			</div><!-- ad-profile -->
 
 			<div class="profile">

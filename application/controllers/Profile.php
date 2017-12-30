@@ -25,7 +25,7 @@ class Profile extends CI_Controller {
 		$data['head']="head/v_head_home";
 		$data['footer']="footer/v_footer_home";
 
-        $data['body']='fronts/ads_post/v_my_profile';
+        $data['body']='fronts/profile/v_my_profile';
 		$this->load->view('v_template', $data);
 			
 	}
@@ -37,7 +37,7 @@ class Profile extends CI_Controller {
 		$data['head']="head/v_head_home";
 		$data['footer']="footer/v_footer_home";
 
-        $data['body']='fronts/ads_post/v_my_ads';
+        $data['body']='fronts/profile/v_my_ads';
 		$this->load->view('v_template', $data);
 	}
 
@@ -49,7 +49,7 @@ class Profile extends CI_Controller {
 		$data['head']="head/v_head_home";
 		$data['footer']="footer/v_footer_home";
 
-        $data['body']='fronts/ads_post/v_favourite_ads';
+        $data['body']='fronts/profile/v_favourite_ads';
 		$this->load->view('v_template', $data);
 	}
 
@@ -61,7 +61,7 @@ class Profile extends CI_Controller {
 		$data['head']="head/v_head_home";
 		$data['footer']="footer/v_footer_home";
 
-        $data['body']='fronts/ads_post/v_archived_ads';
+        $data['body']='fronts/profile/v_archived_ads';
 		$this->load->view('v_template', $data);
 	}
 
@@ -73,7 +73,7 @@ class Profile extends CI_Controller {
 		$data['head']="head/v_head_home";
 		$data['footer']="footer/v_footer_home";
 
-        $data['body']='fronts/ads_post/v_pending_ads';
+        $data['body']='fronts/profile/v_pending_ads';
 		$this->load->view('v_template', $data);
 	}
 
@@ -85,7 +85,7 @@ class Profile extends CI_Controller {
 		$data['head']="head/v_head_home";
 		$data['footer']="footer/v_footer_home";
 
-        $data['body']='fronts/ads_post/v_delete_account';
+        $data['body']='fronts/profile/v_delete_account';
 		$this->load->view('v_template', $data);
 	}
 
