@@ -39,7 +39,7 @@
 					<li><a href="<?php echo base_url() ?>fronts/ads_post/v_pending_ads">Pending approval</a></li>
 					<li><a href="<?php echo base_url() ?>fronts/ads_post/v_delete_account">Close account</a></li>
 				</ul>
-			</div><!-- ad-profile -->	v_
+			</div><!-- ad-profile -->
 
 			<div class="profile">
 				<div class="row">
