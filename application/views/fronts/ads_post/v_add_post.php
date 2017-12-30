@@ -1,15 +1,4 @@
 
-<<<<<<< HEAD:application/views/ad_post.php
-	<!--head-->
-		<?php $this->load->view('layouts/v_home_head');?>
-	<!--End-head-->
-  <body>
-	<!-- header -->
-	<!-- header -->
-	<!-- header -->
-
-=======
->>>>>>> 095501b2348dbc8a53640386f91a9a02d7adc726:application/views/fronts/ads_post/v_add_post.php
 	<!-- post-page -->
 	<section id="main" class="clearfix ad-post-page">
 		<div class="container">
@@ -236,7 +225,7 @@
 							<h2>Post an Ad in just <span>30 seconds</span></h2>
 							<p>Please DO NOT post multiple ads for the same items or service. All duplicate, spam and wrongly categorized ads will be deleted.</p>
 							<div class="btn-section">
-								<a href="ad-post-details.html" class="btn">Next</a>
+								<a href="<?php echo site_url(); ?>ads/details" class="btn">Next</a>
 								<a href="#" class="btn-info">or Cancle</a>
 							</div>
 						</div>

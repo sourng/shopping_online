@@ -75,7 +75,7 @@
 
 					</ul><!-- sign-in -->					
 
-					<a href="<?php echo site_url(); ?>ad" class="btn">Post Your Ad</a>
+					<a href="<?php echo site_url(); ?>ads" class="btn">Post Your Ad</a>
 				</div>
 				<!-- nav-right -->
 			</div><!-- container -->

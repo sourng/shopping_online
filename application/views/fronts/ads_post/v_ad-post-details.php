@@ -1,18 +1,4 @@
-
-<<<<<<< HEAD:application/views/ad_post_details.php
-	<!--head-->
-		<?php $this->load->view('layouts/v_home_head');?>
-	<!--End-head-->
-  <body>
-	<!-- header -->
-	<!-- header -->
-		<header id="header" class="clearfix">
-	<?php $this->load->view('inc/v_navbar'); ?>
-</header>
-	<!-- header -->
-=======
->>>>>>> 095501b2348dbc8a53640386f91a9a02d7adc726:application/views/fronts/ads_post/v_ad-post-details.php
-	<!-- main -->
+<!-- main -->
 	<section id="main" class="clearfix ad-details-page">
 		<div class="container">
 		
