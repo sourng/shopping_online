@@ -15,6 +15,8 @@ $route['Details.html'] = 'front/categories/details';
 
 
 $route['register.html'] = 'front/Register';
+$route['register.html/signup'] = 'front/Register/signup';
+
 $route['login.html'] = 'front/login';
 
 
