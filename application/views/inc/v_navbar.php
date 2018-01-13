@@ -16,7 +16,7 @@
 					<div class="collapse navbar-collapse" id="navbar-collapse">
 						<ul class="nav navbar-nav">						
 							<li class="active"><a href="<?php echo site_url(); ?>">Home</a></li>
-							<li><a href="<?php echo site_url(); ?>categories">Category</a></li>
+							<li><a href="<?php echo site_url(); ?>categories.html">Category</a></li>
 							<li><a href="<?php echo site_url(); ?>categories/details">all ads</a></li>
 							<li><a href="<?php echo site_url(); ?>categories/faq">Help/Support</a></li> 
 							<li><a href="<?php echo site_url(); ?>categories/about-us">ABout Us</a></li>
@@ -68,9 +68,9 @@
 					<ul class="sign-in">
 						<li><i class="fa fa-user"></i></li>
 						
-						<li><a href="<?php echo site_url(); ?>Register">Register</a></li>
+						<li><a href="<?php echo site_url(); ?>register.html">Register</a></li>
 
-						<li><a href="<?php echo site_url(); ?>login"> Sign In </a></li>
+						<li><a href="<?php echo site_url(); ?>login.html"> Sign In </a></li>
 						
 
 					</ul><!-- sign-in -->					
