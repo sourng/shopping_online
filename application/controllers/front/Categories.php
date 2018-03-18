@@ -38,6 +38,7 @@ class Categories extends CI_Controller {
 		//$data['main_content']='layouts/template';
 		//$this->load->view('layouts/v_home', $data);
 		$this->load->view('v_details',$data);	
+		//echo "Hello";
 			
 	}
 	public function login(){	
