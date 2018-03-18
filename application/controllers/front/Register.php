@@ -8,15 +8,16 @@ class Register extends CI_Controller {
         $this->load->database();   
         $this->load->helper('url');
        
-       $this->load->model('Crud_model','m_crud',True); 
-      $this->load->model('M_Upload','welcome'); 
-      date_default_timezone_set('Asia/Phnom_Penh');
+       	$this->load->model('Crud_model','m_crud',True); 
+      	$this->load->model('M_Upload','welcome'); 
+      	date_default_timezone_set('Asia/Phnom_Penh');
        
     }
-	public function index()
+	public function index($page='home')
 	{				
 		 $data=array();  
 
+		include_once 'langs.php';
 		$this->load->view('register/v_signup');
 		
 	}

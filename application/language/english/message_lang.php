@@ -6,6 +6,10 @@ $lang['menu_contact'] = 'Contact';
 $lang['menu_services'] = 'Services';
 $lang['menu_forums'] = 'Forums';
 
+$lang['menu_login'] = 'Log In';
+$lang['menu_register'] = 'Register';
+
+
 /* Button */
 
 /* breadcrumb */

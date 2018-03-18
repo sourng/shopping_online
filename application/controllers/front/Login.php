@@ -8,10 +8,14 @@ class Login extends CI_Controller {
         $this->load->database();   
         $this->load->helper('url');
         //$this->load->model('M_Categories','m_cat');
+         $this->load->model('Crud_model','m_crud');
        
     }
 	
-	public function index(){	
+	public function index($page='home'){	
+		
+		include_once 'langs.php';
+
 		$this->load->view('login/v_login');	
 			
 	}	

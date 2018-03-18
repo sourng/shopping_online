@@ -29,10 +29,7 @@
 
 
 						
-							
-							<li><a href="<?php echo site_url(); ?>categories/details">all ads</a></li>
-							<li><a href="<?php echo site_url(); ?>categories/faq">Help/Support</a></li> 
-							<li><a href="<?php echo site_url(); ?>categories/about-us">ABout Us</a></li>
+						
 							<li class="active dropdown"><a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown">Pages <span class="caret"></span></a>
 								<ul class="dropdown-menu">
 									<li class="active"><a href="about-us.html">ABout Us</a></li>
@@ -55,6 +52,10 @@
 									<li><a href="pricing.html">Pricing<span class="badge">New</span></a></li>
 									<li><a href="500-page.html">500 Opsss<span class="badge">New</span></a></li>
 									<li><a href="404-page.html">404 Error<span class="badge">New</span></a></li>
+
+									<li><a href="<?php echo site_url(); ?>categories/details">all ads</a></li>
+									<li><a href="<?php echo site_url(); ?>categories/faq">Help/Support</a></li> 
+									<li><a href="<?php echo site_url(); ?>categories/about-us">ABout Us</a></li>
 								</ul>
 							</li>
 												
@@ -78,11 +79,11 @@
 
 					<!-- sign-in -->					
 					<ul class="sign-in">
-						<li><i class="fa fa-user"></i></li>
+						<!-- <li><i class="fa fa-user"></i></li> -->
 						
-						<li><a href="<?php echo site_url(); ?>register.html">Register</a></li>
+						<li ><i class="fa fa-user"></i> <a href="<?php echo site_url(); ?>register.html"><?php echo $this->lang->line('menu_register'); ?></a></li>
 
-						<li><a href="<?php echo site_url(); ?>login.html"> Sign In </a></li>
+						<li><i class="fa fa-user"></i> <a href="<?php echo site_url(); ?>login.html"> <?php echo $this->lang->line('menu_login'); ?> </a></li>
 						
 
 					</ul><!-- sign-in -->					
