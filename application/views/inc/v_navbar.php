@@ -19,7 +19,7 @@
 						<?php 
 							foreach($page_detail as $p) {
 								?>
-								<li <?php if($this->uri->segment(1)==""){echo 'class="active"';}?>><a href="<?php echo site_url(); ?>">
+								<li <?php if($this->uri->segment(1)==""){echo 'class="active"';}?>><a href="<?php echo site_url(); ?><?php echo $p['page_url']; ?>">
 								<?php echo $p['page_title']; ?>
 							</a></li>
 							<?php
@@ -29,7 +29,7 @@
 
 
 						
-							<li><a href="<?php echo site_url(); ?>categories.html">Category</a></li>
+							
 							<li><a href="<?php echo site_url(); ?>categories/details">all ads</a></li>
 							<li><a href="<?php echo site_url(); ?>categories/faq">Help/Support</a></li> 
 							<li><a href="<?php echo site_url(); ?>categories/about-us">ABout Us</a></li>
