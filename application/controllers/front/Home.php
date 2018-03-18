@@ -4,13 +4,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 class Home extends CI_Controller {
 	function __construct() {
         parent::__construct();        
-        $this->load->helper('text');
+        //$this->load->helper('text');
         $this->load->database();   
-        $this->load->helper('url');
+        //$this->load->helper('url');
         $this->load->model('M_Categories','m_cat');
+        $this->load->model('Crud_model','m_crud');
        
     }
-	public function index()
+	public function index($page='home')
 	{		
 		$data=array();
 
@@ -24,12 +25,17 @@ class Home extends CI_Controller {
 		$data['getProducts']=$this->m_cat->get_by_sql($sql_product,FALSE);
 		
 
-		$data['title']="Trade Title";
+		$data['title']="Trade Title ";
 
 		$data['head']="head/v_head_home";
 		$data['footer']="footer/v_footer_home";
 
         $data['body']='fronts/home/v_home_main';
+
+        include_once 'langs.php';
+
+
+
 		$this->load->view('v_template', $data);
 		
 	}
@@ -49,6 +55,12 @@ class Home extends CI_Controller {
 		$data['footer']="footer/v_footer_home";
 
         $data['body']='fronts/home/v_detail';
+
+        //Language file
+        include_once 'langs.php';
+
+
+
 		$this->load->view('v_template', $data);
 			
 	}	

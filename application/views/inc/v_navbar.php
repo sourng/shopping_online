@@ -14,8 +14,21 @@
 				
 				<div class="navbar-left">
 					<div class="collapse navbar-collapse" id="navbar-collapse">
-						<ul class="nav navbar-nav">						
-							<li class="active"><a href="<?php echo site_url(); ?>">Home</a></li>
+						<ul class="nav navbar-nav">		
+
+						<?php 
+							foreach($page_detail as $p) {
+								?>
+								<li <?php if($this->uri->segment(1)==""){echo 'class="active"';}?>><a href="<?php echo site_url(); ?>">
+								<?php echo $p['page_title']; ?>
+							</a></li>
+							<?php
+							}
+
+						?>	
+
+
+						
 							<li><a href="<?php echo site_url(); ?>categories.html">Category</a></li>
 							<li><a href="<?php echo site_url(); ?>categories/details">all ads</a></li>
 							<li><a href="<?php echo site_url(); ?>categories/faq">Help/Support</a></li> 
@@ -57,10 +70,9 @@
 						<i class="fa fa-globe"></i> 						
 						<a data-toggle="dropdown" href="#"><span class="change-text">United Kingdom</span> <i class="fa fa-angle-down"></i></a>
 						<ul class="dropdown-menu language-change">
-							<li><a href="#">United Kingdom</a></li>
-							<li><a href="#">United States</a></li>
-							<li><a href="#">China</a></li>
-							<li><a href="#">Russia</a></li>
+							
+							<li><a  href="<?php echo site_url(); ?>/LanguageSwitcher/switchLang/khmer">Khmer</a></li>
+							<li><a  href="<?php echo site_url(); ?>/LanguageSwitcher/switchLang/english">English</a></li>
 						</ul>								
 					</div><!-- language-dropdown -->
 

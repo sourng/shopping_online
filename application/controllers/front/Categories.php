@@ -8,9 +8,10 @@ class Categories extends CI_Controller {
         $this->load->database();   
         $this->load->helper('url');
         $this->load->model('M_Categories','m_cat');
+        $this->load->model('Crud_model','m_crud');
        
     }
-	public function index()
+	public function index($page='home')
 	{		
 		$data=array();
 		$sql="SELECT * FROM categories";
@@ -22,6 +23,8 @@ class Categories extends CI_Controller {
 		
 		//$data['main_content']='layouts/template';
 		//$this->load->view('layouts/v_home', $data);
+		include_once 'langs.php';
+
 		$this->load->view('categories/v_categories',$data);
 		
 	}
@@ -37,6 +40,8 @@ class Categories extends CI_Controller {
 		
 		//$data['main_content']='layouts/template';
 		//$this->load->view('layouts/v_home', $data);
+		include_once 'langs.php';
+
 		$this->load->view('v_details',$data);	
 		//echo "Hello";
 			
