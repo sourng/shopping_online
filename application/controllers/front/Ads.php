@@ -8,11 +8,13 @@ class Ads extends CI_Controller {
         $this->load->database();   
         $this->load->helper('url');
         $this->load->model('M_Categories','m_cat');
-       
+       	$this->load->model('Crud_model','m_crud',True); 
+       date_default_timezone_set('Asia/Phnom_Penh');
     }
 	public function index()
 	{		
 		$data=array();
+		include_once 'langs.php';
 
 		$sql="SELECT * FROM categories";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
@@ -27,12 +29,15 @@ class Ads extends CI_Controller {
 		$data['footer']="footer/v_footer_home";
 
         $data['body']='fronts/ads_post/v_add_post';
+
 		$this->load->view('v_template', $data);
 		
 	}
 	
 	public function details($pro_id=''){	
-	$data=array();
+		$data=array();
+		include_once 'langs.php';
+
 		$sql="SELECT * FROM categories";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
 		

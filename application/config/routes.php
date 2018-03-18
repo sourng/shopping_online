@@ -22,6 +22,14 @@ $route['categories/details/(:any)'] = 'front/categories/details/$1';
 //$route['admin/manage-users.html/(:any)/(:any)'] = 'admin/users/users/manage_users/$1/$2';
 
 
+//Profiles
+$route['profile.html'] = 'front/profile';
+$route['profile/myads.html'] = 'front/profile/my_ads';
+$route['profile.html'] = 'front/profile';
+$route['profile.html'] = 'front/profile';
+$route['profile.html'] = 'front/profile';
+
+
 $route['register.html'] = 'front/Register';
 $route['register.html/signup'] = 'front/Register/signup';
 

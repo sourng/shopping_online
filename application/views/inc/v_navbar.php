@@ -69,7 +69,7 @@
 					<!-- language-dropdown -->
 					<div class="dropdown language-dropdown">
 						<i class="fa fa-globe"></i> 						
-						<a data-toggle="dropdown" href="#"><span class="change-text">United Kingdom</span> <i class="fa fa-angle-down"></i></a>
+						<a data-toggle="dropdown" href="#"><span class="change-text"><?php echo ucfirst($langs); ?></span> <i class="fa fa-angle-down"></i></a>
 						<ul class="dropdown-menu language-change">
 							
 							<li><a  href="<?php echo site_url(); ?>/LanguageSwitcher/switchLang/khmer">Khmer</a></li>
@@ -88,7 +88,7 @@
 
 					</ul><!-- sign-in -->					
 
-					<a href="<?php echo site_url(); ?>ads" class="btn">Post Your Ad</a>
+					<a href="<?php echo site_url(); ?>front/ads" class="btn">Post Your Ad</a>
 				</div>
 				<!-- nav-right -->
 			</div><!-- container -->

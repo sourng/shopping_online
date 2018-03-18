@@ -18,7 +18,7 @@ class Register extends CI_Controller {
 		 $data=array();  
 
 		include_once 'langs.php';
-		$this->load->view('register/v_signup');
+		$this->load->view('register/v_signup',$data);
 		
 	}
 	public function signup(){
@@ -28,6 +28,9 @@ class Register extends CI_Controller {
 		$data['pass']=$this->input->post['pass'];
 		$data['confirm_pass']=$this->input->post['confirm_pass'];
 		$data['phone']=$this->input->post['phone'];
+
+		include_once 'langs.php';
+
 		
 		$this->load->view('register/v_signup_result',$data);
 	}

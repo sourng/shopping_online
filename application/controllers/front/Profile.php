@@ -8,10 +8,13 @@ class Profile extends CI_Controller {
         $this->load->database();   
         $this->load->helper('url');
         $this->load->model('M_Categories','m_cat');
+        	$this->load->model('Crud_model','m_crud',True); 
+       date_default_timezone_set('Asia/Phnom_Penh');
+
        
     }
 	
-	public function index(){	
+	public function index($page='home'){	
 	$data=array();
 		//$sql="SELECT * FROM categories";
 		//$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
@@ -20,6 +23,8 @@ class Profile extends CI_Controller {
 		// $data['getItem']=$this->m_cat->get_by_sql($sql_product,FALSE);
 		
 		
+		include_once 'langs.php';
+
 		$data['title']="Trade Title";
 
 		$data['head']="head/v_head_home";
@@ -29,9 +34,9 @@ class Profile extends CI_Controller {
 		$this->load->view('v_template', $data);
 			
 	}
-	public function my_ads(){	
+	public function my_ads($page='home'){	
 	$data=array();
-
+		include_once 'langs.php';
 		$data['title']="Trade Title";
 
 		$data['head']="head/v_head_home";
@@ -41,8 +46,9 @@ class Profile extends CI_Controller {
 		$this->load->view('v_template', $data);
 	}
 
-	public function favourite_ads(){	
+	public function favourite_ads($page='home'){	
 	$data=array();
+		include_once 'langs.php';
 				
 		$data['title']="Trade Title";
 
@@ -53,9 +59,9 @@ class Profile extends CI_Controller {
 		$this->load->view('v_template', $data);
 	}
 
-	public function archived_ads(){	
+	public function archived_ads($page='home'){	
 	$data=array();
-				
+		include_once 'langs.php';		
 		$data['title']="Trade Title";
 
 		$data['head']="head/v_head_home";
@@ -65,9 +71,9 @@ class Profile extends CI_Controller {
 		$this->load->view('v_template', $data);
 	}
 
-	public function pending_ads(){	
+	public function pending_ads($page='home'){	
 	$data=array();
-				
+		include_once 'langs.php';		
 		$data['title']="Trade Title";
 
 		$data['head']="head/v_head_home";
@@ -77,9 +83,9 @@ class Profile extends CI_Controller {
 		$this->load->view('v_template', $data);
 	}
 
-	public function delete_account(){	
+	public function delete_account($page='home'){	
 	$data=array();
-				
+		include_once 'langs.php';		
 		$data['title']="Trade Title";
 
 		$data['head']="head/v_head_home";
