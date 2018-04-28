@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <configuration date="2018/04/28" author="e.World Technology Ltd.">
-  <project id="{F38FCD2E-3638-4192-9CEA-A2A8E31F8537}" file="C:\Users\SENG Sourng\Documents\PHPMaker\Projects\ShoppingOnline.pmp" name="ShoppingOnline" product="PHPMaker" version="14.0" datetime="2018/04/28 10:27:02" languagefolder="phplang" userlevel="-2,&quot;Anonymous&quot;,0;">
-    <table id="categories" name="categories" caption="categories" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
-    <table id="company" name="company" caption="company" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
-    <table id="country" name="country" caption="country" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
-    <table id="products" name="products" caption="products" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
-    <table id="province" name="province" caption="province" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
-    <table id="tbl_pages" name="tbl_pages" caption="tbl pages" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
+  <project id="{F38FCD2E-3638-4192-9CEA-A2A8E31F8537}" file="C:\Users\SENG Sourng\Documents\PHPMaker\Projects\ShoppingOnline.pmp" name="ShoppingOnline" product="PHPMaker" version="14.0" datetime="2018/04/28 10:48:45" languagefolder="phplang" userlevel="-2,&quot;Anonymous&quot;,0;">
+    <table id="categories" name="categories" caption="គ្រប់​គ្រង​ប្រ​ភេទ​ផលិតផល​" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
+    <table id="company" name="company" caption="គ្រប់​គ្រង​ក្រុម​ហ៊ុន​" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
+    <table id="country" name="country" caption="គ្រប់​គ្រង​ប្រទេស" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
+    <table id="products" name="products" caption="គ្រប់​គ្រង​ផលិតផល​" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
+    <table id="province" name="province" caption="គ្រប់​គ្រង​ខេត្ត​" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
+    <table id="tbl_pages" name="tbl_pages" caption="គ្រប់​គ្រង​ទំព័រ​" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
   </project>
 </configuration>

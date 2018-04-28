@@ -405,20 +405,11 @@ class ccompany_list extends ccompany {
 		$this->com_fname->SetVisibility();
 		$this->com_lname->SetVisibility();
 		$this->com_name->SetVisibility();
-		$this->com_address->SetVisibility();
 		$this->com_phone->SetVisibility();
 		$this->com_email->SetVisibility();
-		$this->com_fb->SetVisibility();
-		$this->com_tw->SetVisibility();
-		$this->com_yt->SetVisibility();
 		$this->com_logo->SetVisibility();
 		$this->com_province->SetVisibility();
 		$this->com_username->SetVisibility();
-		$this->com_password->SetVisibility();
-		$this->com_online->SetVisibility();
-		$this->com_activation->SetVisibility();
-		$this->com_status->SetVisibility();
-		$this->reg_date->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
 		Page_Loading();
@@ -1118,20 +1109,11 @@ class ccompany_list extends ccompany {
 			$this->UpdateSort($this->com_fname); // com_fname
 			$this->UpdateSort($this->com_lname); // com_lname
 			$this->UpdateSort($this->com_name); // com_name
-			$this->UpdateSort($this->com_address); // com_address
 			$this->UpdateSort($this->com_phone); // com_phone
 			$this->UpdateSort($this->com_email); // com_email
-			$this->UpdateSort($this->com_fb); // com_fb
-			$this->UpdateSort($this->com_tw); // com_tw
-			$this->UpdateSort($this->com_yt); // com_yt
 			$this->UpdateSort($this->com_logo); // com_logo
 			$this->UpdateSort($this->com_province); // com_province
 			$this->UpdateSort($this->com_username); // com_username
-			$this->UpdateSort($this->com_password); // com_password
-			$this->UpdateSort($this->com_online); // com_online
-			$this->UpdateSort($this->com_activation); // com_activation
-			$this->UpdateSort($this->com_status); // com_status
-			$this->UpdateSort($this->reg_date); // reg_date
 			$this->setStartRecordNumber(1); // Reset start position
 		}
 	}
@@ -1168,20 +1150,11 @@ class ccompany_list extends ccompany {
 				$this->com_fname->setSort("");
 				$this->com_lname->setSort("");
 				$this->com_name->setSort("");
-				$this->com_address->setSort("");
 				$this->com_phone->setSort("");
 				$this->com_email->setSort("");
-				$this->com_fb->setSort("");
-				$this->com_tw->setSort("");
-				$this->com_yt->setSort("");
 				$this->com_logo->setSort("");
 				$this->com_province->setSort("");
 				$this->com_username->setSort("");
-				$this->com_password->setSort("");
-				$this->com_online->setSort("");
-				$this->com_activation->setSort("");
-				$this->com_status->setSort("");
-				$this->reg_date->setSort("");
 			}
 
 			// Reset start position
@@ -1868,11 +1841,6 @@ class ccompany_list extends ccompany {
 			$this->com_name->HrefValue = "";
 			$this->com_name->TooltipValue = "";
 
-			// com_address
-			$this->com_address->LinkCustomAttributes = "";
-			$this->com_address->HrefValue = "";
-			$this->com_address->TooltipValue = "";
-
 			// com_phone
 			$this->com_phone->LinkCustomAttributes = "";
 			$this->com_phone->HrefValue = "";
@@ -1882,21 +1850,6 @@ class ccompany_list extends ccompany {
 			$this->com_email->LinkCustomAttributes = "";
 			$this->com_email->HrefValue = "";
 			$this->com_email->TooltipValue = "";
-
-			// com_fb
-			$this->com_fb->LinkCustomAttributes = "";
-			$this->com_fb->HrefValue = "";
-			$this->com_fb->TooltipValue = "";
-
-			// com_tw
-			$this->com_tw->LinkCustomAttributes = "";
-			$this->com_tw->HrefValue = "";
-			$this->com_tw->TooltipValue = "";
-
-			// com_yt
-			$this->com_yt->LinkCustomAttributes = "";
-			$this->com_yt->HrefValue = "";
-			$this->com_yt->TooltipValue = "";
 
 			// com_logo
 			$this->com_logo->LinkCustomAttributes = "";
@@ -1912,31 +1865,6 @@ class ccompany_list extends ccompany {
 			$this->com_username->LinkCustomAttributes = "";
 			$this->com_username->HrefValue = "";
 			$this->com_username->TooltipValue = "";
-
-			// com_password
-			$this->com_password->LinkCustomAttributes = "";
-			$this->com_password->HrefValue = "";
-			$this->com_password->TooltipValue = "";
-
-			// com_online
-			$this->com_online->LinkCustomAttributes = "";
-			$this->com_online->HrefValue = "";
-			$this->com_online->TooltipValue = "";
-
-			// com_activation
-			$this->com_activation->LinkCustomAttributes = "";
-			$this->com_activation->HrefValue = "";
-			$this->com_activation->TooltipValue = "";
-
-			// com_status
-			$this->com_status->LinkCustomAttributes = "";
-			$this->com_status->HrefValue = "";
-			$this->com_status->TooltipValue = "";
-
-			// reg_date
-			$this->reg_date->LinkCustomAttributes = "";
-			$this->reg_date->HrefValue = "";
-			$this->reg_date->TooltipValue = "";
 		}
 
 		// Call Row Rendered event
@@ -2276,15 +2204,6 @@ $company_list->ListOptions->Render("header", "left");
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
-<?php if ($company->com_address->Visible) { // com_address ?>
-	<?php if ($company->SortUrl($company->com_address) == "") { ?>
-		<th data-name="com_address" class="<?php echo $company->com_address->HeaderCellClass() ?>"><div id="elh_company_com_address" class="company_com_address"><div class="ewTableHeaderCaption"><?php echo $company->com_address->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_address" class="<?php echo $company->com_address->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_address) ?>',1);"><div id="elh_company_com_address" class="company_com_address">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_address->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_address->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_address->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
 <?php if ($company->com_phone->Visible) { // com_phone ?>
 	<?php if ($company->SortUrl($company->com_phone) == "") { ?>
 		<th data-name="com_phone" class="<?php echo $company->com_phone->HeaderCellClass() ?>"><div id="elh_company_com_phone" class="company_com_phone"><div class="ewTableHeaderCaption"><?php echo $company->com_phone->FldCaption() ?></div></div></th>
@@ -2300,33 +2219,6 @@ $company_list->ListOptions->Render("header", "left");
 	<?php } else { ?>
 		<th data-name="com_email" class="<?php echo $company->com_email->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_email) ?>',1);"><div id="elh_company_com_email" class="company_com_email">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_email->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_email->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_email->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->com_fb->Visible) { // com_fb ?>
-	<?php if ($company->SortUrl($company->com_fb) == "") { ?>
-		<th data-name="com_fb" class="<?php echo $company->com_fb->HeaderCellClass() ?>"><div id="elh_company_com_fb" class="company_com_fb"><div class="ewTableHeaderCaption"><?php echo $company->com_fb->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_fb" class="<?php echo $company->com_fb->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_fb) ?>',1);"><div id="elh_company_com_fb" class="company_com_fb">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_fb->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_fb->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_fb->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->com_tw->Visible) { // com_tw ?>
-	<?php if ($company->SortUrl($company->com_tw) == "") { ?>
-		<th data-name="com_tw" class="<?php echo $company->com_tw->HeaderCellClass() ?>"><div id="elh_company_com_tw" class="company_com_tw"><div class="ewTableHeaderCaption"><?php echo $company->com_tw->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_tw" class="<?php echo $company->com_tw->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_tw) ?>',1);"><div id="elh_company_com_tw" class="company_com_tw">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_tw->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_tw->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_tw->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->com_yt->Visible) { // com_yt ?>
-	<?php if ($company->SortUrl($company->com_yt) == "") { ?>
-		<th data-name="com_yt" class="<?php echo $company->com_yt->HeaderCellClass() ?>"><div id="elh_company_com_yt" class="company_com_yt"><div class="ewTableHeaderCaption"><?php echo $company->com_yt->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_yt" class="<?php echo $company->com_yt->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_yt) ?>',1);"><div id="elh_company_com_yt" class="company_com_yt">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_yt->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_yt->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_yt->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
@@ -2354,51 +2246,6 @@ $company_list->ListOptions->Render("header", "left");
 	<?php } else { ?>
 		<th data-name="com_username" class="<?php echo $company->com_username->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_username) ?>',1);"><div id="elh_company_com_username" class="company_com_username">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_username->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_username->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_username->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->com_password->Visible) { // com_password ?>
-	<?php if ($company->SortUrl($company->com_password) == "") { ?>
-		<th data-name="com_password" class="<?php echo $company->com_password->HeaderCellClass() ?>"><div id="elh_company_com_password" class="company_com_password"><div class="ewTableHeaderCaption"><?php echo $company->com_password->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_password" class="<?php echo $company->com_password->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_password) ?>',1);"><div id="elh_company_com_password" class="company_com_password">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_password->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_password->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_password->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->com_online->Visible) { // com_online ?>
-	<?php if ($company->SortUrl($company->com_online) == "") { ?>
-		<th data-name="com_online" class="<?php echo $company->com_online->HeaderCellClass() ?>"><div id="elh_company_com_online" class="company_com_online"><div class="ewTableHeaderCaption"><?php echo $company->com_online->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_online" class="<?php echo $company->com_online->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_online) ?>',1);"><div id="elh_company_com_online" class="company_com_online">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_online->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_online->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_online->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->com_activation->Visible) { // com_activation ?>
-	<?php if ($company->SortUrl($company->com_activation) == "") { ?>
-		<th data-name="com_activation" class="<?php echo $company->com_activation->HeaderCellClass() ?>"><div id="elh_company_com_activation" class="company_com_activation"><div class="ewTableHeaderCaption"><?php echo $company->com_activation->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_activation" class="<?php echo $company->com_activation->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_activation) ?>',1);"><div id="elh_company_com_activation" class="company_com_activation">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_activation->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_activation->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_activation->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->com_status->Visible) { // com_status ?>
-	<?php if ($company->SortUrl($company->com_status) == "") { ?>
-		<th data-name="com_status" class="<?php echo $company->com_status->HeaderCellClass() ?>"><div id="elh_company_com_status" class="company_com_status"><div class="ewTableHeaderCaption"><?php echo $company->com_status->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_status" class="<?php echo $company->com_status->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_status) ?>',1);"><div id="elh_company_com_status" class="company_com_status">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_status->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_status->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_status->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($company->reg_date->Visible) { // reg_date ?>
-	<?php if ($company->SortUrl($company->reg_date) == "") { ?>
-		<th data-name="reg_date" class="<?php echo $company->reg_date->HeaderCellClass() ?>"><div id="elh_company_reg_date" class="company_reg_date"><div class="ewTableHeaderCaption"><?php echo $company->reg_date->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="reg_date" class="<?php echo $company->reg_date->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->reg_date) ?>',1);"><div id="elh_company_reg_date" class="company_reg_date">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->reg_date->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($company->reg_date->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->reg_date->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
@@ -2499,14 +2346,6 @@ $company_list->ListOptions->Render("body", "left", $company_list->RowCnt);
 </span>
 </td>
 	<?php } ?>
-	<?php if ($company->com_address->Visible) { // com_address ?>
-		<td data-name="com_address"<?php echo $company->com_address->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_address" class="company_com_address">
-<span<?php echo $company->com_address->ViewAttributes() ?>>
-<?php echo $company->com_address->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
 	<?php if ($company->com_phone->Visible) { // com_phone ?>
 		<td data-name="com_phone"<?php echo $company->com_phone->CellAttributes() ?>>
 <span id="el<?php echo $company_list->RowCnt ?>_company_com_phone" class="company_com_phone">
@@ -2520,30 +2359,6 @@ $company_list->ListOptions->Render("body", "left", $company_list->RowCnt);
 <span id="el<?php echo $company_list->RowCnt ?>_company_com_email" class="company_com_email">
 <span<?php echo $company->com_email->ViewAttributes() ?>>
 <?php echo $company->com_email->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_fb->Visible) { // com_fb ?>
-		<td data-name="com_fb"<?php echo $company->com_fb->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_fb" class="company_com_fb">
-<span<?php echo $company->com_fb->ViewAttributes() ?>>
-<?php echo $company->com_fb->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_tw->Visible) { // com_tw ?>
-		<td data-name="com_tw"<?php echo $company->com_tw->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_tw" class="company_com_tw">
-<span<?php echo $company->com_tw->ViewAttributes() ?>>
-<?php echo $company->com_tw->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_yt->Visible) { // com_yt ?>
-		<td data-name="com_yt"<?php echo $company->com_yt->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_yt" class="company_com_yt">
-<span<?php echo $company->com_yt->ViewAttributes() ?>>
-<?php echo $company->com_yt->ListViewValue() ?></span>
 </span>
 </td>
 	<?php } ?>
@@ -2568,46 +2383,6 @@ $company_list->ListOptions->Render("body", "left", $company_list->RowCnt);
 <span id="el<?php echo $company_list->RowCnt ?>_company_com_username" class="company_com_username">
 <span<?php echo $company->com_username->ViewAttributes() ?>>
 <?php echo $company->com_username->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_password->Visible) { // com_password ?>
-		<td data-name="com_password"<?php echo $company->com_password->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_password" class="company_com_password">
-<span<?php echo $company->com_password->ViewAttributes() ?>>
-<?php echo $company->com_password->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_online->Visible) { // com_online ?>
-		<td data-name="com_online"<?php echo $company->com_online->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_online" class="company_com_online">
-<span<?php echo $company->com_online->ViewAttributes() ?>>
-<?php echo $company->com_online->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_activation->Visible) { // com_activation ?>
-		<td data-name="com_activation"<?php echo $company->com_activation->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_activation" class="company_com_activation">
-<span<?php echo $company->com_activation->ViewAttributes() ?>>
-<?php echo $company->com_activation->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_status->Visible) { // com_status ?>
-		<td data-name="com_status"<?php echo $company->com_status->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_status" class="company_com_status">
-<span<?php echo $company->com_status->ViewAttributes() ?>>
-<?php echo $company->com_status->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($company->reg_date->Visible) { // reg_date ?>
-		<td data-name="reg_date"<?php echo $company->reg_date->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_reg_date" class="company_reg_date">
-<span<?php echo $company->reg_date->ViewAttributes() ?>>
-<?php echo $company->reg_date->ListViewValue() ?></span>
 </span>
 </td>
 	<?php } ?>

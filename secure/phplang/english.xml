@@ -619,25 +619,25 @@
     <phrase id="bodytitle" value="Shopping Online" />
     <phrase id="footertext" value="&amp;copy;2017 SourngOnline Ltd. All rights reserved." />
     <menu id="1">
-      <phrase id="menutext" value="categories" />
+      <phrase id="menutext" value="គ្រប់​គ្រង​ប្រ​ភេទ​ផលិតផល​" />
     </menu>
     <menu id="2">
-      <phrase id="menutext" value="company" />
+      <phrase id="menutext" value="គ្រប់​គ្រង​ក្រុម​ហ៊ុន​" />
     </menu>
     <menu id="3">
-      <phrase id="menutext" value="country" />
+      <phrase id="menutext" value="គ្រប់​គ្រង​ប្រទេស" />
     </menu>
     <menu id="4">
-      <phrase id="menutext" value="products" />
+      <phrase id="menutext" value="គ្រប់​គ្រង​ផលិតផល​" />
     </menu>
     <menu id="5">
-      <phrase id="menutext" value="province" />
+      <phrase id="menutext" value="គ្រប់​គ្រង​ខេត្ត​" />
     </menu>
     <menu id="6">
-      <phrase id="menutext" value="tbl pages" />
+      <phrase id="menutext" value="គ្រប់​គ្រង​ទំព័រ​" />
     </menu>
     <table id="categories">
-      <phrase id="tblcaption" value="categories" />
+      <phrase id="tblcaption" value="គ្រប់​គ្រង​ប្រ​ភេទ​ផលិតផល​" />
       <field id="cat_id">
         <phrase id="fldcaption" value="cat id" />
       </field>
@@ -659,7 +659,7 @@
       </field>
     </table>
     <table id="company">
-      <phrase id="tblcaption" value="company" />
+      <phrase id="tblcaption" value="គ្រប់​គ្រង​ក្រុម​ហ៊ុន​" />
       <field id="company_id">
         <phrase id="fldcaption" value="company id" />
       </field>
@@ -716,7 +716,7 @@
       </field>
     </table>
     <table id="country">
-      <phrase id="tblcaption" value="country" />
+      <phrase id="tblcaption" value="គ្រប់​គ្រង​ប្រទេស" />
       <field id="country_id">
         <phrase id="fldcaption" value="country id" />
       </field>
@@ -737,7 +737,7 @@
       </field>
     </table>
     <table id="products">
-      <phrase id="tblcaption" value="products" />
+      <phrase id="tblcaption" value="គ្រប់​គ្រង​ផលិតផល​" />
       <field id="product_id">
         <phrase id="fldcaption" value="product id" />
       </field>
@@ -807,7 +807,7 @@
       </field>
     </table>
     <table id="province">
-      <phrase id="tblcaption" value="province" />
+      <phrase id="tblcaption" value="គ្រប់​គ្រង​ខេត្ត​" />
       <field id="province_id">
         <phrase id="fldcaption" value="province id" />
       </field>
@@ -852,30 +852,30 @@
       </field>
     </table>
     <table id="tbl_pages">
-      <phrase id="tblcaption" value="tbl pages" />
+      <phrase id="tblcaption" value="គ្រប់​គ្រង​ទំព័រ​" />
       <field id="page_id">
-        <phrase id="fldcaption" value="page id" />
+        <phrase id="fldcaption" value="ល.រ" />
       </field>
       <field id="page_name">
-        <phrase id="fldcaption" value="page name" />
+        <phrase id="fldcaption" value="ឈ្មោះ​ទំព័រ​" />
       </field>
       <field id="page_title">
-        <phrase id="fldcaption" value="page title" />
+        <phrase id="fldcaption" value="ចំណងជើងទំព័រ​" />
       </field>
       <field id="page_url">
-        <phrase id="fldcaption" value="page url" />
+        <phrase id="fldcaption" value="តំណភ្ជាប់​(URL)" />
       </field>
       <field id="page_description">
-        <phrase id="fldcaption" value="page description" />
+        <phrase id="fldcaption" value="អធិប្បាយ​ទំព័រ" />
       </field>
       <field id="page_detail">
-        <phrase id="fldcaption" value="page detail" />
+        <phrase id="fldcaption" value="បកស្រាយ​លំអិត​" />
       </field>
       <field id="page_icon">
-        <phrase id="fldcaption" value="page icon" />
+        <phrase id="fldcaption" value="ទំព័រ​សញ្ញា​" />
       </field>
       <field id="lang">
-        <phrase id="fldcaption" value="lang" />
+        <phrase id="fldcaption" value="ភាសា" />
       </field>
     </table>
   </project>

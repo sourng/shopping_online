@@ -112,6 +112,7 @@ var ewVar = <?php echo json_encode($EW_CLIENT_VAR); ?>;
 
 // Write your client script here, no need to add script tags.
 </script>
+<link rel="shortcut icon" type="image/x-icon" href="<?php echo $EW_RELATIVE_PATH ?>logo_dVd_icon.ico"><link rel="icon" type="image/x-icon" href="<?php echo $EW_RELATIVE_PATH ?>logo_dVd_icon.ico">
 <meta name="generator" content="PHPMaker v2018.0.8">
 </head>
 <body class="<?php echo $EW_BODY_CLASS ?>" dir="<?php echo ($EW_CSS_FLIP) ? "rtl" : "ltr" ?>">

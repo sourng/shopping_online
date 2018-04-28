@@ -317,20 +317,11 @@ class ccompany_delete extends ccompany {
 		$this->com_fname->SetVisibility();
 		$this->com_lname->SetVisibility();
 		$this->com_name->SetVisibility();
-		$this->com_address->SetVisibility();
 		$this->com_phone->SetVisibility();
 		$this->com_email->SetVisibility();
-		$this->com_fb->SetVisibility();
-		$this->com_tw->SetVisibility();
-		$this->com_yt->SetVisibility();
 		$this->com_logo->SetVisibility();
 		$this->com_province->SetVisibility();
 		$this->com_username->SetVisibility();
-		$this->com_password->SetVisibility();
-		$this->com_online->SetVisibility();
-		$this->com_activation->SetVisibility();
-		$this->com_status->SetVisibility();
-		$this->reg_date->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
 		Page_Loading();
@@ -703,11 +694,6 @@ class ccompany_delete extends ccompany {
 			$this->com_name->HrefValue = "";
 			$this->com_name->TooltipValue = "";
 
-			// com_address
-			$this->com_address->LinkCustomAttributes = "";
-			$this->com_address->HrefValue = "";
-			$this->com_address->TooltipValue = "";
-
 			// com_phone
 			$this->com_phone->LinkCustomAttributes = "";
 			$this->com_phone->HrefValue = "";
@@ -717,21 +703,6 @@ class ccompany_delete extends ccompany {
 			$this->com_email->LinkCustomAttributes = "";
 			$this->com_email->HrefValue = "";
 			$this->com_email->TooltipValue = "";
-
-			// com_fb
-			$this->com_fb->LinkCustomAttributes = "";
-			$this->com_fb->HrefValue = "";
-			$this->com_fb->TooltipValue = "";
-
-			// com_tw
-			$this->com_tw->LinkCustomAttributes = "";
-			$this->com_tw->HrefValue = "";
-			$this->com_tw->TooltipValue = "";
-
-			// com_yt
-			$this->com_yt->LinkCustomAttributes = "";
-			$this->com_yt->HrefValue = "";
-			$this->com_yt->TooltipValue = "";
 
 			// com_logo
 			$this->com_logo->LinkCustomAttributes = "";
@@ -747,31 +718,6 @@ class ccompany_delete extends ccompany {
 			$this->com_username->LinkCustomAttributes = "";
 			$this->com_username->HrefValue = "";
 			$this->com_username->TooltipValue = "";
-
-			// com_password
-			$this->com_password->LinkCustomAttributes = "";
-			$this->com_password->HrefValue = "";
-			$this->com_password->TooltipValue = "";
-
-			// com_online
-			$this->com_online->LinkCustomAttributes = "";
-			$this->com_online->HrefValue = "";
-			$this->com_online->TooltipValue = "";
-
-			// com_activation
-			$this->com_activation->LinkCustomAttributes = "";
-			$this->com_activation->HrefValue = "";
-			$this->com_activation->TooltipValue = "";
-
-			// com_status
-			$this->com_status->LinkCustomAttributes = "";
-			$this->com_status->HrefValue = "";
-			$this->com_status->TooltipValue = "";
-
-			// reg_date
-			$this->reg_date->LinkCustomAttributes = "";
-			$this->reg_date->HrefValue = "";
-			$this->reg_date->TooltipValue = "";
 		}
 
 		// Call Row Rendered event
@@ -1021,23 +967,11 @@ $company_delete->ShowMessage();
 <?php if ($company->com_name->Visible) { // com_name ?>
 		<th class="<?php echo $company->com_name->HeaderCellClass() ?>"><span id="elh_company_com_name" class="company_com_name"><?php echo $company->com_name->FldCaption() ?></span></th>
 <?php } ?>
-<?php if ($company->com_address->Visible) { // com_address ?>
-		<th class="<?php echo $company->com_address->HeaderCellClass() ?>"><span id="elh_company_com_address" class="company_com_address"><?php echo $company->com_address->FldCaption() ?></span></th>
-<?php } ?>
 <?php if ($company->com_phone->Visible) { // com_phone ?>
 		<th class="<?php echo $company->com_phone->HeaderCellClass() ?>"><span id="elh_company_com_phone" class="company_com_phone"><?php echo $company->com_phone->FldCaption() ?></span></th>
 <?php } ?>
 <?php if ($company->com_email->Visible) { // com_email ?>
 		<th class="<?php echo $company->com_email->HeaderCellClass() ?>"><span id="elh_company_com_email" class="company_com_email"><?php echo $company->com_email->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->com_fb->Visible) { // com_fb ?>
-		<th class="<?php echo $company->com_fb->HeaderCellClass() ?>"><span id="elh_company_com_fb" class="company_com_fb"><?php echo $company->com_fb->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->com_tw->Visible) { // com_tw ?>
-		<th class="<?php echo $company->com_tw->HeaderCellClass() ?>"><span id="elh_company_com_tw" class="company_com_tw"><?php echo $company->com_tw->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->com_yt->Visible) { // com_yt ?>
-		<th class="<?php echo $company->com_yt->HeaderCellClass() ?>"><span id="elh_company_com_yt" class="company_com_yt"><?php echo $company->com_yt->FldCaption() ?></span></th>
 <?php } ?>
 <?php if ($company->com_logo->Visible) { // com_logo ?>
 		<th class="<?php echo $company->com_logo->HeaderCellClass() ?>"><span id="elh_company_com_logo" class="company_com_logo"><?php echo $company->com_logo->FldCaption() ?></span></th>
@@ -1047,21 +981,6 @@ $company_delete->ShowMessage();
 <?php } ?>
 <?php if ($company->com_username->Visible) { // com_username ?>
 		<th class="<?php echo $company->com_username->HeaderCellClass() ?>"><span id="elh_company_com_username" class="company_com_username"><?php echo $company->com_username->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->com_password->Visible) { // com_password ?>
-		<th class="<?php echo $company->com_password->HeaderCellClass() ?>"><span id="elh_company_com_password" class="company_com_password"><?php echo $company->com_password->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->com_online->Visible) { // com_online ?>
-		<th class="<?php echo $company->com_online->HeaderCellClass() ?>"><span id="elh_company_com_online" class="company_com_online"><?php echo $company->com_online->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->com_activation->Visible) { // com_activation ?>
-		<th class="<?php echo $company->com_activation->HeaderCellClass() ?>"><span id="elh_company_com_activation" class="company_com_activation"><?php echo $company->com_activation->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->com_status->Visible) { // com_status ?>
-		<th class="<?php echo $company->com_status->HeaderCellClass() ?>"><span id="elh_company_com_status" class="company_com_status"><?php echo $company->com_status->FldCaption() ?></span></th>
-<?php } ?>
-<?php if ($company->reg_date->Visible) { // reg_date ?>
-		<th class="<?php echo $company->reg_date->HeaderCellClass() ?>"><span id="elh_company_reg_date" class="company_reg_date"><?php echo $company->reg_date->FldCaption() ?></span></th>
 <?php } ?>
 	</tr>
 	</thead>
@@ -1116,14 +1035,6 @@ while (!$company_delete->Recordset->EOF) {
 </span>
 </td>
 <?php } ?>
-<?php if ($company->com_address->Visible) { // com_address ?>
-		<td<?php echo $company->com_address->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_address" class="company_com_address">
-<span<?php echo $company->com_address->ViewAttributes() ?>>
-<?php echo $company->com_address->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
 <?php if ($company->com_phone->Visible) { // com_phone ?>
 		<td<?php echo $company->com_phone->CellAttributes() ?>>
 <span id="el<?php echo $company_delete->RowCnt ?>_company_com_phone" class="company_com_phone">
@@ -1137,30 +1048,6 @@ while (!$company_delete->Recordset->EOF) {
 <span id="el<?php echo $company_delete->RowCnt ?>_company_com_email" class="company_com_email">
 <span<?php echo $company->com_email->ViewAttributes() ?>>
 <?php echo $company->com_email->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->com_fb->Visible) { // com_fb ?>
-		<td<?php echo $company->com_fb->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_fb" class="company_com_fb">
-<span<?php echo $company->com_fb->ViewAttributes() ?>>
-<?php echo $company->com_fb->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->com_tw->Visible) { // com_tw ?>
-		<td<?php echo $company->com_tw->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_tw" class="company_com_tw">
-<span<?php echo $company->com_tw->ViewAttributes() ?>>
-<?php echo $company->com_tw->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->com_yt->Visible) { // com_yt ?>
-		<td<?php echo $company->com_yt->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_yt" class="company_com_yt">
-<span<?php echo $company->com_yt->ViewAttributes() ?>>
-<?php echo $company->com_yt->ListViewValue() ?></span>
 </span>
 </td>
 <?php } ?>
@@ -1185,46 +1072,6 @@ while (!$company_delete->Recordset->EOF) {
 <span id="el<?php echo $company_delete->RowCnt ?>_company_com_username" class="company_com_username">
 <span<?php echo $company->com_username->ViewAttributes() ?>>
 <?php echo $company->com_username->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->com_password->Visible) { // com_password ?>
-		<td<?php echo $company->com_password->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_password" class="company_com_password">
-<span<?php echo $company->com_password->ViewAttributes() ?>>
-<?php echo $company->com_password->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->com_online->Visible) { // com_online ?>
-		<td<?php echo $company->com_online->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_online" class="company_com_online">
-<span<?php echo $company->com_online->ViewAttributes() ?>>
-<?php echo $company->com_online->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->com_activation->Visible) { // com_activation ?>
-		<td<?php echo $company->com_activation->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_activation" class="company_com_activation">
-<span<?php echo $company->com_activation->ViewAttributes() ?>>
-<?php echo $company->com_activation->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->com_status->Visible) { // com_status ?>
-		<td<?php echo $company->com_status->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_status" class="company_com_status">
-<span<?php echo $company->com_status->ViewAttributes() ?>>
-<?php echo $company->com_status->ListViewValue() ?></span>
-</span>
-</td>
-<?php } ?>
-<?php if ($company->reg_date->Visible) { // reg_date ?>
-		<td<?php echo $company->reg_date->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_reg_date" class="company_reg_date">
-<span<?php echo $company->reg_date->ViewAttributes() ?>>
-<?php echo $company->reg_date->ListViewValue() ?></span>
 </span>
 </td>
 <?php } ?>
