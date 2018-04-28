@@ -99,6 +99,7 @@ var EW_SEARCH_FILTER_OPTION = "<?php echo EW_SEARCH_FILTER_OPTION ?>";
 $.views.settings.debugMode(EW_DEBUG_ENABLED);
 </script>
 <script type="text/javascript" src="<?php echo $EW_RELATIVE_PATH ?>phpjs/ewp14.js"></script>
+<script type="text/javascript" src="<?php echo $EW_RELATIVE_PATH ?>jquery/jquery.ewjtable.min.js"></script>
 <script type="text/javascript">
 <?php
 	echo $Language->ToJson();

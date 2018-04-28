@@ -408,8 +408,9 @@ class ccompany_list extends ccompany {
 		$this->com_phone->SetVisibility();
 		$this->com_email->SetVisibility();
 		$this->com_logo->SetVisibility();
-		$this->com_province->SetVisibility();
 		$this->com_username->SetVisibility();
+		$this->country_id->SetVisibility();
+		$this->province_id->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
 		Page_Loading();
@@ -716,9 +717,15 @@ class ccompany_list extends ccompany {
 	// Set up key values
 	function SetupKeyValues($key) {
 		$arrKeyFlds = explode($GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"], $key);
-		if (count($arrKeyFlds) >= 1) {
+		if (count($arrKeyFlds) >= 3) {
 			$this->company_id->setFormValue($arrKeyFlds[0]);
 			if (!is_numeric($this->company_id->FormValue))
+				return FALSE;
+			$this->country_id->setFormValue($arrKeyFlds[1]);
+			if (!is_numeric($this->country_id->FormValue))
+				return FALSE;
+			$this->province_id->setFormValue($arrKeyFlds[2]);
+			if (!is_numeric($this->province_id->FormValue))
 				return FALSE;
 		}
 		return TRUE;
@@ -742,13 +749,14 @@ class ccompany_list extends ccompany {
 		$sFilterList = ew_Concat($sFilterList, $this->com_tw->AdvancedSearch->ToJson(), ","); // Field com_tw
 		$sFilterList = ew_Concat($sFilterList, $this->com_yt->AdvancedSearch->ToJson(), ","); // Field com_yt
 		$sFilterList = ew_Concat($sFilterList, $this->com_logo->AdvancedSearch->ToJson(), ","); // Field com_logo
-		$sFilterList = ew_Concat($sFilterList, $this->com_province->AdvancedSearch->ToJson(), ","); // Field com_province
 		$sFilterList = ew_Concat($sFilterList, $this->com_username->AdvancedSearch->ToJson(), ","); // Field com_username
 		$sFilterList = ew_Concat($sFilterList, $this->com_password->AdvancedSearch->ToJson(), ","); // Field com_password
 		$sFilterList = ew_Concat($sFilterList, $this->com_online->AdvancedSearch->ToJson(), ","); // Field com_online
 		$sFilterList = ew_Concat($sFilterList, $this->com_activation->AdvancedSearch->ToJson(), ","); // Field com_activation
 		$sFilterList = ew_Concat($sFilterList, $this->com_status->AdvancedSearch->ToJson(), ","); // Field com_status
 		$sFilterList = ew_Concat($sFilterList, $this->reg_date->AdvancedSearch->ToJson(), ","); // Field reg_date
+		$sFilterList = ew_Concat($sFilterList, $this->country_id->AdvancedSearch->ToJson(), ","); // Field country_id
+		$sFilterList = ew_Concat($sFilterList, $this->province_id->AdvancedSearch->ToJson(), ","); // Field province_id
 		if ($this->BasicSearch->Keyword <> "") {
 			$sWrk = "\"" . EW_TABLE_BASIC_SEARCH . "\":\"" . ew_JsEncode2($this->BasicSearch->Keyword) . "\",\"" . EW_TABLE_BASIC_SEARCH_TYPE . "\":\"" . ew_JsEncode2($this->BasicSearch->Type) . "\"";
 			$sFilterList = ew_Concat($sFilterList, $sWrk, ",");
@@ -881,14 +889,6 @@ class ccompany_list extends ccompany {
 		$this->com_logo->AdvancedSearch->SearchOperator2 = @$filter["w_com_logo"];
 		$this->com_logo->AdvancedSearch->Save();
 
-		// Field com_province
-		$this->com_province->AdvancedSearch->SearchValue = @$filter["x_com_province"];
-		$this->com_province->AdvancedSearch->SearchOperator = @$filter["z_com_province"];
-		$this->com_province->AdvancedSearch->SearchCondition = @$filter["v_com_province"];
-		$this->com_province->AdvancedSearch->SearchValue2 = @$filter["y_com_province"];
-		$this->com_province->AdvancedSearch->SearchOperator2 = @$filter["w_com_province"];
-		$this->com_province->AdvancedSearch->Save();
-
 		// Field com_username
 		$this->com_username->AdvancedSearch->SearchValue = @$filter["x_com_username"];
 		$this->com_username->AdvancedSearch->SearchOperator = @$filter["z_com_username"];
@@ -936,6 +936,22 @@ class ccompany_list extends ccompany {
 		$this->reg_date->AdvancedSearch->SearchValue2 = @$filter["y_reg_date"];
 		$this->reg_date->AdvancedSearch->SearchOperator2 = @$filter["w_reg_date"];
 		$this->reg_date->AdvancedSearch->Save();
+
+		// Field country_id
+		$this->country_id->AdvancedSearch->SearchValue = @$filter["x_country_id"];
+		$this->country_id->AdvancedSearch->SearchOperator = @$filter["z_country_id"];
+		$this->country_id->AdvancedSearch->SearchCondition = @$filter["v_country_id"];
+		$this->country_id->AdvancedSearch->SearchValue2 = @$filter["y_country_id"];
+		$this->country_id->AdvancedSearch->SearchOperator2 = @$filter["w_country_id"];
+		$this->country_id->AdvancedSearch->Save();
+
+		// Field province_id
+		$this->province_id->AdvancedSearch->SearchValue = @$filter["x_province_id"];
+		$this->province_id->AdvancedSearch->SearchOperator = @$filter["z_province_id"];
+		$this->province_id->AdvancedSearch->SearchCondition = @$filter["v_province_id"];
+		$this->province_id->AdvancedSearch->SearchValue2 = @$filter["y_province_id"];
+		$this->province_id->AdvancedSearch->SearchOperator2 = @$filter["w_province_id"];
+		$this->province_id->AdvancedSearch->Save();
 		$this->BasicSearch->setKeyword(@$filter[EW_TABLE_BASIC_SEARCH]);
 		$this->BasicSearch->setType(@$filter[EW_TABLE_BASIC_SEARCH_TYPE]);
 	}
@@ -953,7 +969,6 @@ class ccompany_list extends ccompany {
 		$this->BuildBasicSearchSQL($sWhere, $this->com_tw, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->com_yt, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->com_logo, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->com_province, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->com_username, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->com_password, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->com_online, $arKeywords, $type);
@@ -1112,8 +1127,9 @@ class ccompany_list extends ccompany {
 			$this->UpdateSort($this->com_phone); // com_phone
 			$this->UpdateSort($this->com_email); // com_email
 			$this->UpdateSort($this->com_logo); // com_logo
-			$this->UpdateSort($this->com_province); // com_province
 			$this->UpdateSort($this->com_username); // com_username
+			$this->UpdateSort($this->country_id); // country_id
+			$this->UpdateSort($this->province_id); // province_id
 			$this->setStartRecordNumber(1); // Reset start position
 		}
 	}
@@ -1146,6 +1162,7 @@ class ccompany_list extends ccompany {
 			if ($this->Command == "resetsort") {
 				$sOrderBy = "";
 				$this->setSessionOrderBy($sOrderBy);
+				$this->setSessionOrderByList($sOrderBy);
 				$this->company_id->setSort("");
 				$this->com_fname->setSort("");
 				$this->com_lname->setSort("");
@@ -1153,8 +1170,9 @@ class ccompany_list extends ccompany {
 				$this->com_phone->setSort("");
 				$this->com_email->setSort("");
 				$this->com_logo->setSort("");
-				$this->com_province->setSort("");
 				$this->com_username->setSort("");
+				$this->country_id->setSort("");
+				$this->province_id->setSort("");
 			}
 
 			// Reset start position
@@ -1302,7 +1320,7 @@ class ccompany_list extends ccompany {
 
 		// "checkbox"
 		$oListOpt = &$this->ListOptions->Items["checkbox"];
-		$oListOpt->Body = "<input type=\"checkbox\" name=\"key_m[]\" class=\"ewMultiSelect\" value=\"" . ew_HtmlEncode($this->company_id->CurrentValue) . "\" onclick=\"ew_ClickMultiCheckbox(event);\">";
+		$oListOpt->Body = "<input type=\"checkbox\" name=\"key_m[]\" class=\"ewMultiSelect\" value=\"" . ew_HtmlEncode($this->company_id->CurrentValue . $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"] . $this->country_id->CurrentValue . $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"] . $this->province_id->CurrentValue) . "\" onclick=\"ew_ClickMultiCheckbox(event);\">";
 		$this->RenderListOptionsExt();
 
 		// Call ListOptions_Rendered event
@@ -1573,7 +1591,7 @@ class ccompany_list extends ccompany {
 		if ($this->UseSelectLimit) {
 			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 			if ($dbtype == "MSSQL") {
-				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderBy())));
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderByList())));
 			} else {
 				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset);
 			}
@@ -1630,14 +1648,21 @@ class ccompany_list extends ccompany {
 		$this->com_fb->setDbValue($row['com_fb']);
 		$this->com_tw->setDbValue($row['com_tw']);
 		$this->com_yt->setDbValue($row['com_yt']);
-		$this->com_logo->setDbValue($row['com_logo']);
-		$this->com_province->setDbValue($row['com_province']);
+		$this->com_logo->Upload->DbValue = $row['com_logo'];
+		$this->com_logo->setDbValue($this->com_logo->Upload->DbValue);
 		$this->com_username->setDbValue($row['com_username']);
 		$this->com_password->setDbValue($row['com_password']);
 		$this->com_online->setDbValue($row['com_online']);
 		$this->com_activation->setDbValue($row['com_activation']);
 		$this->com_status->setDbValue($row['com_status']);
 		$this->reg_date->setDbValue($row['reg_date']);
+		$this->country_id->setDbValue($row['country_id']);
+		$this->province_id->setDbValue($row['province_id']);
+		if (array_key_exists('EV__province_id', $rs->fields)) {
+			$this->province_id->VirtualValue = $rs->fields('EV__province_id'); // Set up virtual field value
+		} else {
+			$this->province_id->VirtualValue = ""; // Clear value
+		}
 	}
 
 	// Return a row with default values
@@ -1654,13 +1679,14 @@ class ccompany_list extends ccompany {
 		$row['com_tw'] = NULL;
 		$row['com_yt'] = NULL;
 		$row['com_logo'] = NULL;
-		$row['com_province'] = NULL;
 		$row['com_username'] = NULL;
 		$row['com_password'] = NULL;
 		$row['com_online'] = NULL;
 		$row['com_activation'] = NULL;
 		$row['com_status'] = NULL;
 		$row['reg_date'] = NULL;
+		$row['country_id'] = NULL;
+		$row['province_id'] = NULL;
 		return $row;
 	}
 
@@ -1679,14 +1705,15 @@ class ccompany_list extends ccompany {
 		$this->com_fb->DbValue = $row['com_fb'];
 		$this->com_tw->DbValue = $row['com_tw'];
 		$this->com_yt->DbValue = $row['com_yt'];
-		$this->com_logo->DbValue = $row['com_logo'];
-		$this->com_province->DbValue = $row['com_province'];
+		$this->com_logo->Upload->DbValue = $row['com_logo'];
 		$this->com_username->DbValue = $row['com_username'];
 		$this->com_password->DbValue = $row['com_password'];
 		$this->com_online->DbValue = $row['com_online'];
 		$this->com_activation->DbValue = $row['com_activation'];
 		$this->com_status->DbValue = $row['com_status'];
 		$this->reg_date->DbValue = $row['reg_date'];
+		$this->country_id->DbValue = $row['country_id'];
+		$this->province_id->DbValue = $row['province_id'];
 	}
 
 	// Load old record
@@ -1696,6 +1723,14 @@ class ccompany_list extends ccompany {
 		$bValidKey = TRUE;
 		if (strval($this->getKey("company_id")) <> "")
 			$this->company_id->CurrentValue = $this->getKey("company_id"); // company_id
+		else
+			$bValidKey = FALSE;
+		if (strval($this->getKey("country_id")) <> "")
+			$this->country_id->CurrentValue = $this->getKey("country_id"); // country_id
+		else
+			$bValidKey = FALSE;
+		if (strval($this->getKey("province_id")) <> "")
+			$this->province_id->CurrentValue = $this->getKey("province_id"); // province_id
 		else
 			$bValidKey = FALSE;
 
@@ -1738,13 +1773,14 @@ class ccompany_list extends ccompany {
 		// com_tw
 		// com_yt
 		// com_logo
-		// com_province
 		// com_username
 		// com_password
 		// com_online
 		// com_activation
 		// com_status
 		// reg_date
+		// country_id
+		// province_id
 
 		if ($this->RowType == EW_ROWTYPE_VIEW) { // View row
 
@@ -1789,12 +1825,16 @@ class ccompany_list extends ccompany {
 		$this->com_yt->ViewCustomAttributes = "";
 
 		// com_logo
-		$this->com_logo->ViewValue = $this->com_logo->CurrentValue;
+		$this->com_logo->UploadPath = "../uploads/company";
+		if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+			$this->com_logo->ImageWidth = 0;
+			$this->com_logo->ImageHeight = 64;
+			$this->com_logo->ImageAlt = $this->com_logo->FldAlt();
+			$this->com_logo->ViewValue = $this->com_logo->Upload->DbValue;
+		} else {
+			$this->com_logo->ViewValue = "";
+		}
 		$this->com_logo->ViewCustomAttributes = "";
-
-		// com_province
-		$this->com_province->ViewValue = $this->com_province->CurrentValue;
-		$this->com_province->ViewCustomAttributes = "";
 
 		// com_username
 		$this->com_username->ViewValue = $this->com_username->CurrentValue;
@@ -1805,21 +1845,86 @@ class ccompany_list extends ccompany {
 		$this->com_password->ViewCustomAttributes = "";
 
 		// com_online
-		$this->com_online->ViewValue = $this->com_online->CurrentValue;
+		if (strval($this->com_online->CurrentValue) <> "") {
+			$this->com_online->ViewValue = $this->com_online->OptionCaption($this->com_online->CurrentValue);
+		} else {
+			$this->com_online->ViewValue = NULL;
+		}
 		$this->com_online->ViewCustomAttributes = "";
 
 		// com_activation
-		$this->com_activation->ViewValue = $this->com_activation->CurrentValue;
+		if (strval($this->com_activation->CurrentValue) <> "") {
+			$this->com_activation->ViewValue = $this->com_activation->OptionCaption($this->com_activation->CurrentValue);
+		} else {
+			$this->com_activation->ViewValue = NULL;
+		}
 		$this->com_activation->ViewCustomAttributes = "";
 
 		// com_status
-		$this->com_status->ViewValue = $this->com_status->CurrentValue;
+		if (strval($this->com_status->CurrentValue) <> "") {
+			$this->com_status->ViewValue = $this->com_status->OptionCaption($this->com_status->CurrentValue);
+		} else {
+			$this->com_status->ViewValue = NULL;
+		}
 		$this->com_status->ViewCustomAttributes = "";
 
 		// reg_date
 		$this->reg_date->ViewValue = $this->reg_date->CurrentValue;
-		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 0);
+		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 1);
 		$this->reg_date->ViewCustomAttributes = "";
+
+		// country_id
+		if (strval($this->country_id->CurrentValue) <> "") {
+			$sFilterWrk = "`country_id`" . ew_SearchString("=", $this->country_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `country_id`, `country_name_kh` AS `DispFld`, `country_name_en` AS `Disp2Fld`, `country_code` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `country`";
+		$sWhereWrk = "";
+		$this->country_id->LookupFilters = array("dx1" => '`country_name_kh`', "dx2" => '`country_name_en`', "dx3" => '`country_code`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->country_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->country_id->ViewValue = $this->country_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->country_id->ViewValue = $this->country_id->CurrentValue;
+			}
+		} else {
+			$this->country_id->ViewValue = NULL;
+		}
+		$this->country_id->ViewCustomAttributes = "";
+
+		// province_id
+		if ($this->province_id->VirtualValue <> "") {
+			$this->province_id->ViewValue = $this->province_id->VirtualValue;
+		} else {
+		if (strval($this->province_id->CurrentValue) <> "") {
+			$sFilterWrk = "`province_id`" . ew_SearchString("=", $this->province_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `province_id`, `province_name_kh` AS `DispFld`, `province_name_en` AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `province`";
+		$sWhereWrk = "";
+		$this->province_id->LookupFilters = array("dx1" => '`province_name_kh`', "dx2" => '`province_name_en`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->province_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$this->province_id->ViewValue = $this->province_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->province_id->ViewValue = $this->province_id->CurrentValue;
+			}
+		} else {
+			$this->province_id->ViewValue = NULL;
+		}
+		}
+		$this->province_id->ViewCustomAttributes = "";
 
 			// company_id
 			$this->company_id->LinkCustomAttributes = "";
@@ -1853,18 +1958,37 @@ class ccompany_list extends ccompany {
 
 			// com_logo
 			$this->com_logo->LinkCustomAttributes = "";
-			$this->com_logo->HrefValue = "";
+			$this->com_logo->UploadPath = "../uploads/company";
+			if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+				$this->com_logo->HrefValue = ew_GetFileUploadUrl($this->com_logo, $this->com_logo->Upload->DbValue); // Add prefix/suffix
+				$this->com_logo->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->com_logo->HrefValue = ew_FullUrl($this->com_logo->HrefValue, "href");
+			} else {
+				$this->com_logo->HrefValue = "";
+			}
+			$this->com_logo->HrefValue2 = $this->com_logo->UploadPath . $this->com_logo->Upload->DbValue;
 			$this->com_logo->TooltipValue = "";
-
-			// com_province
-			$this->com_province->LinkCustomAttributes = "";
-			$this->com_province->HrefValue = "";
-			$this->com_province->TooltipValue = "";
+			if ($this->com_logo->UseColorbox) {
+				if (ew_Empty($this->com_logo->TooltipValue))
+					$this->com_logo->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+				$this->com_logo->LinkAttrs["data-rel"] = "company_x" . $this->RowCnt . "_com_logo";
+				ew_AppendClass($this->com_logo->LinkAttrs["class"], "ewLightbox");
+			}
 
 			// com_username
 			$this->com_username->LinkCustomAttributes = "";
 			$this->com_username->HrefValue = "";
 			$this->com_username->TooltipValue = "";
+
+			// country_id
+			$this->country_id->LinkCustomAttributes = "";
+			$this->country_id->HrefValue = "";
+			$this->country_id->TooltipValue = "";
+
+			// province_id
+			$this->province_id->LinkCustomAttributes = "";
+			$this->province_id->HrefValue = "";
+			$this->province_id->TooltipValue = "";
 		}
 
 		// Call Row Rendered event
@@ -2064,8 +2188,12 @@ fcompanylist.Form_CustomValidate =
 fcompanylist.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 
 // Dynamic selection lists
-// Form object for search
+fcompanylist.Lists["x_country_id"] = {"LinkField":"x_country_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_country_name_kh","x_country_name_en","x_country_code",""],"ParentFields":[],"ChildFields":["x_province_id"],"FilterFields":[],"Options":[],"Template":"","LinkTable":"country"};
+fcompanylist.Lists["x_country_id"].Data = "<?php echo $company_list->country_id->LookupFilterQuery(FALSE, "list") ?>";
+fcompanylist.Lists["x_province_id"] = {"LinkField":"x_province_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_province_name_kh","x_province_name_en","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"province"};
+fcompanylist.Lists["x_province_id"].Data = "<?php echo $company_list->province_id->LookupFilterQuery(FALSE, "list") ?>";
 
+// Form object for search
 var CurrentSearchForm = fcompanylistsrch = new ew_Form("fcompanylistsrch");
 </script>
 <script type="text/javascript">
@@ -2231,21 +2359,30 @@ $company_list->ListOptions->Render("header", "left");
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
-<?php if ($company->com_province->Visible) { // com_province ?>
-	<?php if ($company->SortUrl($company->com_province) == "") { ?>
-		<th data-name="com_province" class="<?php echo $company->com_province->HeaderCellClass() ?>"><div id="elh_company_com_province" class="company_com_province"><div class="ewTableHeaderCaption"><?php echo $company->com_province->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="com_province" class="<?php echo $company->com_province->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_province) ?>',1);"><div id="elh_company_com_province" class="company_com_province">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_province->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_province->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_province->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
 <?php if ($company->com_username->Visible) { // com_username ?>
 	<?php if ($company->SortUrl($company->com_username) == "") { ?>
 		<th data-name="com_username" class="<?php echo $company->com_username->HeaderCellClass() ?>"><div id="elh_company_com_username" class="company_com_username"><div class="ewTableHeaderCaption"><?php echo $company->com_username->FldCaption() ?></div></div></th>
 	<?php } else { ?>
 		<th data-name="com_username" class="<?php echo $company->com_username->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_username) ?>',1);"><div id="elh_company_com_username" class="company_com_username">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_username->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_username->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_username->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
+		</div></div></th>
+	<?php } ?>
+<?php } ?>
+<?php if ($company->country_id->Visible) { // country_id ?>
+	<?php if ($company->SortUrl($company->country_id) == "") { ?>
+		<th data-name="country_id" class="<?php echo $company->country_id->HeaderCellClass() ?>"><div id="elh_company_country_id" class="company_country_id"><div class="ewTableHeaderCaption"><?php echo $company->country_id->FldCaption() ?></div></div></th>
+	<?php } else { ?>
+		<th data-name="country_id" class="<?php echo $company->country_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->country_id) ?>',1);"><div id="elh_company_country_id" class="company_country_id">
+			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->country_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($company->country_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->country_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
+		</div></div></th>
+	<?php } ?>
+<?php } ?>
+<?php if ($company->province_id->Visible) { // province_id ?>
+	<?php if ($company->SortUrl($company->province_id) == "") { ?>
+		<th data-name="province_id" class="<?php echo $company->province_id->HeaderCellClass() ?>"><div id="elh_company_province_id" class="company_province_id"><div class="ewTableHeaderCaption"><?php echo $company->province_id->FldCaption() ?></div></div></th>
+	<?php } else { ?>
+		<th data-name="province_id" class="<?php echo $company->province_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->province_id) ?>',1);"><div id="elh_company_province_id" class="company_province_id">
+			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->province_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($company->province_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->province_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
@@ -2365,16 +2502,9 @@ $company_list->ListOptions->Render("body", "left", $company_list->RowCnt);
 	<?php if ($company->com_logo->Visible) { // com_logo ?>
 		<td data-name="com_logo"<?php echo $company->com_logo->CellAttributes() ?>>
 <span id="el<?php echo $company_list->RowCnt ?>_company_com_logo" class="company_com_logo">
-<span<?php echo $company->com_logo->ViewAttributes() ?>>
-<?php echo $company->com_logo->ListViewValue() ?></span>
+<span>
+<?php echo ew_GetFileViewTag($company->com_logo, $company->com_logo->ListViewValue()) ?>
 </span>
-</td>
-	<?php } ?>
-	<?php if ($company->com_province->Visible) { // com_province ?>
-		<td data-name="com_province"<?php echo $company->com_province->CellAttributes() ?>>
-<span id="el<?php echo $company_list->RowCnt ?>_company_com_province" class="company_com_province">
-<span<?php echo $company->com_province->ViewAttributes() ?>>
-<?php echo $company->com_province->ListViewValue() ?></span>
 </span>
 </td>
 	<?php } ?>
@@ -2383,6 +2513,22 @@ $company_list->ListOptions->Render("body", "left", $company_list->RowCnt);
 <span id="el<?php echo $company_list->RowCnt ?>_company_com_username" class="company_com_username">
 <span<?php echo $company->com_username->ViewAttributes() ?>>
 <?php echo $company->com_username->ListViewValue() ?></span>
+</span>
+</td>
+	<?php } ?>
+	<?php if ($company->country_id->Visible) { // country_id ?>
+		<td data-name="country_id"<?php echo $company->country_id->CellAttributes() ?>>
+<span id="el<?php echo $company_list->RowCnt ?>_company_country_id" class="company_country_id">
+<span<?php echo $company->country_id->ViewAttributes() ?>>
+<?php echo $company->country_id->ListViewValue() ?></span>
+</span>
+</td>
+	<?php } ?>
+	<?php if ($company->province_id->Visible) { // province_id ?>
+		<td data-name="province_id"<?php echo $company->province_id->CellAttributes() ?>>
+<span id="el<?php echo $company_list->RowCnt ?>_company_province_id" class="company_province_id">
+<span<?php echo $company->province_id->ViewAttributes() ?>>
+<?php echo $company->province_id->ListViewValue() ?></span>
 </span>
 </td>
 	<?php } ?>

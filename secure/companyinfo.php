@@ -18,13 +18,14 @@ class ccompany extends cTable {
 	var $com_tw;
 	var $com_yt;
 	var $com_logo;
-	var $com_province;
 	var $com_username;
 	var $com_password;
 	var $com_online;
 	var $com_activation;
 	var $com_status;
 	var $reg_date;
+	var $country_id;
+	var $province_id;
 
 	//
 	// Table class constructor
@@ -110,14 +111,9 @@ class ccompany extends cTable {
 		$this->fields['com_yt'] = &$this->com_yt;
 
 		// com_logo
-		$this->com_logo = new cField('company', 'company', 'x_com_logo', 'com_logo', '`com_logo`', '`com_logo`', 200, -1, FALSE, '`com_logo`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->com_logo = new cField('company', 'company', 'x_com_logo', 'com_logo', '`com_logo`', '`com_logo`', 200, -1, TRUE, '`com_logo`', FALSE, FALSE, FALSE, 'IMAGE', 'FILE');
 		$this->com_logo->Sortable = TRUE; // Allow sort
 		$this->fields['com_logo'] = &$this->com_logo;
-
-		// com_province
-		$this->com_province = new cField('company', 'company', 'x_com_province', 'com_province', '`com_province`', '`com_province`', 200, -1, FALSE, '`com_province`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
-		$this->com_province->Sortable = TRUE; // Allow sort
-		$this->fields['com_province'] = &$this->com_province;
 
 		// com_username
 		$this->com_username = new cField('company', 'company', 'x_com_username', 'com_username', '`com_username`', '`com_username`', 200, -1, FALSE, '`com_username`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
@@ -130,25 +126,46 @@ class ccompany extends cTable {
 		$this->fields['com_password'] = &$this->com_password;
 
 		// com_online
-		$this->com_online = new cField('company', 'company', 'x_com_online', 'com_online', '`com_online`', '`com_online`', 200, -1, FALSE, '`com_online`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->com_online = new cField('company', 'company', 'x_com_online', 'com_online', '`com_online`', '`com_online`', 200, -1, FALSE, '`com_online`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'RADIO');
 		$this->com_online->Sortable = TRUE; // Allow sort
+		$this->com_online->OptionCount = 2;
 		$this->fields['com_online'] = &$this->com_online;
 
 		// com_activation
-		$this->com_activation = new cField('company', 'company', 'x_com_activation', 'com_activation', '`com_activation`', '`com_activation`', 200, -1, FALSE, '`com_activation`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->com_activation = new cField('company', 'company', 'x_com_activation', 'com_activation', '`com_activation`', '`com_activation`', 200, -1, FALSE, '`com_activation`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'SELECT');
 		$this->com_activation->Sortable = TRUE; // Allow sort
+		$this->com_activation->UsePleaseSelect = TRUE; // Use PleaseSelect by default
+		$this->com_activation->PleaseSelectText = $Language->Phrase("PleaseSelect"); // PleaseSelect text
+		$this->com_activation->OptionCount = 2;
 		$this->fields['com_activation'] = &$this->com_activation;
 
 		// com_status
-		$this->com_status = new cField('company', 'company', 'x_com_status', 'com_status', '`com_status`', '`com_status`', 200, -1, FALSE, '`com_status`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->com_status = new cField('company', 'company', 'x_com_status', 'com_status', '`com_status`', '`com_status`', 200, -1, FALSE, '`com_status`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'RADIO');
 		$this->com_status->Sortable = TRUE; // Allow sort
+		$this->com_status->OptionCount = 2;
 		$this->fields['com_status'] = &$this->com_status;
 
 		// reg_date
-		$this->reg_date = new cField('company', 'company', 'x_reg_date', 'reg_date', '`reg_date`', ew_CastDateFieldForLike('`reg_date`', 0, "DB"), 135, 0, FALSE, '`reg_date`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->reg_date = new cField('company', 'company', 'x_reg_date', 'reg_date', '`reg_date`', ew_CastDateFieldForLike('`reg_date`', 1, "DB"), 135, 1, FALSE, '`reg_date`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
 		$this->reg_date->Sortable = TRUE; // Allow sort
 		$this->reg_date->FldDefaultErrMsg = str_replace("%s", $GLOBALS["EW_DATE_FORMAT"], $Language->Phrase("IncorrectDate"));
 		$this->fields['reg_date'] = &$this->reg_date;
+
+		// country_id
+		$this->country_id = new cField('company', 'company', 'x_country_id', 'country_id', '`country_id`', '`country_id`', 3, -1, FALSE, '`country_id`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'SELECT');
+		$this->country_id->Sortable = TRUE; // Allow sort
+		$this->country_id->UsePleaseSelect = TRUE; // Use PleaseSelect by default
+		$this->country_id->PleaseSelectText = $Language->Phrase("PleaseSelect"); // PleaseSelect text
+		$this->country_id->FldDefaultErrMsg = $Language->Phrase("IncorrectInteger");
+		$this->fields['country_id'] = &$this->country_id;
+
+		// province_id
+		$this->province_id = new cField('company', 'company', 'x_province_id', 'province_id', '`province_id`', '`province_id`', 3, -1, FALSE, '`EV__province_id`', TRUE, TRUE, TRUE, 'FORMATTED TEXT', 'SELECT');
+		$this->province_id->Sortable = TRUE; // Allow sort
+		$this->province_id->UsePleaseSelect = TRUE; // Use PleaseSelect by default
+		$this->province_id->PleaseSelectText = $Language->Phrase("PleaseSelect"); // PleaseSelect text
+		$this->province_id->FldDefaultErrMsg = $Language->Phrase("IncorrectInteger");
+		$this->fields['province_id'] = &$this->province_id;
 	}
 
 	// Field Visibility
@@ -183,9 +200,20 @@ class ccompany extends cTable {
 			}
 			$ofld->setSort($sThisSort);
 			$this->setSessionOrderBy($sSortField . " " . $sThisSort); // Save to Session
+			$sSortFieldList = ($ofld->FldVirtualExpression <> "") ? $ofld->FldVirtualExpression : $sSortField;
+			$this->setSessionOrderByList($sSortFieldList . " " . $sThisSort); // Save to Session
 		} else {
 			$ofld->setSort("");
 		}
+	}
+
+	// Session ORDER BY for List page
+	function getSessionOrderByList() {
+		return @$_SESSION[EW_PROJECT_NAME . "_" . $this->TableVar . "_" . EW_TABLE_ORDER_BY_LIST];
+	}
+
+	function setSessionOrderByList($v) {
+		$_SESSION[EW_PROJECT_NAME . "_" . $this->TableVar . "_" . EW_TABLE_ORDER_BY_LIST] = $v;
 	}
 
 	// Table level SQL
@@ -214,6 +242,23 @@ class ccompany extends cTable {
 
 	function setSqlSelect($v) {
 		$this->_SqlSelect = $v;
+	}
+	var $_SqlSelectList = "";
+
+	function getSqlSelectList() { // Select for List page
+		$select = "";
+		$select = "SELECT * FROM (" .
+			"SELECT *, (SELECT DISTINCT CONCAT(COALESCE(`province_name_kh`, ''),'" . ew_ValueSeparator(1, $this->province_id) . "',COALESCE(`province_name_en`,'')) FROM `province` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`province_id` = `company`.`province_id` LIMIT 1) AS `EV__province_id` FROM `company`" .
+			") `EW_TMP_TABLE`";
+		return ($this->_SqlSelectList <> "") ? $this->_SqlSelectList : $select;
+	}
+
+	function SqlSelectList() { // For backward compatibility
+		return $this->getSqlSelectList();
+	}
+
+	function setSqlSelectList($v) {
+		$this->_SqlSelectList = $v;
 	}
 	var $_SqlWhere = "";
 
@@ -326,16 +371,38 @@ class ccompany extends cTable {
 		ew_AddFilter($sFilter, $this->CurrentFilter);
 		$sFilter = $this->ApplyUserIDFilters($sFilter);
 		$this->Recordset_Selecting($sFilter);
-		$sSelect = $this->getSqlSelect();
-		$sSort = $this->UseSessionForListSQL ? $this->getSessionOrderBy() : "";
+		if ($this->UseVirtualFields()) {
+			$sSelect = $this->getSqlSelectList();
+			$sSort = $this->UseSessionForListSQL ? $this->getSessionOrderByList() : "";
+		} else {
+			$sSelect = $this->getSqlSelect();
+			$sSort = $this->UseSessionForListSQL ? $this->getSessionOrderBy() : "";
+		}
 		return ew_BuildSelectSql($sSelect, $this->getSqlWhere(), $this->getSqlGroupBy(),
 			$this->getSqlHaving(), $this->getSqlOrderBy(), $sFilter, $sSort);
 	}
 
 	// Get ORDER BY clause
 	function GetOrderBy() {
-		$sSort = $this->getSessionOrderBy();
+		$sSort = ($this->UseVirtualFields()) ? $this->getSessionOrderByList() : $this->getSessionOrderBy();
 		return ew_BuildSelectSql("", "", "", "", $this->getSqlOrderBy(), "", $sSort);
+	}
+
+	// Check if virtual fields is used in SQL
+	function UseVirtualFields() {
+		$sWhere = $this->UseSessionForListSQL ? $this->getSessionWhere() : $this->CurrentFilter;
+		$sOrderBy = $this->UseSessionForListSQL ? $this->getSessionOrderByList() : "";
+		if ($sWhere <> "")
+			$sWhere = " " . str_replace(array("(",")"), array("",""), $sWhere) . " ";
+		if ($sOrderBy <> "")
+			$sOrderBy = " " . str_replace(array("(",")"), array("",""), $sOrderBy) . " ";
+		if ($this->province_id->AdvancedSearch->SearchValue <> "" ||
+			$this->province_id->AdvancedSearch->SearchValue2 <> "" ||
+			strpos($sWhere, " " . $this->province_id->FldVirtualExpression . " ") !== FALSE)
+			return TRUE;
+		if (strpos($sOrderBy, " " . $this->province_id->FldVirtualExpression . " ") !== FALSE)
+			return TRUE;
+		return FALSE;
 	}
 
 	// Try to get record count
@@ -386,7 +453,10 @@ class ccompany extends cTable {
 		$select = $this->TableType == 'CUSTOMVIEW' ? $this->getSqlSelect() : "SELECT * FROM " . $this->getSqlFrom();
 		$groupBy = $this->TableType == 'CUSTOMVIEW' ? $this->getSqlGroupBy() : "";
 		$having = $this->TableType == 'CUSTOMVIEW' ? $this->getSqlHaving() : "";
-		$sql = ew_BuildSelectSql($select, $this->getSqlWhere(), $groupBy, $having, "", $filter, "");
+		if ($this->UseVirtualFields())
+			$sql = ew_BuildSelectSql($this->getSqlSelectList(), $this->getSqlWhere(), $groupBy, $having, "", $filter, "");
+		else
+			$sql = ew_BuildSelectSql($select, $this->getSqlWhere(), $groupBy, $having, "", $filter, "");
 		$cnt = $this->TryGetRecordCount($sql);
 		if ($cnt == -1) {
 			$conn = &$this->Connection();
@@ -466,6 +536,10 @@ class ccompany extends cTable {
 		if ($rs) {
 			if (array_key_exists('company_id', $rs))
 				ew_AddFilter($where, ew_QuotedName('company_id', $this->DBID) . '=' . ew_QuotedValue($rs['company_id'], $this->company_id->FldDataType, $this->DBID));
+			if (array_key_exists('country_id', $rs))
+				ew_AddFilter($where, ew_QuotedName('country_id', $this->DBID) . '=' . ew_QuotedValue($rs['country_id'], $this->country_id->FldDataType, $this->DBID));
+			if (array_key_exists('province_id', $rs))
+				ew_AddFilter($where, ew_QuotedName('province_id', $this->DBID) . '=' . ew_QuotedValue($rs['province_id'], $this->province_id->FldDataType, $this->DBID));
 		}
 		$filter = ($curfilter) ? $this->CurrentFilter : "";
 		ew_AddFilter($filter, $where);
@@ -487,7 +561,7 @@ class ccompany extends cTable {
 
 	// Key filter WHERE clause
 	function SqlKeyFilter() {
-		return "`company_id` = @company_id@";
+		return "`company_id` = @company_id@ AND `country_id` = @country_id@ AND `province_id` = @province_id@";
 	}
 
 	// Key filter
@@ -499,6 +573,18 @@ class ccompany extends cTable {
 			return "0=1"; // Invalid key
 		else
 			$sKeyFilter = str_replace("@company_id@", ew_AdjustSql($this->company_id->CurrentValue, $this->DBID), $sKeyFilter); // Replace key value
+		if (!is_numeric($this->country_id->CurrentValue))
+			return "0=1"; // Invalid key
+		if (is_null($this->country_id->CurrentValue))
+			return "0=1"; // Invalid key
+		else
+			$sKeyFilter = str_replace("@country_id@", ew_AdjustSql($this->country_id->CurrentValue, $this->DBID), $sKeyFilter); // Replace key value
+		if (!is_numeric($this->province_id->CurrentValue))
+			return "0=1"; // Invalid key
+		if (is_null($this->province_id->CurrentValue))
+			return "0=1"; // Invalid key
+		else
+			$sKeyFilter = str_replace("@province_id@", ew_AdjustSql($this->province_id->CurrentValue, $this->DBID), $sKeyFilter); // Replace key value
 		return $sKeyFilter;
 	}
 
@@ -593,6 +679,8 @@ class ccompany extends cTable {
 	function KeyToJson() {
 		$json = "";
 		$json .= "company_id:" . ew_VarToJson($this->company_id->CurrentValue, "number", "'");
+		$json .= ",country_id:" . ew_VarToJson($this->country_id->CurrentValue, "number", "'");
+		$json .= ",province_id:" . ew_VarToJson($this->province_id->CurrentValue, "number", "'");
 		return "{" . $json . "}";
 	}
 
@@ -602,6 +690,16 @@ class ccompany extends cTable {
 		if ($parm <> "") $sUrl .= $parm . "&";
 		if (!is_null($this->company_id->CurrentValue)) {
 			$sUrl .= "company_id=" . urlencode($this->company_id->CurrentValue);
+		} else {
+			return "javascript:ew_Alert(ewLanguage.Phrase('InvalidRecord'));";
+		}
+		if (!is_null($this->country_id->CurrentValue)) {
+			$sUrl .= "&country_id=" . urlencode($this->country_id->CurrentValue);
+		} else {
+			return "javascript:ew_Alert(ewLanguage.Phrase('InvalidRecord'));";
+		}
+		if (!is_null($this->province_id->CurrentValue)) {
+			$sUrl .= "&province_id=" . urlencode($this->province_id->CurrentValue);
 		} else {
 			return "javascript:ew_Alert(ewLanguage.Phrase('InvalidRecord'));";
 		}
@@ -629,17 +727,34 @@ class ccompany extends cTable {
 		if (isset($_POST["key_m"])) {
 			$arKeys = $_POST["key_m"];
 			$cnt = count($arKeys);
+			for ($i = 0; $i < $cnt; $i++)
+				$arKeys[$i] = explode($EW_COMPOSITE_KEY_SEPARATOR, $arKeys[$i]);
 		} elseif (isset($_GET["key_m"])) {
 			$arKeys = $_GET["key_m"];
 			$cnt = count($arKeys);
+			for ($i = 0; $i < $cnt; $i++)
+				$arKeys[$i] = explode($EW_COMPOSITE_KEY_SEPARATOR, $arKeys[$i]);
 		} elseif (!empty($_GET) || !empty($_POST)) {
 			$isPost = ew_IsPost();
 			if ($isPost && isset($_POST["company_id"]))
-				$arKeys[] = $_POST["company_id"];
+				$arKey[] = $_POST["company_id"];
 			elseif (isset($_GET["company_id"]))
-				$arKeys[] = $_GET["company_id"];
+				$arKey[] = $_GET["company_id"];
 			else
 				$arKeys = NULL; // Do not setup
+			if ($isPost && isset($_POST["country_id"]))
+				$arKey[] = $_POST["country_id"];
+			elseif (isset($_GET["country_id"]))
+				$arKey[] = $_GET["country_id"];
+			else
+				$arKeys = NULL; // Do not setup
+			if ($isPost && isset($_POST["province_id"]))
+				$arKey[] = $_POST["province_id"];
+			elseif (isset($_GET["province_id"]))
+				$arKey[] = $_GET["province_id"];
+			else
+				$arKeys = NULL; // Do not setup
+			if (is_array($arKeys)) $arKeys[] = $arKey;
 
 			//return $arKeys; // Do not return yet, so the values will also be checked by the following code
 		}
@@ -648,7 +763,13 @@ class ccompany extends cTable {
 		$ar = array();
 		if (is_array($arKeys)) {
 			foreach ($arKeys as $key) {
-				if (!is_numeric($key))
+				if (!is_array($key) || count($key) <> 3)
+					continue; // Just skip so other keys will still work
+				if (!is_numeric($key[0])) // company_id
+					continue;
+				if (!is_numeric($key[1])) // country_id
+					continue;
+				if (!is_numeric($key[2])) // province_id
 					continue;
 				$ar[] = $key;
 			}
@@ -662,7 +783,9 @@ class ccompany extends cTable {
 		$sKeyFilter = "";
 		foreach ($arKeys as $key) {
 			if ($sKeyFilter <> "") $sKeyFilter .= " OR ";
-			$this->company_id->CurrentValue = $key;
+			$this->company_id->CurrentValue = $key[0];
+			$this->country_id->CurrentValue = $key[1];
+			$this->province_id->CurrentValue = $key[2];
 			$sKeyFilter .= "(" . $this->KeyFilter() . ")";
 		}
 		return $sKeyFilter;
@@ -693,14 +816,15 @@ class ccompany extends cTable {
 		$this->com_fb->setDbValue($rs->fields('com_fb'));
 		$this->com_tw->setDbValue($rs->fields('com_tw'));
 		$this->com_yt->setDbValue($rs->fields('com_yt'));
-		$this->com_logo->setDbValue($rs->fields('com_logo'));
-		$this->com_province->setDbValue($rs->fields('com_province'));
+		$this->com_logo->Upload->DbValue = $rs->fields('com_logo');
 		$this->com_username->setDbValue($rs->fields('com_username'));
 		$this->com_password->setDbValue($rs->fields('com_password'));
 		$this->com_online->setDbValue($rs->fields('com_online'));
 		$this->com_activation->setDbValue($rs->fields('com_activation'));
 		$this->com_status->setDbValue($rs->fields('com_status'));
 		$this->reg_date->setDbValue($rs->fields('reg_date'));
+		$this->country_id->setDbValue($rs->fields('country_id'));
+		$this->province_id->setDbValue($rs->fields('province_id'));
 	}
 
 	// Render list row values
@@ -722,13 +846,14 @@ class ccompany extends cTable {
 		// com_tw
 		// com_yt
 		// com_logo
-		// com_province
 		// com_username
 		// com_password
 		// com_online
 		// com_activation
 		// com_status
 		// reg_date
+		// country_id
+		// province_id
 		// company_id
 
 		$this->company_id->ViewValue = $this->company_id->CurrentValue;
@@ -771,12 +896,16 @@ class ccompany extends cTable {
 		$this->com_yt->ViewCustomAttributes = "";
 
 		// com_logo
-		$this->com_logo->ViewValue = $this->com_logo->CurrentValue;
+		$this->com_logo->UploadPath = "../uploads/company";
+		if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+			$this->com_logo->ImageWidth = 0;
+			$this->com_logo->ImageHeight = 64;
+			$this->com_logo->ImageAlt = $this->com_logo->FldAlt();
+			$this->com_logo->ViewValue = $this->com_logo->Upload->DbValue;
+		} else {
+			$this->com_logo->ViewValue = "";
+		}
 		$this->com_logo->ViewCustomAttributes = "";
-
-		// com_province
-		$this->com_province->ViewValue = $this->com_province->CurrentValue;
-		$this->com_province->ViewCustomAttributes = "";
 
 		// com_username
 		$this->com_username->ViewValue = $this->com_username->CurrentValue;
@@ -787,21 +916,86 @@ class ccompany extends cTable {
 		$this->com_password->ViewCustomAttributes = "";
 
 		// com_online
-		$this->com_online->ViewValue = $this->com_online->CurrentValue;
+		if (strval($this->com_online->CurrentValue) <> "") {
+			$this->com_online->ViewValue = $this->com_online->OptionCaption($this->com_online->CurrentValue);
+		} else {
+			$this->com_online->ViewValue = NULL;
+		}
 		$this->com_online->ViewCustomAttributes = "";
 
 		// com_activation
-		$this->com_activation->ViewValue = $this->com_activation->CurrentValue;
+		if (strval($this->com_activation->CurrentValue) <> "") {
+			$this->com_activation->ViewValue = $this->com_activation->OptionCaption($this->com_activation->CurrentValue);
+		} else {
+			$this->com_activation->ViewValue = NULL;
+		}
 		$this->com_activation->ViewCustomAttributes = "";
 
 		// com_status
-		$this->com_status->ViewValue = $this->com_status->CurrentValue;
+		if (strval($this->com_status->CurrentValue) <> "") {
+			$this->com_status->ViewValue = $this->com_status->OptionCaption($this->com_status->CurrentValue);
+		} else {
+			$this->com_status->ViewValue = NULL;
+		}
 		$this->com_status->ViewCustomAttributes = "";
 
 		// reg_date
 		$this->reg_date->ViewValue = $this->reg_date->CurrentValue;
-		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 0);
+		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 1);
 		$this->reg_date->ViewCustomAttributes = "";
+
+		// country_id
+		if (strval($this->country_id->CurrentValue) <> "") {
+			$sFilterWrk = "`country_id`" . ew_SearchString("=", $this->country_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `country_id`, `country_name_kh` AS `DispFld`, `country_name_en` AS `Disp2Fld`, `country_code` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `country`";
+		$sWhereWrk = "";
+		$this->country_id->LookupFilters = array("dx1" => '`country_name_kh`', "dx2" => '`country_name_en`', "dx3" => '`country_code`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->country_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->country_id->ViewValue = $this->country_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->country_id->ViewValue = $this->country_id->CurrentValue;
+			}
+		} else {
+			$this->country_id->ViewValue = NULL;
+		}
+		$this->country_id->ViewCustomAttributes = "";
+
+		// province_id
+		if ($this->province_id->VirtualValue <> "") {
+			$this->province_id->ViewValue = $this->province_id->VirtualValue;
+		} else {
+		if (strval($this->province_id->CurrentValue) <> "") {
+			$sFilterWrk = "`province_id`" . ew_SearchString("=", $this->province_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `province_id`, `province_name_kh` AS `DispFld`, `province_name_en` AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `province`";
+		$sWhereWrk = "";
+		$this->province_id->LookupFilters = array("dx1" => '`province_name_kh`', "dx2" => '`province_name_en`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->province_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$this->province_id->ViewValue = $this->province_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->province_id->ViewValue = $this->province_id->CurrentValue;
+			}
+		} else {
+			$this->province_id->ViewValue = NULL;
+		}
+		}
+		$this->province_id->ViewCustomAttributes = "";
 
 		// company_id
 		$this->company_id->LinkCustomAttributes = "";
@@ -855,13 +1049,22 @@ class ccompany extends cTable {
 
 		// com_logo
 		$this->com_logo->LinkCustomAttributes = "";
-		$this->com_logo->HrefValue = "";
+		$this->com_logo->UploadPath = "../uploads/company";
+		if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+			$this->com_logo->HrefValue = ew_GetFileUploadUrl($this->com_logo, $this->com_logo->Upload->DbValue); // Add prefix/suffix
+			$this->com_logo->LinkAttrs["target"] = ""; // Add target
+			if ($this->Export <> "") $this->com_logo->HrefValue = ew_FullUrl($this->com_logo->HrefValue, "href");
+		} else {
+			$this->com_logo->HrefValue = "";
+		}
+		$this->com_logo->HrefValue2 = $this->com_logo->UploadPath . $this->com_logo->Upload->DbValue;
 		$this->com_logo->TooltipValue = "";
-
-		// com_province
-		$this->com_province->LinkCustomAttributes = "";
-		$this->com_province->HrefValue = "";
-		$this->com_province->TooltipValue = "";
+		if ($this->com_logo->UseColorbox) {
+			if (ew_Empty($this->com_logo->TooltipValue))
+				$this->com_logo->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+			$this->com_logo->LinkAttrs["data-rel"] = "company_x_com_logo";
+			ew_AppendClass($this->com_logo->LinkAttrs["class"], "ewLightbox");
+		}
 
 		// com_username
 		$this->com_username->LinkCustomAttributes = "";
@@ -892,6 +1095,16 @@ class ccompany extends cTable {
 		$this->reg_date->LinkCustomAttributes = "";
 		$this->reg_date->HrefValue = "";
 		$this->reg_date->TooltipValue = "";
+
+		// country_id
+		$this->country_id->LinkCustomAttributes = "";
+		$this->country_id->HrefValue = "";
+		$this->country_id->TooltipValue = "";
+
+		// province_id
+		$this->province_id->LinkCustomAttributes = "";
+		$this->province_id->HrefValue = "";
+		$this->province_id->TooltipValue = "";
 
 		// Call Row Rendered event
 		$this->Row_Rendered();
@@ -970,14 +1183,17 @@ class ccompany extends cTable {
 		// com_logo
 		$this->com_logo->EditAttrs["class"] = "form-control";
 		$this->com_logo->EditCustomAttributes = "";
-		$this->com_logo->EditValue = $this->com_logo->CurrentValue;
-		$this->com_logo->PlaceHolder = ew_RemoveHtml($this->com_logo->FldCaption());
-
-		// com_province
-		$this->com_province->EditAttrs["class"] = "form-control";
-		$this->com_province->EditCustomAttributes = "";
-		$this->com_province->EditValue = $this->com_province->CurrentValue;
-		$this->com_province->PlaceHolder = ew_RemoveHtml($this->com_province->FldCaption());
+		$this->com_logo->UploadPath = "../uploads/company";
+		if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+			$this->com_logo->ImageWidth = 0;
+			$this->com_logo->ImageHeight = 64;
+			$this->com_logo->ImageAlt = $this->com_logo->FldAlt();
+			$this->com_logo->EditValue = $this->com_logo->Upload->DbValue;
+		} else {
+			$this->com_logo->EditValue = "";
+		}
+		if (!ew_Empty($this->com_logo->CurrentValue))
+				$this->com_logo->Upload->FileName = $this->com_logo->CurrentValue;
 
 		// com_username
 		$this->com_username->EditAttrs["class"] = "form-control";
@@ -992,28 +1208,79 @@ class ccompany extends cTable {
 		$this->com_password->PlaceHolder = ew_RemoveHtml($this->com_password->FldCaption());
 
 		// com_online
-		$this->com_online->EditAttrs["class"] = "form-control";
 		$this->com_online->EditCustomAttributes = "";
-		$this->com_online->EditValue = $this->com_online->CurrentValue;
-		$this->com_online->PlaceHolder = ew_RemoveHtml($this->com_online->FldCaption());
+		$this->com_online->EditValue = $this->com_online->Options(FALSE);
 
 		// com_activation
-		$this->com_activation->EditAttrs["class"] = "form-control";
 		$this->com_activation->EditCustomAttributes = "";
-		$this->com_activation->EditValue = $this->com_activation->CurrentValue;
-		$this->com_activation->PlaceHolder = ew_RemoveHtml($this->com_activation->FldCaption());
+		$this->com_activation->EditValue = $this->com_activation->Options(TRUE);
 
 		// com_status
-		$this->com_status->EditAttrs["class"] = "form-control";
 		$this->com_status->EditCustomAttributes = "";
-		$this->com_status->EditValue = $this->com_status->CurrentValue;
-		$this->com_status->PlaceHolder = ew_RemoveHtml($this->com_status->FldCaption());
+		$this->com_status->EditValue = $this->com_status->Options(FALSE);
 
 		// reg_date
 		$this->reg_date->EditAttrs["class"] = "form-control";
 		$this->reg_date->EditCustomAttributes = "";
 		$this->reg_date->EditValue = ew_FormatDateTime($this->reg_date->CurrentValue, 8);
 		$this->reg_date->PlaceHolder = ew_RemoveHtml($this->reg_date->FldCaption());
+
+		// country_id
+		$this->country_id->EditAttrs["class"] = "form-control";
+		$this->country_id->EditCustomAttributes = "";
+		if (strval($this->country_id->CurrentValue) <> "") {
+			$sFilterWrk = "`country_id`" . ew_SearchString("=", $this->country_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `country_id`, `country_name_kh` AS `DispFld`, `country_name_en` AS `Disp2Fld`, `country_code` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `country`";
+		$sWhereWrk = "";
+		$this->country_id->LookupFilters = array("dx1" => '`country_name_kh`', "dx2" => '`country_name_en`', "dx3" => '`country_code`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->country_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->country_id->EditValue = $this->country_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->country_id->EditValue = $this->country_id->CurrentValue;
+			}
+		} else {
+			$this->country_id->EditValue = NULL;
+		}
+		$this->country_id->ViewCustomAttributes = "";
+
+		// province_id
+		$this->province_id->EditAttrs["class"] = "form-control";
+		$this->province_id->EditCustomAttributes = "";
+		if ($this->province_id->VirtualValue <> "") {
+			$this->province_id->EditValue = $this->province_id->VirtualValue;
+		} else {
+		if (strval($this->province_id->CurrentValue) <> "") {
+			$sFilterWrk = "`province_id`" . ew_SearchString("=", $this->province_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `province_id`, `province_name_kh` AS `DispFld`, `province_name_en` AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `province`";
+		$sWhereWrk = "";
+		$this->province_id->LookupFilters = array("dx1" => '`province_name_kh`', "dx2" => '`province_name_en`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->province_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$this->province_id->EditValue = $this->province_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->province_id->EditValue = $this->province_id->CurrentValue;
+			}
+		} else {
+			$this->province_id->EditValue = NULL;
+		}
+		}
+		$this->province_id->ViewCustomAttributes = "";
 
 		// Call Row Rendered event
 		$this->Row_Rendered();
@@ -1053,13 +1320,13 @@ class ccompany extends cTable {
 					if ($this->com_tw->Exportable) $Doc->ExportCaption($this->com_tw);
 					if ($this->com_yt->Exportable) $Doc->ExportCaption($this->com_yt);
 					if ($this->com_logo->Exportable) $Doc->ExportCaption($this->com_logo);
-					if ($this->com_province->Exportable) $Doc->ExportCaption($this->com_province);
 					if ($this->com_username->Exportable) $Doc->ExportCaption($this->com_username);
 					if ($this->com_password->Exportable) $Doc->ExportCaption($this->com_password);
 					if ($this->com_online->Exportable) $Doc->ExportCaption($this->com_online);
 					if ($this->com_activation->Exportable) $Doc->ExportCaption($this->com_activation);
 					if ($this->com_status->Exportable) $Doc->ExportCaption($this->com_status);
 					if ($this->reg_date->Exportable) $Doc->ExportCaption($this->reg_date);
+					if ($this->country_id->Exportable) $Doc->ExportCaption($this->country_id);
 				} else {
 					if ($this->company_id->Exportable) $Doc->ExportCaption($this->company_id);
 					if ($this->com_fname->Exportable) $Doc->ExportCaption($this->com_fname);
@@ -1072,13 +1339,14 @@ class ccompany extends cTable {
 					if ($this->com_tw->Exportable) $Doc->ExportCaption($this->com_tw);
 					if ($this->com_yt->Exportable) $Doc->ExportCaption($this->com_yt);
 					if ($this->com_logo->Exportable) $Doc->ExportCaption($this->com_logo);
-					if ($this->com_province->Exportable) $Doc->ExportCaption($this->com_province);
 					if ($this->com_username->Exportable) $Doc->ExportCaption($this->com_username);
 					if ($this->com_password->Exportable) $Doc->ExportCaption($this->com_password);
 					if ($this->com_online->Exportable) $Doc->ExportCaption($this->com_online);
 					if ($this->com_activation->Exportable) $Doc->ExportCaption($this->com_activation);
 					if ($this->com_status->Exportable) $Doc->ExportCaption($this->com_status);
 					if ($this->reg_date->Exportable) $Doc->ExportCaption($this->reg_date);
+					if ($this->country_id->Exportable) $Doc->ExportCaption($this->country_id);
+					if ($this->province_id->Exportable) $Doc->ExportCaption($this->province_id);
 				}
 				$Doc->EndExportRow();
 			}
@@ -1121,13 +1389,13 @@ class ccompany extends cTable {
 						if ($this->com_tw->Exportable) $Doc->ExportField($this->com_tw);
 						if ($this->com_yt->Exportable) $Doc->ExportField($this->com_yt);
 						if ($this->com_logo->Exportable) $Doc->ExportField($this->com_logo);
-						if ($this->com_province->Exportable) $Doc->ExportField($this->com_province);
 						if ($this->com_username->Exportable) $Doc->ExportField($this->com_username);
 						if ($this->com_password->Exportable) $Doc->ExportField($this->com_password);
 						if ($this->com_online->Exportable) $Doc->ExportField($this->com_online);
 						if ($this->com_activation->Exportable) $Doc->ExportField($this->com_activation);
 						if ($this->com_status->Exportable) $Doc->ExportField($this->com_status);
 						if ($this->reg_date->Exportable) $Doc->ExportField($this->reg_date);
+						if ($this->country_id->Exportable) $Doc->ExportField($this->country_id);
 					} else {
 						if ($this->company_id->Exportable) $Doc->ExportField($this->company_id);
 						if ($this->com_fname->Exportable) $Doc->ExportField($this->com_fname);
@@ -1140,13 +1408,14 @@ class ccompany extends cTable {
 						if ($this->com_tw->Exportable) $Doc->ExportField($this->com_tw);
 						if ($this->com_yt->Exportable) $Doc->ExportField($this->com_yt);
 						if ($this->com_logo->Exportable) $Doc->ExportField($this->com_logo);
-						if ($this->com_province->Exportable) $Doc->ExportField($this->com_province);
 						if ($this->com_username->Exportable) $Doc->ExportField($this->com_username);
 						if ($this->com_password->Exportable) $Doc->ExportField($this->com_password);
 						if ($this->com_online->Exportable) $Doc->ExportField($this->com_online);
 						if ($this->com_activation->Exportable) $Doc->ExportField($this->com_activation);
 						if ($this->com_status->Exportable) $Doc->ExportField($this->com_status);
 						if ($this->reg_date->Exportable) $Doc->ExportField($this->reg_date);
+						if ($this->country_id->Exportable) $Doc->ExportField($this->country_id);
+						if ($this->province_id->Exportable) $Doc->ExportField($this->province_id);
 					}
 					$Doc->EndExportRow($RowCnt);
 				}

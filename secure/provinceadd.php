@@ -1082,7 +1082,7 @@ class cprovince_add extends cprovince {
 		$rsnew = array();
 
 		// country_id
-		$this->country_id->SetDbValueDef($rsnew, $this->country_id->CurrentValue, 0, FALSE);
+		$this->country_id->SetDbValueDef($rsnew, $this->country_id->CurrentValue, 0, strval($this->country_id->CurrentValue) == "");
 
 		// province_name_kh
 		$this->province_name_kh->SetDbValueDef($rsnew, $this->province_name_kh->CurrentValue, NULL, FALSE);

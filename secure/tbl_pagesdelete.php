@@ -675,6 +675,9 @@ class ctbl_pages_delete extends ctbl_pages {
 				$sThisKey = "";
 				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
 				$sThisKey .= $row['page_id'];
+
+				// Delete old files
+				$this->LoadDbValues($row);
 				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 				$DeleteRows = $this->Delete($row); // Delete
 				$conn->raiseErrorFn = '';

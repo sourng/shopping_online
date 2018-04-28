@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <configuration date="2018/04/28" author="e.World Technology Ltd.">
-  <project id="{F38FCD2E-3638-4192-9CEA-A2A8E31F8537}" file="C:\Users\SENG Sourng\Documents\PHPMaker\Projects\ShoppingOnline.pmp" name="ShoppingOnline" product="PHPMaker" version="14.0" datetime="2018/04/28 10:48:45" languagefolder="phplang" userlevel="-2,&quot;Anonymous&quot;,0;">
+  <project id="{F38FCD2E-3638-4192-9CEA-A2A8E31F8537}" file="C:\Users\SENG Sourng\Documents\PHPMaker\Projects\ShoppingOnline.pmp" name="ShoppingOnline" product="PHPMaker" version="14.0" datetime="2018/04/28 12:24:49" languagefolder="phplang" userlevel="-2,&quot;Anonymous&quot;,0;">
     <table id="categories" name="categories" caption="គ្រប់​គ្រង​ប្រ​ភេទ​ផលិតផល​" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
     <table id="company" name="company" caption="គ្រប់​គ្រង​ក្រុម​ហ៊ុន​" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />
     <table id="country" name="country" caption="គ្រប់​គ្រង​ប្រទេស" userlevel="-2,&quot;Anonymous&quot;,0;" priv="1" />

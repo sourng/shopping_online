@@ -25,7 +25,7 @@ define("EW_CONFIG_FILE_FOLDER", EW_PROJECT_NAME, TRUE); // Config file name
 define("EW_PROJECT_ID", "{F38FCD2E-3638-4192-9CEA-A2A8E31F8537}", TRUE); // Project ID (GUID)
 $EW_RELATED_PROJECT_ID = "";
 $EW_RELATED_LANGUAGE_FOLDER = "";
-define("EW_RANDOM_KEY", '0xJ6teLxqaA8IVZn', TRUE); // Random key for encryption
+define("EW_RANDOM_KEY", '8Bx3h8gJ7RL2N2JK', TRUE); // Random key for encryption
 define("EW_PROJECT_STYLESHEET_FILENAME", "phpcss/ShoppingOnline.css", TRUE); // Project stylesheet file name
 define("EW_CHARSET", "utf-8", TRUE); // Project charset
 define("EW_EMAIL_CHARSET", EW_CHARSET, TRUE); // Email charset
@@ -332,7 +332,7 @@ $EW_REMOTE_FILE_PATTERN = '/^((https?\:)?|ftps?\:|s3:)\/\//i';
 $EW_UPLOAD_TYPE = "POST"; // HTTP request method for the file uploads, e.g. "POST", "PUT" //***
 define("EW_UPLOAD_TEMP_PATH", "", TRUE); // Upload temp path (absolute local physical path)
 define("EW_UPLOAD_TEMP_HREF_PATH", "", TRUE); // Upload temp href path (absolute URL path for download)
-define("EW_UPLOAD_DEST_PATH", "", TRUE); // Upload destination path (relative to app root)
+define("EW_UPLOAD_DEST_PATH", "../uploads/", TRUE); // Upload destination path (relative to app root)
 define("EW_UPLOAD_HREF_PATH", "", TRUE); // Upload file href path (for download)
 define("EW_UPLOAD_URL", "ewupload14.php", TRUE); // Upload URL
 define("EW_UPLOAD_TEMP_FOLDER_PREFIX", "temp__", TRUE); // Upload temp folders prefix
@@ -958,5 +958,7 @@ $LoginStatus = array();
 $EW_USE_SUBMENU_FOR_ROOT_HEADER = FALSE;
 ?>
 <?php
-define("EW_PDF_STYLESHEET_FILENAME", "", TRUE); // Export PDF CSS styles
+define("EW_PDF_STYLESHEET_FILENAME", "phpcss/ewpdf.css", TRUE); // export PDF CSS styles
+define("EW_PDF_MEMORY_LIMIT", "128M", TRUE); // Memory limit
+define("EW_PDF_TIME_LIMIT", 120, TRUE); // Time limit
 ?>

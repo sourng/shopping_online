@@ -329,13 +329,14 @@ class ccompany_edit extends ccompany {
 		$this->com_tw->SetVisibility();
 		$this->com_yt->SetVisibility();
 		$this->com_logo->SetVisibility();
-		$this->com_province->SetVisibility();
 		$this->com_username->SetVisibility();
 		$this->com_password->SetVisibility();
 		$this->com_online->SetVisibility();
 		$this->com_activation->SetVisibility();
 		$this->com_status->SetVisibility();
 		$this->reg_date->SetVisibility();
+		$this->country_id->SetVisibility();
+		$this->province_id->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
 		Page_Loading();
@@ -459,6 +460,12 @@ class ccompany_edit extends ccompany {
 			if ($objForm->HasValue("x_company_id")) {
 				$this->company_id->setFormValue($objForm->GetValue("x_company_id"));
 			}
+			if ($objForm->HasValue("x_country_id")) {
+				$this->country_id->setFormValue($objForm->GetValue("x_country_id"));
+			}
+			if ($objForm->HasValue("x_province_id")) {
+				$this->province_id->setFormValue($objForm->GetValue("x_province_id"));
+			}
 		} else {
 			$this->CurrentAction = "I"; // Default action is display
 
@@ -469,6 +476,18 @@ class ccompany_edit extends ccompany {
 				$loadByQuery = TRUE;
 			} else {
 				$this->company_id->CurrentValue = NULL;
+			}
+			if (isset($_GET["country_id"])) {
+				$this->country_id->setQueryStringValue($_GET["country_id"]);
+				$loadByQuery = TRUE;
+			} else {
+				$this->country_id->CurrentValue = NULL;
+			}
+			if (isset($_GET["province_id"])) {
+				$this->province_id->setQueryStringValue($_GET["province_id"]);
+				$loadByQuery = TRUE;
+			} else {
+				$this->province_id->CurrentValue = NULL;
 			}
 		}
 
@@ -565,6 +584,9 @@ class ccompany_edit extends ccompany {
 		global $objForm, $Language;
 
 		// Get upload data
+		$this->com_logo->Upload->Index = $objForm->Index;
+		$this->com_logo->Upload->UploadFile();
+		$this->com_logo->CurrentValue = $this->com_logo->Upload->FileName;
 	}
 
 	// Load form values
@@ -572,6 +594,7 @@ class ccompany_edit extends ccompany {
 
 		// Load from form
 		global $objForm;
+		$this->GetUploadFiles(); // Get upload files
 		if (!$this->company_id->FldIsDetailKey)
 			$this->company_id->setFormValue($objForm->GetValue("x_company_id"));
 		if (!$this->com_fname->FldIsDetailKey) {
@@ -601,12 +624,6 @@ class ccompany_edit extends ccompany {
 		if (!$this->com_yt->FldIsDetailKey) {
 			$this->com_yt->setFormValue($objForm->GetValue("x_com_yt"));
 		}
-		if (!$this->com_logo->FldIsDetailKey) {
-			$this->com_logo->setFormValue($objForm->GetValue("x_com_logo"));
-		}
-		if (!$this->com_province->FldIsDetailKey) {
-			$this->com_province->setFormValue($objForm->GetValue("x_com_province"));
-		}
 		if (!$this->com_username->FldIsDetailKey) {
 			$this->com_username->setFormValue($objForm->GetValue("x_com_username"));
 		}
@@ -624,7 +641,13 @@ class ccompany_edit extends ccompany {
 		}
 		if (!$this->reg_date->FldIsDetailKey) {
 			$this->reg_date->setFormValue($objForm->GetValue("x_reg_date"));
-			$this->reg_date->CurrentValue = ew_UnFormatDateTime($this->reg_date->CurrentValue, 0);
+			$this->reg_date->CurrentValue = ew_UnFormatDateTime($this->reg_date->CurrentValue, 1);
+		}
+		if (!$this->country_id->FldIsDetailKey) {
+			$this->country_id->setFormValue($objForm->GetValue("x_country_id"));
+		}
+		if (!$this->province_id->FldIsDetailKey) {
+			$this->province_id->setFormValue($objForm->GetValue("x_province_id"));
 		}
 	}
 
@@ -641,15 +664,15 @@ class ccompany_edit extends ccompany {
 		$this->com_fb->CurrentValue = $this->com_fb->FormValue;
 		$this->com_tw->CurrentValue = $this->com_tw->FormValue;
 		$this->com_yt->CurrentValue = $this->com_yt->FormValue;
-		$this->com_logo->CurrentValue = $this->com_logo->FormValue;
-		$this->com_province->CurrentValue = $this->com_province->FormValue;
 		$this->com_username->CurrentValue = $this->com_username->FormValue;
 		$this->com_password->CurrentValue = $this->com_password->FormValue;
 		$this->com_online->CurrentValue = $this->com_online->FormValue;
 		$this->com_activation->CurrentValue = $this->com_activation->FormValue;
 		$this->com_status->CurrentValue = $this->com_status->FormValue;
 		$this->reg_date->CurrentValue = $this->reg_date->FormValue;
-		$this->reg_date->CurrentValue = ew_UnFormatDateTime($this->reg_date->CurrentValue, 0);
+		$this->reg_date->CurrentValue = ew_UnFormatDateTime($this->reg_date->CurrentValue, 1);
+		$this->country_id->CurrentValue = $this->country_id->FormValue;
+		$this->province_id->CurrentValue = $this->province_id->FormValue;
 	}
 
 	// Load row based on key values
@@ -695,14 +718,21 @@ class ccompany_edit extends ccompany {
 		$this->com_fb->setDbValue($row['com_fb']);
 		$this->com_tw->setDbValue($row['com_tw']);
 		$this->com_yt->setDbValue($row['com_yt']);
-		$this->com_logo->setDbValue($row['com_logo']);
-		$this->com_province->setDbValue($row['com_province']);
+		$this->com_logo->Upload->DbValue = $row['com_logo'];
+		$this->com_logo->setDbValue($this->com_logo->Upload->DbValue);
 		$this->com_username->setDbValue($row['com_username']);
 		$this->com_password->setDbValue($row['com_password']);
 		$this->com_online->setDbValue($row['com_online']);
 		$this->com_activation->setDbValue($row['com_activation']);
 		$this->com_status->setDbValue($row['com_status']);
 		$this->reg_date->setDbValue($row['reg_date']);
+		$this->country_id->setDbValue($row['country_id']);
+		$this->province_id->setDbValue($row['province_id']);
+		if (array_key_exists('EV__province_id', $rs->fields)) {
+			$this->province_id->VirtualValue = $rs->fields('EV__province_id'); // Set up virtual field value
+		} else {
+			$this->province_id->VirtualValue = ""; // Clear value
+		}
 	}
 
 	// Return a row with default values
@@ -719,13 +749,14 @@ class ccompany_edit extends ccompany {
 		$row['com_tw'] = NULL;
 		$row['com_yt'] = NULL;
 		$row['com_logo'] = NULL;
-		$row['com_province'] = NULL;
 		$row['com_username'] = NULL;
 		$row['com_password'] = NULL;
 		$row['com_online'] = NULL;
 		$row['com_activation'] = NULL;
 		$row['com_status'] = NULL;
 		$row['reg_date'] = NULL;
+		$row['country_id'] = NULL;
+		$row['province_id'] = NULL;
 		return $row;
 	}
 
@@ -744,14 +775,15 @@ class ccompany_edit extends ccompany {
 		$this->com_fb->DbValue = $row['com_fb'];
 		$this->com_tw->DbValue = $row['com_tw'];
 		$this->com_yt->DbValue = $row['com_yt'];
-		$this->com_logo->DbValue = $row['com_logo'];
-		$this->com_province->DbValue = $row['com_province'];
+		$this->com_logo->Upload->DbValue = $row['com_logo'];
 		$this->com_username->DbValue = $row['com_username'];
 		$this->com_password->DbValue = $row['com_password'];
 		$this->com_online->DbValue = $row['com_online'];
 		$this->com_activation->DbValue = $row['com_activation'];
 		$this->com_status->DbValue = $row['com_status'];
 		$this->reg_date->DbValue = $row['reg_date'];
+		$this->country_id->DbValue = $row['country_id'];
+		$this->province_id->DbValue = $row['province_id'];
 	}
 
 	// Load old record
@@ -761,6 +793,14 @@ class ccompany_edit extends ccompany {
 		$bValidKey = TRUE;
 		if (strval($this->getKey("company_id")) <> "")
 			$this->company_id->CurrentValue = $this->getKey("company_id"); // company_id
+		else
+			$bValidKey = FALSE;
+		if (strval($this->getKey("country_id")) <> "")
+			$this->country_id->CurrentValue = $this->getKey("country_id"); // country_id
+		else
+			$bValidKey = FALSE;
+		if (strval($this->getKey("province_id")) <> "")
+			$this->province_id->CurrentValue = $this->getKey("province_id"); // province_id
 		else
 			$bValidKey = FALSE;
 
@@ -797,13 +837,14 @@ class ccompany_edit extends ccompany {
 		// com_tw
 		// com_yt
 		// com_logo
-		// com_province
 		// com_username
 		// com_password
 		// com_online
 		// com_activation
 		// com_status
 		// reg_date
+		// country_id
+		// province_id
 
 		if ($this->RowType == EW_ROWTYPE_VIEW) { // View row
 
@@ -848,12 +889,16 @@ class ccompany_edit extends ccompany {
 		$this->com_yt->ViewCustomAttributes = "";
 
 		// com_logo
-		$this->com_logo->ViewValue = $this->com_logo->CurrentValue;
+		$this->com_logo->UploadPath = "../uploads/company";
+		if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+			$this->com_logo->ImageWidth = 0;
+			$this->com_logo->ImageHeight = 64;
+			$this->com_logo->ImageAlt = $this->com_logo->FldAlt();
+			$this->com_logo->ViewValue = $this->com_logo->Upload->DbValue;
+		} else {
+			$this->com_logo->ViewValue = "";
+		}
 		$this->com_logo->ViewCustomAttributes = "";
-
-		// com_province
-		$this->com_province->ViewValue = $this->com_province->CurrentValue;
-		$this->com_province->ViewCustomAttributes = "";
 
 		// com_username
 		$this->com_username->ViewValue = $this->com_username->CurrentValue;
@@ -864,21 +909,86 @@ class ccompany_edit extends ccompany {
 		$this->com_password->ViewCustomAttributes = "";
 
 		// com_online
-		$this->com_online->ViewValue = $this->com_online->CurrentValue;
+		if (strval($this->com_online->CurrentValue) <> "") {
+			$this->com_online->ViewValue = $this->com_online->OptionCaption($this->com_online->CurrentValue);
+		} else {
+			$this->com_online->ViewValue = NULL;
+		}
 		$this->com_online->ViewCustomAttributes = "";
 
 		// com_activation
-		$this->com_activation->ViewValue = $this->com_activation->CurrentValue;
+		if (strval($this->com_activation->CurrentValue) <> "") {
+			$this->com_activation->ViewValue = $this->com_activation->OptionCaption($this->com_activation->CurrentValue);
+		} else {
+			$this->com_activation->ViewValue = NULL;
+		}
 		$this->com_activation->ViewCustomAttributes = "";
 
 		// com_status
-		$this->com_status->ViewValue = $this->com_status->CurrentValue;
+		if (strval($this->com_status->CurrentValue) <> "") {
+			$this->com_status->ViewValue = $this->com_status->OptionCaption($this->com_status->CurrentValue);
+		} else {
+			$this->com_status->ViewValue = NULL;
+		}
 		$this->com_status->ViewCustomAttributes = "";
 
 		// reg_date
 		$this->reg_date->ViewValue = $this->reg_date->CurrentValue;
-		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 0);
+		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 1);
 		$this->reg_date->ViewCustomAttributes = "";
+
+		// country_id
+		if (strval($this->country_id->CurrentValue) <> "") {
+			$sFilterWrk = "`country_id`" . ew_SearchString("=", $this->country_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `country_id`, `country_name_kh` AS `DispFld`, `country_name_en` AS `Disp2Fld`, `country_code` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `country`";
+		$sWhereWrk = "";
+		$this->country_id->LookupFilters = array("dx1" => '`country_name_kh`', "dx2" => '`country_name_en`', "dx3" => '`country_code`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->country_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->country_id->ViewValue = $this->country_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->country_id->ViewValue = $this->country_id->CurrentValue;
+			}
+		} else {
+			$this->country_id->ViewValue = NULL;
+		}
+		$this->country_id->ViewCustomAttributes = "";
+
+		// province_id
+		if ($this->province_id->VirtualValue <> "") {
+			$this->province_id->ViewValue = $this->province_id->VirtualValue;
+		} else {
+		if (strval($this->province_id->CurrentValue) <> "") {
+			$sFilterWrk = "`province_id`" . ew_SearchString("=", $this->province_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `province_id`, `province_name_kh` AS `DispFld`, `province_name_en` AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `province`";
+		$sWhereWrk = "";
+		$this->province_id->LookupFilters = array("dx1" => '`province_name_kh`', "dx2" => '`province_name_en`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->province_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$this->province_id->ViewValue = $this->province_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->province_id->ViewValue = $this->province_id->CurrentValue;
+			}
+		} else {
+			$this->province_id->ViewValue = NULL;
+		}
+		}
+		$this->province_id->ViewCustomAttributes = "";
 
 			// company_id
 			$this->company_id->LinkCustomAttributes = "";
@@ -932,13 +1042,22 @@ class ccompany_edit extends ccompany {
 
 			// com_logo
 			$this->com_logo->LinkCustomAttributes = "";
-			$this->com_logo->HrefValue = "";
+			$this->com_logo->UploadPath = "../uploads/company";
+			if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+				$this->com_logo->HrefValue = ew_GetFileUploadUrl($this->com_logo, $this->com_logo->Upload->DbValue); // Add prefix/suffix
+				$this->com_logo->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->com_logo->HrefValue = ew_FullUrl($this->com_logo->HrefValue, "href");
+			} else {
+				$this->com_logo->HrefValue = "";
+			}
+			$this->com_logo->HrefValue2 = $this->com_logo->UploadPath . $this->com_logo->Upload->DbValue;
 			$this->com_logo->TooltipValue = "";
-
-			// com_province
-			$this->com_province->LinkCustomAttributes = "";
-			$this->com_province->HrefValue = "";
-			$this->com_province->TooltipValue = "";
+			if ($this->com_logo->UseColorbox) {
+				if (ew_Empty($this->com_logo->TooltipValue))
+					$this->com_logo->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+				$this->com_logo->LinkAttrs["data-rel"] = "company_x_com_logo";
+				ew_AppendClass($this->com_logo->LinkAttrs["class"], "ewLightbox");
+			}
 
 			// com_username
 			$this->com_username->LinkCustomAttributes = "";
@@ -969,6 +1088,16 @@ class ccompany_edit extends ccompany {
 			$this->reg_date->LinkCustomAttributes = "";
 			$this->reg_date->HrefValue = "";
 			$this->reg_date->TooltipValue = "";
+
+			// country_id
+			$this->country_id->LinkCustomAttributes = "";
+			$this->country_id->HrefValue = "";
+			$this->country_id->TooltipValue = "";
+
+			// province_id
+			$this->province_id->LinkCustomAttributes = "";
+			$this->province_id->HrefValue = "";
+			$this->province_id->TooltipValue = "";
 		} elseif ($this->RowType == EW_ROWTYPE_EDIT) { // Edit row
 
 			// company_id
@@ -1034,14 +1163,18 @@ class ccompany_edit extends ccompany {
 			// com_logo
 			$this->com_logo->EditAttrs["class"] = "form-control";
 			$this->com_logo->EditCustomAttributes = "";
-			$this->com_logo->EditValue = ew_HtmlEncode($this->com_logo->CurrentValue);
-			$this->com_logo->PlaceHolder = ew_RemoveHtml($this->com_logo->FldCaption());
-
-			// com_province
-			$this->com_province->EditAttrs["class"] = "form-control";
-			$this->com_province->EditCustomAttributes = "";
-			$this->com_province->EditValue = ew_HtmlEncode($this->com_province->CurrentValue);
-			$this->com_province->PlaceHolder = ew_RemoveHtml($this->com_province->FldCaption());
+			$this->com_logo->UploadPath = "../uploads/company";
+			if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+				$this->com_logo->ImageWidth = 0;
+				$this->com_logo->ImageHeight = 64;
+				$this->com_logo->ImageAlt = $this->com_logo->FldAlt();
+				$this->com_logo->EditValue = $this->com_logo->Upload->DbValue;
+			} else {
+				$this->com_logo->EditValue = "";
+			}
+			if (!ew_Empty($this->com_logo->CurrentValue))
+					$this->com_logo->Upload->FileName = $this->com_logo->CurrentValue;
+			if ($this->CurrentAction == "I" && !$this->EventCancelled) ew_RenderUploadField($this->com_logo);
 
 			// com_username
 			$this->com_username->EditAttrs["class"] = "form-control";
@@ -1056,28 +1189,79 @@ class ccompany_edit extends ccompany {
 			$this->com_password->PlaceHolder = ew_RemoveHtml($this->com_password->FldCaption());
 
 			// com_online
-			$this->com_online->EditAttrs["class"] = "form-control";
 			$this->com_online->EditCustomAttributes = "";
-			$this->com_online->EditValue = ew_HtmlEncode($this->com_online->CurrentValue);
-			$this->com_online->PlaceHolder = ew_RemoveHtml($this->com_online->FldCaption());
+			$this->com_online->EditValue = $this->com_online->Options(FALSE);
 
 			// com_activation
-			$this->com_activation->EditAttrs["class"] = "form-control";
 			$this->com_activation->EditCustomAttributes = "";
-			$this->com_activation->EditValue = ew_HtmlEncode($this->com_activation->CurrentValue);
-			$this->com_activation->PlaceHolder = ew_RemoveHtml($this->com_activation->FldCaption());
+			$this->com_activation->EditValue = $this->com_activation->Options(TRUE);
 
 			// com_status
-			$this->com_status->EditAttrs["class"] = "form-control";
 			$this->com_status->EditCustomAttributes = "";
-			$this->com_status->EditValue = ew_HtmlEncode($this->com_status->CurrentValue);
-			$this->com_status->PlaceHolder = ew_RemoveHtml($this->com_status->FldCaption());
+			$this->com_status->EditValue = $this->com_status->Options(FALSE);
 
 			// reg_date
 			$this->reg_date->EditAttrs["class"] = "form-control";
 			$this->reg_date->EditCustomAttributes = "";
 			$this->reg_date->EditValue = ew_HtmlEncode(ew_FormatDateTime($this->reg_date->CurrentValue, 8));
 			$this->reg_date->PlaceHolder = ew_RemoveHtml($this->reg_date->FldCaption());
+
+			// country_id
+			$this->country_id->EditAttrs["class"] = "form-control";
+			$this->country_id->EditCustomAttributes = "";
+			if (strval($this->country_id->CurrentValue) <> "") {
+				$sFilterWrk = "`country_id`" . ew_SearchString("=", $this->country_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+			$sSqlWrk = "SELECT DISTINCT `country_id`, `country_name_kh` AS `DispFld`, `country_name_en` AS `Disp2Fld`, `country_code` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `country`";
+			$sWhereWrk = "";
+			$this->country_id->LookupFilters = array("dx1" => '`country_name_kh`', "dx2" => '`country_name_en`', "dx3" => '`country_code`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->country_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+				$rswrk = Conn()->Execute($sSqlWrk);
+				if ($rswrk && !$rswrk->EOF) { // Lookup values found
+					$arwrk = array();
+					$arwrk[1] = $rswrk->fields('DispFld');
+					$arwrk[2] = $rswrk->fields('Disp2Fld');
+					$arwrk[3] = $rswrk->fields('Disp3Fld');
+					$this->country_id->EditValue = $this->country_id->DisplayValue($arwrk);
+					$rswrk->Close();
+				} else {
+					$this->country_id->EditValue = $this->country_id->CurrentValue;
+				}
+			} else {
+				$this->country_id->EditValue = NULL;
+			}
+			$this->country_id->ViewCustomAttributes = "";
+
+			// province_id
+			$this->province_id->EditAttrs["class"] = "form-control";
+			$this->province_id->EditCustomAttributes = "";
+			if ($this->province_id->VirtualValue <> "") {
+				$this->province_id->EditValue = $this->province_id->VirtualValue;
+			} else {
+			if (strval($this->province_id->CurrentValue) <> "") {
+				$sFilterWrk = "`province_id`" . ew_SearchString("=", $this->province_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+			$sSqlWrk = "SELECT DISTINCT `province_id`, `province_name_kh` AS `DispFld`, `province_name_en` AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `province`";
+			$sWhereWrk = "";
+			$this->province_id->LookupFilters = array("dx1" => '`province_name_kh`', "dx2" => '`province_name_en`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->province_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+				$rswrk = Conn()->Execute($sSqlWrk);
+				if ($rswrk && !$rswrk->EOF) { // Lookup values found
+					$arwrk = array();
+					$arwrk[1] = $rswrk->fields('DispFld');
+					$arwrk[2] = $rswrk->fields('Disp2Fld');
+					$this->province_id->EditValue = $this->province_id->DisplayValue($arwrk);
+					$rswrk->Close();
+				} else {
+					$this->province_id->EditValue = $this->province_id->CurrentValue;
+				}
+			} else {
+				$this->province_id->EditValue = NULL;
+			}
+			}
+			$this->province_id->ViewCustomAttributes = "";
 
 			// Edit refer script
 			// company_id
@@ -1123,11 +1307,15 @@ class ccompany_edit extends ccompany {
 
 			// com_logo
 			$this->com_logo->LinkCustomAttributes = "";
-			$this->com_logo->HrefValue = "";
-
-			// com_province
-			$this->com_province->LinkCustomAttributes = "";
-			$this->com_province->HrefValue = "";
+			$this->com_logo->UploadPath = "../uploads/company";
+			if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+				$this->com_logo->HrefValue = ew_GetFileUploadUrl($this->com_logo, $this->com_logo->Upload->DbValue); // Add prefix/suffix
+				$this->com_logo->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->com_logo->HrefValue = ew_FullUrl($this->com_logo->HrefValue, "href");
+			} else {
+				$this->com_logo->HrefValue = "";
+			}
+			$this->com_logo->HrefValue2 = $this->com_logo->UploadPath . $this->com_logo->Upload->DbValue;
 
 			// com_username
 			$this->com_username->LinkCustomAttributes = "";
@@ -1152,6 +1340,14 @@ class ccompany_edit extends ccompany {
 			// reg_date
 			$this->reg_date->LinkCustomAttributes = "";
 			$this->reg_date->HrefValue = "";
+
+			// country_id
+			$this->country_id->LinkCustomAttributes = "";
+			$this->country_id->HrefValue = "";
+
+			// province_id
+			$this->province_id->LinkCustomAttributes = "";
+			$this->province_id->HrefValue = "";
 		}
 		if ($this->RowType == EW_ROWTYPE_ADD || $this->RowType == EW_ROWTYPE_EDIT || $this->RowType == EW_ROWTYPE_SEARCH) // Add/Edit/Search row
 			$this->SetupFieldTitles();
@@ -1173,6 +1369,12 @@ class ccompany_edit extends ccompany {
 			return ($gsFormError == "");
 		if (!ew_CheckDateDef($this->reg_date->FormValue)) {
 			ew_AddMessage($gsFormError, $this->reg_date->FldErrMsg());
+		}
+		if (!$this->country_id->FldIsDetailKey && !is_null($this->country_id->FormValue) && $this->country_id->FormValue == "") {
+			ew_AddMessage($gsFormError, str_replace("%s", $this->country_id->FldCaption(), $this->country_id->ReqErrMsg));
+		}
+		if (!$this->province_id->FldIsDetailKey && !is_null($this->province_id->FormValue) && $this->province_id->FormValue == "") {
+			ew_AddMessage($gsFormError, str_replace("%s", $this->province_id->FldCaption(), $this->province_id->ReqErrMsg));
 		}
 
 		// Return validate result
@@ -1208,6 +1410,8 @@ class ccompany_edit extends ccompany {
 			// Save old values
 			$rsold = &$rs->fields;
 			$this->LoadDbValues($rsold);
+			$this->com_logo->OldUploadPath = "../uploads/company";
+			$this->com_logo->UploadPath = $this->com_logo->OldUploadPath;
 			$rsnew = array();
 
 			// com_fname
@@ -1238,10 +1442,14 @@ class ccompany_edit extends ccompany {
 			$this->com_yt->SetDbValueDef($rsnew, $this->com_yt->CurrentValue, NULL, $this->com_yt->ReadOnly);
 
 			// com_logo
-			$this->com_logo->SetDbValueDef($rsnew, $this->com_logo->CurrentValue, NULL, $this->com_logo->ReadOnly);
-
-			// com_province
-			$this->com_province->SetDbValueDef($rsnew, $this->com_province->CurrentValue, NULL, $this->com_province->ReadOnly);
+			if ($this->com_logo->Visible && !$this->com_logo->ReadOnly && !$this->com_logo->Upload->KeepFile) {
+				$this->com_logo->Upload->DbValue = $rsold['com_logo']; // Get original value
+				if ($this->com_logo->Upload->FileName == "") {
+					$rsnew['com_logo'] = NULL;
+				} else {
+					$rsnew['com_logo'] = $this->com_logo->Upload->FileName;
+				}
+			}
 
 			// com_username
 			$this->com_username->SetDbValueDef($rsnew, $this->com_username->CurrentValue, NULL, $this->com_username->ReadOnly);
@@ -1259,7 +1467,49 @@ class ccompany_edit extends ccompany {
 			$this->com_status->SetDbValueDef($rsnew, $this->com_status->CurrentValue, NULL, $this->com_status->ReadOnly);
 
 			// reg_date
-			$this->reg_date->SetDbValueDef($rsnew, ew_UnFormatDateTime($this->reg_date->CurrentValue, 0), NULL, $this->reg_date->ReadOnly);
+			$this->reg_date->SetDbValueDef($rsnew, ew_UnFormatDateTime($this->reg_date->CurrentValue, 1), NULL, $this->reg_date->ReadOnly);
+
+			// country_id
+			// province_id
+
+			if ($this->com_logo->Visible && !$this->com_logo->Upload->KeepFile) {
+				$this->com_logo->UploadPath = "../uploads/company";
+				$OldFiles = ew_Empty($this->com_logo->Upload->DbValue) ? array() : array($this->com_logo->Upload->DbValue);
+				if (!ew_Empty($this->com_logo->Upload->FileName)) {
+					$NewFiles = array($this->com_logo->Upload->FileName);
+					$NewFileCount = count($NewFiles);
+					for ($i = 0; $i < $NewFileCount; $i++) {
+						$fldvar = ($this->com_logo->Upload->Index < 0) ? $this->com_logo->FldVar : substr($this->com_logo->FldVar, 0, 1) . $this->com_logo->Upload->Index . substr($this->com_logo->FldVar, 1);
+						if ($NewFiles[$i] <> "") {
+							$file = $NewFiles[$i];
+							if (file_exists(ew_UploadTempPath($fldvar, $this->com_logo->TblVar) . $file)) {
+								$OldFileFound = FALSE;
+								$OldFileCount = count($OldFiles);
+								for ($j = 0; $j < $OldFileCount; $j++) {
+									$file1 = $OldFiles[$j];
+									if ($file1 == $file) { // Old file found, no need to delete anymore
+										unset($OldFiles[$j]);
+										$OldFileFound = TRUE;
+										break;
+									}
+								}
+								if ($OldFileFound) // No need to check if file exists further
+									continue;
+								$file1 = ew_UploadFileNameEx($this->com_logo->PhysicalUploadPath(), $file); // Get new file name
+								if ($file1 <> $file) { // Rename temp file
+									while (file_exists(ew_UploadTempPath($fldvar, $this->com_logo->TblVar) . $file1) || file_exists($this->com_logo->PhysicalUploadPath() . $file1)) // Make sure no file name clash
+										$file1 = ew_UniqueFilename($this->com_logo->PhysicalUploadPath(), $file1, TRUE); // Use indexed name
+									rename(ew_UploadTempPath($fldvar, $this->com_logo->TblVar) . $file, ew_UploadTempPath($fldvar, $this->com_logo->TblVar) . $file1);
+									$NewFiles[$i] = $file1;
+								}
+							}
+						}
+					}
+					$this->com_logo->Upload->DbValue = empty($OldFiles) ? "" : implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $OldFiles);
+					$this->com_logo->Upload->FileName = implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $NewFiles);
+					$this->com_logo->SetDbValueDef($rsnew, $this->com_logo->Upload->FileName, NULL, $this->com_logo->ReadOnly);
+				}
+			}
 
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
@@ -1271,6 +1521,35 @@ class ccompany_edit extends ccompany {
 					$EditRow = TRUE; // No field to update
 				$conn->raiseErrorFn = '';
 				if ($EditRow) {
+					if ($this->com_logo->Visible && !$this->com_logo->Upload->KeepFile) {
+						$OldFiles = ew_Empty($this->com_logo->Upload->DbValue) ? array() : array($this->com_logo->Upload->DbValue);
+						if (!ew_Empty($this->com_logo->Upload->FileName)) {
+							$NewFiles = array($this->com_logo->Upload->FileName);
+							$NewFiles2 = array($rsnew['com_logo']);
+							$NewFileCount = count($NewFiles);
+							for ($i = 0; $i < $NewFileCount; $i++) {
+								$fldvar = ($this->com_logo->Upload->Index < 0) ? $this->com_logo->FldVar : substr($this->com_logo->FldVar, 0, 1) . $this->com_logo->Upload->Index . substr($this->com_logo->FldVar, 1);
+								if ($NewFiles[$i] <> "") {
+									$file = ew_UploadTempPath($fldvar, $this->com_logo->TblVar) . $NewFiles[$i];
+									if (file_exists($file)) {
+										if (@$NewFiles2[$i] <> "") // Use correct file name
+											$NewFiles[$i] = $NewFiles2[$i];
+										if (!$this->com_logo->Upload->SaveToFile($NewFiles[$i], TRUE, $i)) { // Just replace
+											$this->setFailureMessage($Language->Phrase("UploadErrMsg7"));
+											return FALSE;
+										}
+									}
+								}
+							}
+						} else {
+							$NewFiles = array();
+						}
+						$OldFileCount = count($OldFiles);
+						for ($i = 0; $i < $OldFileCount; $i++) {
+							if ($OldFiles[$i] <> "" && !in_array($OldFiles[$i], $NewFiles))
+								@unlink($this->com_logo->OldPhysicalUploadPath() . $OldFiles[$i]);
+						}
+					}
 				}
 			} else {
 				if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
@@ -1290,6 +1569,9 @@ class ccompany_edit extends ccompany {
 		if ($EditRow)
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
+
+		// com_logo
+		ew_CleanUploadTempPath($this->com_logo, $this->com_logo->Upload->Index);
 		return $EditRow;
 	}
 
@@ -1308,6 +1590,18 @@ class ccompany_edit extends ccompany {
 		global $gsLanguage;
 		$pageId = $pageId ?: $this->PageID;
 		switch ($fld->FldVar) {
+		case "x_country_id":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT DISTINCT `country_id` AS `LinkFld`, `country_name_kh` AS `DispFld`, `country_name_en` AS `Disp2Fld`, `country_code` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `country`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`country_name_kh`', "dx2" => '`country_name_en`', "dx3" => '`country_code`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`country_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->country_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
 		}
 	}
 
@@ -1430,6 +1724,12 @@ fcompanyedit.Validate = function() {
 			elm = this.GetElements("x" + infix + "_reg_date");
 			if (elm && !ew_CheckDateDef(elm.value))
 				return this.OnError(elm, "<?php echo ew_JsEncode2($company->reg_date->FldErrMsg()) ?>");
+			elm = this.GetElements("x" + infix + "_country_id");
+			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
+				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $company->country_id->FldCaption(), $company->country_id->ReqErrMsg)) ?>");
+			elm = this.GetElements("x" + infix + "_province_id");
+			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
+				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $company->province_id->FldCaption(), $company->province_id->ReqErrMsg)) ?>");
 
 			// Fire Form_CustomValidate event
 			if (!this.Form_CustomValidate(fobj))
@@ -1459,8 +1759,18 @@ fcompanyedit.Form_CustomValidate =
 fcompanyedit.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 
 // Dynamic selection lists
-// Form object for search
+fcompanyedit.Lists["x_com_online"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fcompanyedit.Lists["x_com_online"].Options = <?php echo json_encode($company_edit->com_online->Options()) ?>;
+fcompanyedit.Lists["x_com_activation"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fcompanyedit.Lists["x_com_activation"].Options = <?php echo json_encode($company_edit->com_activation->Options()) ?>;
+fcompanyedit.Lists["x_com_status"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fcompanyedit.Lists["x_com_status"].Options = <?php echo json_encode($company_edit->com_status->Options()) ?>;
+fcompanyedit.Lists["x_country_id"] = {"LinkField":"x_country_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_country_name_kh","x_country_name_en","x_country_code",""],"ParentFields":[],"ChildFields":["x_province_id"],"FilterFields":[],"Options":[],"Template":"","LinkTable":"country"};
+fcompanyedit.Lists["x_country_id"].Data = "<?php echo $company_edit->country_id->LookupFilterQuery(FALSE, "edit") ?>";
+fcompanyedit.Lists["x_province_id"] = {"LinkField":"x_province_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_province_name_kh","x_province_name_en","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"province"};
+fcompanyedit.Lists["x_province_id"].Data = "<?php echo $company_edit->province_id->LookupFilterQuery(FALSE, "edit") ?>";
 
+// Form object for search
 </script>
 <script type="text/javascript">
 
@@ -1585,22 +1895,27 @@ $company_edit->ShowMessage();
 <?php } ?>
 <?php if ($company->com_logo->Visible) { // com_logo ?>
 	<div id="r_com_logo" class="form-group">
-		<label id="elh_company_com_logo" for="x_com_logo" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_logo->FldCaption() ?></label>
+		<label id="elh_company_com_logo" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_logo->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_logo->CellAttributes() ?>>
 <span id="el_company_com_logo">
-<input type="text" data-table="company" data-field="x_com_logo" name="x_com_logo" id="x_com_logo" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_logo->getPlaceHolder()) ?>" value="<?php echo $company->com_logo->EditValue ?>"<?php echo $company->com_logo->EditAttributes() ?>>
+<div id="fd_x_com_logo">
+<span title="<?php echo $company->com_logo->FldTitle() ? $company->com_logo->FldTitle() : $Language->Phrase("ChooseFile") ?>" class="btn btn-default btn-sm fileinput-button ewTooltip<?php if ($company->com_logo->ReadOnly || $company->com_logo->Disabled) echo " hide"; ?>">
+	<span><?php echo $Language->Phrase("ChooseFileBtn") ?></span>
+	<input type="file" title=" " data-table="company" data-field="x_com_logo" name="x_com_logo" id="x_com_logo"<?php echo $company->com_logo->EditAttributes() ?>>
+</span>
+<input type="hidden" name="fn_x_com_logo" id= "fn_x_com_logo" value="<?php echo $company->com_logo->Upload->FileName ?>">
+<?php if (@$_POST["fa_x_com_logo"] == "0") { ?>
+<input type="hidden" name="fa_x_com_logo" id= "fa_x_com_logo" value="0">
+<?php } else { ?>
+<input type="hidden" name="fa_x_com_logo" id= "fa_x_com_logo" value="1">
+<?php } ?>
+<input type="hidden" name="fs_x_com_logo" id= "fs_x_com_logo" value="250">
+<input type="hidden" name="fx_x_com_logo" id= "fx_x_com_logo" value="<?php echo $company->com_logo->UploadAllowedFileExt ?>">
+<input type="hidden" name="fm_x_com_logo" id= "fm_x_com_logo" value="<?php echo $company->com_logo->UploadMaxFileSize ?>">
+</div>
+<table id="ft_x_com_logo" class="table table-condensed pull-left ewUploadTable"><tbody class="files"></tbody></table>
 </span>
 <?php echo $company->com_logo->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
-<?php if ($company->com_province->Visible) { // com_province ?>
-	<div id="r_com_province" class="form-group">
-		<label id="elh_company_com_province" for="x_com_province" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_province->FldCaption() ?></label>
-		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_province->CellAttributes() ?>>
-<span id="el_company_com_province">
-<input type="text" data-table="company" data-field="x_com_province" name="x_com_province" id="x_com_province" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_province->getPlaceHolder()) ?>" value="<?php echo $company->com_province->EditValue ?>"<?php echo $company->com_province->EditAttributes() ?>>
-</span>
-<?php echo $company->com_province->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 <?php if ($company->com_username->Visible) { // com_username ?>
@@ -1625,10 +1940,13 @@ $company_edit->ShowMessage();
 <?php } ?>
 <?php if ($company->com_online->Visible) { // com_online ?>
 	<div id="r_com_online" class="form-group">
-		<label id="elh_company_com_online" for="x_com_online" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_online->FldCaption() ?></label>
+		<label id="elh_company_com_online" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_online->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_online->CellAttributes() ?>>
 <span id="el_company_com_online">
-<input type="text" data-table="company" data-field="x_com_online" name="x_com_online" id="x_com_online" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_online->getPlaceHolder()) ?>" value="<?php echo $company->com_online->EditValue ?>"<?php echo $company->com_online->EditAttributes() ?>>
+<div id="tp_x_com_online" class="ewTemplate"><input type="radio" data-table="company" data-field="x_com_online" data-value-separator="<?php echo $company->com_online->DisplayValueSeparatorAttribute() ?>" name="x_com_online" id="x_com_online" value="{value}"<?php echo $company->com_online->EditAttributes() ?>></div>
+<div id="dsl_x_com_online" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
+<?php echo $company->com_online->RadioButtonListHtml(FALSE, "x_com_online") ?>
+</div></div>
 </span>
 <?php echo $company->com_online->CustomMsg ?></div></div>
 	</div>
@@ -1638,17 +1956,34 @@ $company_edit->ShowMessage();
 		<label id="elh_company_com_activation" for="x_com_activation" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_activation->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_activation->CellAttributes() ?>>
 <span id="el_company_com_activation">
-<input type="text" data-table="company" data-field="x_com_activation" name="x_com_activation" id="x_com_activation" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_activation->getPlaceHolder()) ?>" value="<?php echo $company->com_activation->EditValue ?>"<?php echo $company->com_activation->EditAttributes() ?>>
+<div class="ewDropdownList has-feedback">
+	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($company->com_activation->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
+		<?php echo $company->com_activation->ViewValue ?>
+	</span>
+	<?php if (!$company->com_activation->ReadOnly) { ?>
+	<span class="glyphicon glyphicon-remove form-control-feedback ewDropdownListClear"></span>
+	<span class="form-control-feedback"><span class="caret"></span></span>
+	<?php } ?>
+	<div id="dsl_x_com_activation" data-repeatcolumn="1" class="dropdown-menu">
+		<div class="ewItems" style="position: relative; overflow-x: hidden;">
+<?php echo $company->com_activation->RadioButtonListHtml(TRUE, "x_com_activation") ?>
+		</div>
+	</div>
+	<div id="tp_x_com_activation" class="ewTemplate"><input type="radio" data-table="company" data-field="x_com_activation" data-value-separator="<?php echo $company->com_activation->DisplayValueSeparatorAttribute() ?>" name="x_com_activation" id="x_com_activation" value="{value}"<?php echo $company->com_activation->EditAttributes() ?>></div>
+</div>
 </span>
 <?php echo $company->com_activation->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 <?php if ($company->com_status->Visible) { // com_status ?>
 	<div id="r_com_status" class="form-group">
-		<label id="elh_company_com_status" for="x_com_status" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_status->FldCaption() ?></label>
+		<label id="elh_company_com_status" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_status->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_status->CellAttributes() ?>>
 <span id="el_company_com_status">
-<input type="text" data-table="company" data-field="x_com_status" name="x_com_status" id="x_com_status" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_status->getPlaceHolder()) ?>" value="<?php echo $company->com_status->EditValue ?>"<?php echo $company->com_status->EditAttributes() ?>>
+<div id="tp_x_com_status" class="ewTemplate"><input type="radio" data-table="company" data-field="x_com_status" data-value-separator="<?php echo $company->com_status->DisplayValueSeparatorAttribute() ?>" name="x_com_status" id="x_com_status" value="{value}"<?php echo $company->com_status->EditAttributes() ?>></div>
+<div id="dsl_x_com_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
+<?php echo $company->com_status->RadioButtonListHtml(FALSE, "x_com_status") ?>
+</div></div>
 </span>
 <?php echo $company->com_status->CustomMsg ?></div></div>
 	</div>
@@ -1658,9 +1993,33 @@ $company_edit->ShowMessage();
 		<label id="elh_company_reg_date" for="x_reg_date" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->reg_date->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->reg_date->CellAttributes() ?>>
 <span id="el_company_reg_date">
-<input type="text" data-table="company" data-field="x_reg_date" name="x_reg_date" id="x_reg_date" placeholder="<?php echo ew_HtmlEncode($company->reg_date->getPlaceHolder()) ?>" value="<?php echo $company->reg_date->EditValue ?>"<?php echo $company->reg_date->EditAttributes() ?>>
+<input type="text" data-table="company" data-field="x_reg_date" data-format="1" name="x_reg_date" id="x_reg_date" placeholder="<?php echo ew_HtmlEncode($company->reg_date->getPlaceHolder()) ?>" value="<?php echo $company->reg_date->EditValue ?>"<?php echo $company->reg_date->EditAttributes() ?>>
 </span>
 <?php echo $company->reg_date->CustomMsg ?></div></div>
+	</div>
+<?php } ?>
+<?php if ($company->country_id->Visible) { // country_id ?>
+	<div id="r_country_id" class="form-group">
+		<label id="elh_company_country_id" for="x_country_id" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->country_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
+		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->country_id->CellAttributes() ?>>
+<span id="el_company_country_id">
+<span<?php echo $company->country_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->country_id->EditValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_country_id" name="x_country_id" id="x_country_id" value="<?php echo ew_HtmlEncode($company->country_id->CurrentValue) ?>">
+<?php echo $company->country_id->CustomMsg ?></div></div>
+	</div>
+<?php } ?>
+<?php if ($company->province_id->Visible) { // province_id ?>
+	<div id="r_province_id" class="form-group">
+		<label id="elh_company_province_id" for="x_province_id" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->province_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
+		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->province_id->CellAttributes() ?>>
+<span id="el_company_province_id">
+<span<?php echo $company->province_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->province_id->EditValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_province_id" name="x_province_id" id="x_province_id" value="<?php echo ew_HtmlEncode($company->province_id->CurrentValue) ?>">
+<?php echo $company->province_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 </div><!-- /page* -->

@@ -771,6 +771,9 @@ class cprovince_delete extends cprovince {
 				$sThisKey .= $row['province_id'];
 				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
 				$sThisKey .= $row['country_id'];
+
+				// Delete old files
+				$this->LoadDbValues($row);
 				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 				$DeleteRows = $this->Delete($row); // Delete
 				$conn->raiseErrorFn = '';

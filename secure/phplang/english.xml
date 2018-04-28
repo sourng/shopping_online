@@ -661,58 +661,73 @@
     <table id="company">
       <phrase id="tblcaption" value="គ្រប់​គ្រង​ក្រុម​ហ៊ុន​" />
       <field id="company_id">
-        <phrase id="fldcaption" value="company id" />
+        <phrase id="fldcaption" value="ល.រ" />
       </field>
       <field id="com_fname">
-        <phrase id="fldcaption" value="com fname" />
+        <phrase id="fldcaption" value="នាម​ត្រកូល​" />
       </field>
       <field id="com_lname">
-        <phrase id="fldcaption" value="com lname" />
+        <phrase id="fldcaption" value="នាមខ្លួន​" />
       </field>
       <field id="com_name">
-        <phrase id="fldcaption" value="com name" />
+        <phrase id="fldcaption" value="ឈ្មោះ​ក្រុមហ៊ុន​" />
       </field>
       <field id="com_address">
-        <phrase id="fldcaption" value="com address" />
+        <phrase id="fldcaption" value="អាស័យដ្ឋាន" />
       </field>
       <field id="com_phone">
-        <phrase id="fldcaption" value="com phone" />
+        <phrase id="fldcaption" value="ទូរស័ព្ទ" />
       </field>
       <field id="com_email">
-        <phrase id="fldcaption" value="com email" />
+        <phrase id="fldcaption" value="អ៊ីម៉ែល​" />
       </field>
       <field id="com_fb">
-        <phrase id="fldcaption" value="com fb" />
+        <phrase id="fldcaption" value="Facebook" />
       </field>
       <field id="com_tw">
-        <phrase id="fldcaption" value="com tw" />
+        <phrase id="fldcaption" value="Twitter" />
       </field>
       <field id="com_yt">
-        <phrase id="fldcaption" value="com yt" />
+        <phrase id="fldcaption" value="Youtube" />
       </field>
       <field id="com_logo">
-        <phrase id="fldcaption" value="com logo" />
-      </field>
-      <field id="com_province">
-        <phrase id="fldcaption" value="com province" />
+        <phrase id="fldcaption" value="រូប​តំណាង​(Logo)" />
       </field>
       <field id="com_username">
-        <phrase id="fldcaption" value="com username" />
+        <phrase id="fldcaption" value="Username" />
       </field>
       <field id="com_password">
-        <phrase id="fldcaption" value="com password" />
+        <phrase id="fldcaption" value="លេខសំង៉ាត់​" />
       </field>
       <field id="com_online">
-        <phrase id="fldcaption" value="com online" />
+        <phrase id="fldcaption" value="នៅលើ​បណ្តាញ​" />
+        <phrase id="fldtagvalue1" value="1" />
+        <phrase id="fldtagcaption1" value="Online" />
+        <phrase id="fldtagvalue2" value="0" />
+        <phrase id="fldtagcaption2" value="Offline" />
       </field>
       <field id="com_activation">
-        <phrase id="fldcaption" value="com activation" />
+        <phrase id="fldcaption" value="ឲ្យ​ប្រើ​ប្រាស់​បាន​" />
+        <phrase id="fldtagvalue1" value="0" />
+        <phrase id="fldtagcaption1" value="Disactive" />
+        <phrase id="fldtagvalue2" value="1" />
+        <phrase id="fldtagcaption2" value="Active" />
       </field>
       <field id="com_status">
-        <phrase id="fldcaption" value="com status" />
+        <phrase id="fldcaption" value="ស្ថាន​ភាព​" />
+        <phrase id="fldtagvalue1" value="0" />
+        <phrase id="fldtagcaption1" value="Disactive" />
+        <phrase id="fldtagvalue2" value="1" />
+        <phrase id="fldtagcaption2" value="Active" />
       </field>
       <field id="reg_date">
-        <phrase id="fldcaption" value="reg date" />
+        <phrase id="fldcaption" value="ថ្ងៃ​ចុះឈ្មោះ​" />
+      </field>
+      <field id="country_id">
+        <phrase id="fldcaption" value="ប្រទេស" />
+      </field>
+      <field id="province_id">
+        <phrase id="fldcaption" value="ខេត្ត/ក្រុង​" />
       </field>
     </table>
     <table id="country">

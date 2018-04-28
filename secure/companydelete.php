@@ -320,8 +320,9 @@ class ccompany_delete extends ccompany {
 		$this->com_phone->SetVisibility();
 		$this->com_email->SetVisibility();
 		$this->com_logo->SetVisibility();
-		$this->com_province->SetVisibility();
 		$this->com_username->SetVisibility();
+		$this->country_id->SetVisibility();
+		$this->province_id->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
 		Page_Loading();
@@ -454,7 +455,7 @@ class ccompany_delete extends ccompany {
 		if ($this->UseSelectLimit) {
 			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 			if ($dbtype == "MSSQL") {
-				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderBy())));
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderByList())));
 			} else {
 				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset);
 			}
@@ -511,14 +512,21 @@ class ccompany_delete extends ccompany {
 		$this->com_fb->setDbValue($row['com_fb']);
 		$this->com_tw->setDbValue($row['com_tw']);
 		$this->com_yt->setDbValue($row['com_yt']);
-		$this->com_logo->setDbValue($row['com_logo']);
-		$this->com_province->setDbValue($row['com_province']);
+		$this->com_logo->Upload->DbValue = $row['com_logo'];
+		$this->com_logo->setDbValue($this->com_logo->Upload->DbValue);
 		$this->com_username->setDbValue($row['com_username']);
 		$this->com_password->setDbValue($row['com_password']);
 		$this->com_online->setDbValue($row['com_online']);
 		$this->com_activation->setDbValue($row['com_activation']);
 		$this->com_status->setDbValue($row['com_status']);
 		$this->reg_date->setDbValue($row['reg_date']);
+		$this->country_id->setDbValue($row['country_id']);
+		$this->province_id->setDbValue($row['province_id']);
+		if (array_key_exists('EV__province_id', $rs->fields)) {
+			$this->province_id->VirtualValue = $rs->fields('EV__province_id'); // Set up virtual field value
+		} else {
+			$this->province_id->VirtualValue = ""; // Clear value
+		}
 	}
 
 	// Return a row with default values
@@ -535,13 +543,14 @@ class ccompany_delete extends ccompany {
 		$row['com_tw'] = NULL;
 		$row['com_yt'] = NULL;
 		$row['com_logo'] = NULL;
-		$row['com_province'] = NULL;
 		$row['com_username'] = NULL;
 		$row['com_password'] = NULL;
 		$row['com_online'] = NULL;
 		$row['com_activation'] = NULL;
 		$row['com_status'] = NULL;
 		$row['reg_date'] = NULL;
+		$row['country_id'] = NULL;
+		$row['province_id'] = NULL;
 		return $row;
 	}
 
@@ -560,14 +569,15 @@ class ccompany_delete extends ccompany {
 		$this->com_fb->DbValue = $row['com_fb'];
 		$this->com_tw->DbValue = $row['com_tw'];
 		$this->com_yt->DbValue = $row['com_yt'];
-		$this->com_logo->DbValue = $row['com_logo'];
-		$this->com_province->DbValue = $row['com_province'];
+		$this->com_logo->Upload->DbValue = $row['com_logo'];
 		$this->com_username->DbValue = $row['com_username'];
 		$this->com_password->DbValue = $row['com_password'];
 		$this->com_online->DbValue = $row['com_online'];
 		$this->com_activation->DbValue = $row['com_activation'];
 		$this->com_status->DbValue = $row['com_status'];
 		$this->reg_date->DbValue = $row['reg_date'];
+		$this->country_id->DbValue = $row['country_id'];
+		$this->province_id->DbValue = $row['province_id'];
 	}
 
 	// Render row values based on field settings
@@ -591,13 +601,14 @@ class ccompany_delete extends ccompany {
 		// com_tw
 		// com_yt
 		// com_logo
-		// com_province
 		// com_username
 		// com_password
 		// com_online
 		// com_activation
 		// com_status
 		// reg_date
+		// country_id
+		// province_id
 
 		if ($this->RowType == EW_ROWTYPE_VIEW) { // View row
 
@@ -642,12 +653,16 @@ class ccompany_delete extends ccompany {
 		$this->com_yt->ViewCustomAttributes = "";
 
 		// com_logo
-		$this->com_logo->ViewValue = $this->com_logo->CurrentValue;
+		$this->com_logo->UploadPath = "../uploads/company";
+		if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+			$this->com_logo->ImageWidth = 0;
+			$this->com_logo->ImageHeight = 64;
+			$this->com_logo->ImageAlt = $this->com_logo->FldAlt();
+			$this->com_logo->ViewValue = $this->com_logo->Upload->DbValue;
+		} else {
+			$this->com_logo->ViewValue = "";
+		}
 		$this->com_logo->ViewCustomAttributes = "";
-
-		// com_province
-		$this->com_province->ViewValue = $this->com_province->CurrentValue;
-		$this->com_province->ViewCustomAttributes = "";
 
 		// com_username
 		$this->com_username->ViewValue = $this->com_username->CurrentValue;
@@ -658,21 +673,86 @@ class ccompany_delete extends ccompany {
 		$this->com_password->ViewCustomAttributes = "";
 
 		// com_online
-		$this->com_online->ViewValue = $this->com_online->CurrentValue;
+		if (strval($this->com_online->CurrentValue) <> "") {
+			$this->com_online->ViewValue = $this->com_online->OptionCaption($this->com_online->CurrentValue);
+		} else {
+			$this->com_online->ViewValue = NULL;
+		}
 		$this->com_online->ViewCustomAttributes = "";
 
 		// com_activation
-		$this->com_activation->ViewValue = $this->com_activation->CurrentValue;
+		if (strval($this->com_activation->CurrentValue) <> "") {
+			$this->com_activation->ViewValue = $this->com_activation->OptionCaption($this->com_activation->CurrentValue);
+		} else {
+			$this->com_activation->ViewValue = NULL;
+		}
 		$this->com_activation->ViewCustomAttributes = "";
 
 		// com_status
-		$this->com_status->ViewValue = $this->com_status->CurrentValue;
+		if (strval($this->com_status->CurrentValue) <> "") {
+			$this->com_status->ViewValue = $this->com_status->OptionCaption($this->com_status->CurrentValue);
+		} else {
+			$this->com_status->ViewValue = NULL;
+		}
 		$this->com_status->ViewCustomAttributes = "";
 
 		// reg_date
 		$this->reg_date->ViewValue = $this->reg_date->CurrentValue;
-		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 0);
+		$this->reg_date->ViewValue = ew_FormatDateTime($this->reg_date->ViewValue, 1);
 		$this->reg_date->ViewCustomAttributes = "";
+
+		// country_id
+		if (strval($this->country_id->CurrentValue) <> "") {
+			$sFilterWrk = "`country_id`" . ew_SearchString("=", $this->country_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `country_id`, `country_name_kh` AS `DispFld`, `country_name_en` AS `Disp2Fld`, `country_code` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `country`";
+		$sWhereWrk = "";
+		$this->country_id->LookupFilters = array("dx1" => '`country_name_kh`', "dx2" => '`country_name_en`', "dx3" => '`country_code`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->country_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->country_id->ViewValue = $this->country_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->country_id->ViewValue = $this->country_id->CurrentValue;
+			}
+		} else {
+			$this->country_id->ViewValue = NULL;
+		}
+		$this->country_id->ViewCustomAttributes = "";
+
+		// province_id
+		if ($this->province_id->VirtualValue <> "") {
+			$this->province_id->ViewValue = $this->province_id->VirtualValue;
+		} else {
+		if (strval($this->province_id->CurrentValue) <> "") {
+			$sFilterWrk = "`province_id`" . ew_SearchString("=", $this->province_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `province_id`, `province_name_kh` AS `DispFld`, `province_name_en` AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `province`";
+		$sWhereWrk = "";
+		$this->province_id->LookupFilters = array("dx1" => '`province_name_kh`', "dx2" => '`province_name_en`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->province_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$this->province_id->ViewValue = $this->province_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->province_id->ViewValue = $this->province_id->CurrentValue;
+			}
+		} else {
+			$this->province_id->ViewValue = NULL;
+		}
+		}
+		$this->province_id->ViewCustomAttributes = "";
 
 			// company_id
 			$this->company_id->LinkCustomAttributes = "";
@@ -706,18 +786,37 @@ class ccompany_delete extends ccompany {
 
 			// com_logo
 			$this->com_logo->LinkCustomAttributes = "";
-			$this->com_logo->HrefValue = "";
+			$this->com_logo->UploadPath = "../uploads/company";
+			if (!ew_Empty($this->com_logo->Upload->DbValue)) {
+				$this->com_logo->HrefValue = ew_GetFileUploadUrl($this->com_logo, $this->com_logo->Upload->DbValue); // Add prefix/suffix
+				$this->com_logo->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->com_logo->HrefValue = ew_FullUrl($this->com_logo->HrefValue, "href");
+			} else {
+				$this->com_logo->HrefValue = "";
+			}
+			$this->com_logo->HrefValue2 = $this->com_logo->UploadPath . $this->com_logo->Upload->DbValue;
 			$this->com_logo->TooltipValue = "";
-
-			// com_province
-			$this->com_province->LinkCustomAttributes = "";
-			$this->com_province->HrefValue = "";
-			$this->com_province->TooltipValue = "";
+			if ($this->com_logo->UseColorbox) {
+				if (ew_Empty($this->com_logo->TooltipValue))
+					$this->com_logo->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+				$this->com_logo->LinkAttrs["data-rel"] = "company_x_com_logo";
+				ew_AppendClass($this->com_logo->LinkAttrs["class"], "ewLightbox");
+			}
 
 			// com_username
 			$this->com_username->LinkCustomAttributes = "";
 			$this->com_username->HrefValue = "";
 			$this->com_username->TooltipValue = "";
+
+			// country_id
+			$this->country_id->LinkCustomAttributes = "";
+			$this->country_id->HrefValue = "";
+			$this->country_id->TooltipValue = "";
+
+			// province_id
+			$this->province_id->LinkCustomAttributes = "";
+			$this->province_id->HrefValue = "";
+			$this->province_id->TooltipValue = "";
 		}
 
 		// Call Row Rendered event
@@ -768,6 +867,20 @@ class ccompany_delete extends ccompany {
 				$sThisKey = "";
 				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
 				$sThisKey .= $row['company_id'];
+				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+				$sThisKey .= $row['country_id'];
+				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+				$sThisKey .= $row['province_id'];
+
+				// Delete old files
+				$this->LoadDbValues($row);
+				$this->com_logo->OldUploadPath = "../uploads/company";
+				$OldFiles = ew_Empty($row['com_logo']) ? array() : array($row['com_logo']);
+				$OldFileCount = count($OldFiles);
+				for ($i = 0; $i < $OldFileCount; $i++) {
+					if (file_exists($this->com_logo->OldPhysicalUploadPath() . $OldFiles[$i]))
+						@unlink($this->com_logo->OldPhysicalUploadPath() . $OldFiles[$i]);
+				}
 				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 				$DeleteRows = $this->Delete($row); // Delete
 				$conn->raiseErrorFn = '';
@@ -929,8 +1042,12 @@ fcompanydelete.Form_CustomValidate =
 fcompanydelete.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 
 // Dynamic selection lists
-// Form object for search
+fcompanydelete.Lists["x_country_id"] = {"LinkField":"x_country_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_country_name_kh","x_country_name_en","x_country_code",""],"ParentFields":[],"ChildFields":["x_province_id"],"FilterFields":[],"Options":[],"Template":"","LinkTable":"country"};
+fcompanydelete.Lists["x_country_id"].Data = "<?php echo $company_delete->country_id->LookupFilterQuery(FALSE, "delete") ?>";
+fcompanydelete.Lists["x_province_id"] = {"LinkField":"x_province_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_province_name_kh","x_province_name_en","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"province"};
+fcompanydelete.Lists["x_province_id"].Data = "<?php echo $company_delete->province_id->LookupFilterQuery(FALSE, "delete") ?>";
 
+// Form object for search
 </script>
 <script type="text/javascript">
 
@@ -976,11 +1093,14 @@ $company_delete->ShowMessage();
 <?php if ($company->com_logo->Visible) { // com_logo ?>
 		<th class="<?php echo $company->com_logo->HeaderCellClass() ?>"><span id="elh_company_com_logo" class="company_com_logo"><?php echo $company->com_logo->FldCaption() ?></span></th>
 <?php } ?>
-<?php if ($company->com_province->Visible) { // com_province ?>
-		<th class="<?php echo $company->com_province->HeaderCellClass() ?>"><span id="elh_company_com_province" class="company_com_province"><?php echo $company->com_province->FldCaption() ?></span></th>
-<?php } ?>
 <?php if ($company->com_username->Visible) { // com_username ?>
 		<th class="<?php echo $company->com_username->HeaderCellClass() ?>"><span id="elh_company_com_username" class="company_com_username"><?php echo $company->com_username->FldCaption() ?></span></th>
+<?php } ?>
+<?php if ($company->country_id->Visible) { // country_id ?>
+		<th class="<?php echo $company->country_id->HeaderCellClass() ?>"><span id="elh_company_country_id" class="company_country_id"><?php echo $company->country_id->FldCaption() ?></span></th>
+<?php } ?>
+<?php if ($company->province_id->Visible) { // province_id ?>
+		<th class="<?php echo $company->province_id->HeaderCellClass() ?>"><span id="elh_company_province_id" class="company_province_id"><?php echo $company->province_id->FldCaption() ?></span></th>
 <?php } ?>
 	</tr>
 	</thead>
@@ -1054,16 +1174,9 @@ while (!$company_delete->Recordset->EOF) {
 <?php if ($company->com_logo->Visible) { // com_logo ?>
 		<td<?php echo $company->com_logo->CellAttributes() ?>>
 <span id="el<?php echo $company_delete->RowCnt ?>_company_com_logo" class="company_com_logo">
-<span<?php echo $company->com_logo->ViewAttributes() ?>>
-<?php echo $company->com_logo->ListViewValue() ?></span>
+<span>
+<?php echo ew_GetFileViewTag($company->com_logo, $company->com_logo->ListViewValue()) ?>
 </span>
-</td>
-<?php } ?>
-<?php if ($company->com_province->Visible) { // com_province ?>
-		<td<?php echo $company->com_province->CellAttributes() ?>>
-<span id="el<?php echo $company_delete->RowCnt ?>_company_com_province" class="company_com_province">
-<span<?php echo $company->com_province->ViewAttributes() ?>>
-<?php echo $company->com_province->ListViewValue() ?></span>
 </span>
 </td>
 <?php } ?>
@@ -1072,6 +1185,22 @@ while (!$company_delete->Recordset->EOF) {
 <span id="el<?php echo $company_delete->RowCnt ?>_company_com_username" class="company_com_username">
 <span<?php echo $company->com_username->ViewAttributes() ?>>
 <?php echo $company->com_username->ListViewValue() ?></span>
+</span>
+</td>
+<?php } ?>
+<?php if ($company->country_id->Visible) { // country_id ?>
+		<td<?php echo $company->country_id->CellAttributes() ?>>
+<span id="el<?php echo $company_delete->RowCnt ?>_company_country_id" class="company_country_id">
+<span<?php echo $company->country_id->ViewAttributes() ?>>
+<?php echo $company->country_id->ListViewValue() ?></span>
+</span>
+</td>
+<?php } ?>
+<?php if ($company->province_id->Visible) { // province_id ?>
+		<td<?php echo $company->province_id->CellAttributes() ?>>
+<span id="el<?php echo $company_delete->RowCnt ?>_company_province_id" class="company_province_id">
+<span<?php echo $company->province_id->ViewAttributes() ?>>
+<?php echo $company->province_id->ListViewValue() ?></span>
 </span>
 </td>
 <?php } ?>
