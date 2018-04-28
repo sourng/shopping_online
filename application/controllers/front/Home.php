@@ -58,11 +58,12 @@ class Home extends CI_Controller {
 
         //Language file
         include_once 'langs.php';
-
-
-
 		$this->load->view('v_template', $data);
 			
+	}
+
+	public function pages($page_name){
+		echo "About" .$page_name;
 	}	
 
 }
