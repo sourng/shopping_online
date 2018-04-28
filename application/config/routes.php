@@ -4,9 +4,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $route['default_controller'] = 'home';
 
 /*pages */
-$route['about.html']='home/pages/about';
-$route['services.html']='home/pages/services';
-$route['contact.html']='home/pages/contact';
+$route['about.html']='front/home/pages/about';
+$route['services.html']='front/home/pages/services';
+$route['contact.html']='front/home/pages/contact';
 /*End pages */
 $route['default_controller'] = 'front/home';
 $route['404_override'] = '';
