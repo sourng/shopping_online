@@ -393,7 +393,45 @@ class cproducts_list extends cproducts {
 		// 
 		// Security = null;
 		// 
+		// Get export parameters
 
+		$custom = "";
+		if (@$_GET["export"] <> "") {
+			$this->Export = $_GET["export"];
+			$custom = @$_GET["custom"];
+		} elseif (@$_POST["export"] <> "") {
+			$this->Export = $_POST["export"];
+			$custom = @$_POST["custom"];
+		} elseif (ew_IsPost()) {
+			if (@$_POST["exporttype"] <> "")
+				$this->Export = $_POST["exporttype"];
+			$custom = @$_POST["custom"];
+		} elseif (@$_GET["cmd"] == "json") {
+			$this->Export = $_GET["cmd"];
+		} else {
+			$this->setExportReturnUrl(ew_CurrentUrl());
+		}
+		$gsExportFile = $this->TableVar; // Get export file, used in header
+
+		// Get custom export parameters
+		if ($this->Export <> "" && $custom <> "") {
+			$this->CustomExport = $this->Export;
+			$this->Export = "print";
+		}
+		$gsCustomExport = $this->CustomExport;
+		$gsExport = $this->Export; // Get export parameter, used in header
+
+		// Update Export URLs
+		if (defined("EW_USE_PHPEXCEL"))
+			$this->ExportExcelCustom = FALSE;
+		if ($this->ExportExcelCustom)
+			$this->ExportExcelUrl .= "&amp;custom=1";
+		if (defined("EW_USE_PHPWORD"))
+			$this->ExportWordCustom = FALSE;
+		if ($this->ExportWordCustom)
+			$this->ExportWordUrl .= "&amp;custom=1";
+		if ($this->ExportPdfCustom)
+			$this->ExportPdfUrl .= "&amp;custom=1";
 		$this->CurrentAction = (@$_GET["a"] <> "") ? $_GET["a"] : @$_POST["a_list"]; // Set up current action
 
 		// Get grid add count
@@ -403,6 +441,9 @@ class cproducts_list extends cproducts {
 
 		// Set up list options
 		$this->SetupListOptions();
+
+		// Setup export options
+		$this->SetupExportOptions();
 		$this->product_id->SetVisibility();
 		if ($this->IsAdd() || $this->IsCopy() || $this->IsGridAdd())
 			$this->product_id->Visible = FALSE;
@@ -410,21 +451,13 @@ class cproducts_list extends cproducts {
 		$this->company_id->SetVisibility();
 		$this->pro_name->SetVisibility();
 		$this->pro_condition->SetVisibility();
-		$this->pro_brand->SetVisibility();
-		$this->pro_features->SetVisibility();
-		$this->pro_model->SetVisibility();
-		$this->post_date->SetVisibility();
 		$this->ads_id->SetVisibility();
 		$this->pro_base_price->SetVisibility();
 		$this->pro_sell_price->SetVisibility();
 		$this->featured_image->SetVisibility();
-		$this->folder_image->SetVisibility();
-		$this->img1->SetVisibility();
-		$this->img2->SetVisibility();
-		$this->img3->SetVisibility();
-		$this->img4->SetVisibility();
-		$this->img5->SetVisibility();
 		$this->pro_status->SetVisibility();
+		$this->branch_id->SetVisibility();
+		$this->lang->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
 		Page_Loading();
@@ -701,6 +734,17 @@ class cproducts_list extends cproducts {
 			$this->CurrentFilter = "";
 		}
 
+		// Export selected records
+		if ($this->Export <> "")
+			$this->CurrentFilter = $this->BuildExportSelectedFilter();
+
+		// Export data only
+		if ($this->CustomExport == "" && in_array($this->Export, array_keys($EW_EXPORT))) {
+			$this->ExportData();
+			$this->Page_Terminate(); // Terminate response
+			exit();
+		}
+
 		// Load record count first
 		if (!$this->IsAddOrEdit()) {
 			$bSelectLimit = $this->UseSelectLimit;
@@ -773,7 +817,6 @@ class cproducts_list extends cproducts {
 		$sFilterList = ew_Concat($sFilterList, $this->pro_name->AdvancedSearch->ToJson(), ","); // Field pro_name
 		$sFilterList = ew_Concat($sFilterList, $this->pro_description->AdvancedSearch->ToJson(), ","); // Field pro_description
 		$sFilterList = ew_Concat($sFilterList, $this->pro_condition->AdvancedSearch->ToJson(), ","); // Field pro_condition
-		$sFilterList = ew_Concat($sFilterList, $this->pro_brand->AdvancedSearch->ToJson(), ","); // Field pro_brand
 		$sFilterList = ew_Concat($sFilterList, $this->pro_features->AdvancedSearch->ToJson(), ","); // Field pro_features
 		$sFilterList = ew_Concat($sFilterList, $this->pro_model->AdvancedSearch->ToJson(), ","); // Field pro_model
 		$sFilterList = ew_Concat($sFilterList, $this->post_date->AdvancedSearch->ToJson(), ","); // Field post_date
@@ -788,6 +831,8 @@ class cproducts_list extends cproducts {
 		$sFilterList = ew_Concat($sFilterList, $this->img4->AdvancedSearch->ToJson(), ","); // Field img4
 		$sFilterList = ew_Concat($sFilterList, $this->img5->AdvancedSearch->ToJson(), ","); // Field img5
 		$sFilterList = ew_Concat($sFilterList, $this->pro_status->AdvancedSearch->ToJson(), ","); // Field pro_status
+		$sFilterList = ew_Concat($sFilterList, $this->branch_id->AdvancedSearch->ToJson(), ","); // Field branch_id
+		$sFilterList = ew_Concat($sFilterList, $this->lang->AdvancedSearch->ToJson(), ","); // Field lang
 		if ($this->BasicSearch->Keyword <> "") {
 			$sWrk = "\"" . EW_TABLE_BASIC_SEARCH . "\":\"" . ew_JsEncode2($this->BasicSearch->Keyword) . "\",\"" . EW_TABLE_BASIC_SEARCH_TYPE . "\":\"" . ew_JsEncode2($this->BasicSearch->Type) . "\"";
 			$sFilterList = ew_Concat($sFilterList, $sWrk, ",");
@@ -879,14 +924,6 @@ class cproducts_list extends cproducts {
 		$this->pro_condition->AdvancedSearch->SearchValue2 = @$filter["y_pro_condition"];
 		$this->pro_condition->AdvancedSearch->SearchOperator2 = @$filter["w_pro_condition"];
 		$this->pro_condition->AdvancedSearch->Save();
-
-		// Field pro_brand
-		$this->pro_brand->AdvancedSearch->SearchValue = @$filter["x_pro_brand"];
-		$this->pro_brand->AdvancedSearch->SearchOperator = @$filter["z_pro_brand"];
-		$this->pro_brand->AdvancedSearch->SearchCondition = @$filter["v_pro_brand"];
-		$this->pro_brand->AdvancedSearch->SearchValue2 = @$filter["y_pro_brand"];
-		$this->pro_brand->AdvancedSearch->SearchOperator2 = @$filter["w_pro_brand"];
-		$this->pro_brand->AdvancedSearch->Save();
 
 		// Field pro_features
 		$this->pro_features->AdvancedSearch->SearchValue = @$filter["x_pro_features"];
@@ -999,6 +1036,22 @@ class cproducts_list extends cproducts {
 		$this->pro_status->AdvancedSearch->SearchValue2 = @$filter["y_pro_status"];
 		$this->pro_status->AdvancedSearch->SearchOperator2 = @$filter["w_pro_status"];
 		$this->pro_status->AdvancedSearch->Save();
+
+		// Field branch_id
+		$this->branch_id->AdvancedSearch->SearchValue = @$filter["x_branch_id"];
+		$this->branch_id->AdvancedSearch->SearchOperator = @$filter["z_branch_id"];
+		$this->branch_id->AdvancedSearch->SearchCondition = @$filter["v_branch_id"];
+		$this->branch_id->AdvancedSearch->SearchValue2 = @$filter["y_branch_id"];
+		$this->branch_id->AdvancedSearch->SearchOperator2 = @$filter["w_branch_id"];
+		$this->branch_id->AdvancedSearch->Save();
+
+		// Field lang
+		$this->lang->AdvancedSearch->SearchValue = @$filter["x_lang"];
+		$this->lang->AdvancedSearch->SearchOperator = @$filter["z_lang"];
+		$this->lang->AdvancedSearch->SearchCondition = @$filter["v_lang"];
+		$this->lang->AdvancedSearch->SearchValue2 = @$filter["y_lang"];
+		$this->lang->AdvancedSearch->SearchOperator2 = @$filter["w_lang"];
+		$this->lang->AdvancedSearch->Save();
 		$this->BasicSearch->setKeyword(@$filter[EW_TABLE_BASIC_SEARCH]);
 		$this->BasicSearch->setType(@$filter[EW_TABLE_BASIC_SEARCH_TYPE]);
 	}
@@ -1014,7 +1067,6 @@ class cproducts_list extends cproducts {
 		$this->BuildSearchSql($sWhere, $this->pro_name, $Default, FALSE); // pro_name
 		$this->BuildSearchSql($sWhere, $this->pro_description, $Default, FALSE); // pro_description
 		$this->BuildSearchSql($sWhere, $this->pro_condition, $Default, FALSE); // pro_condition
-		$this->BuildSearchSql($sWhere, $this->pro_brand, $Default, FALSE); // pro_brand
 		$this->BuildSearchSql($sWhere, $this->pro_features, $Default, FALSE); // pro_features
 		$this->BuildSearchSql($sWhere, $this->pro_model, $Default, FALSE); // pro_model
 		$this->BuildSearchSql($sWhere, $this->post_date, $Default, FALSE); // post_date
@@ -1022,13 +1074,15 @@ class cproducts_list extends cproducts {
 		$this->BuildSearchSql($sWhere, $this->pro_base_price, $Default, FALSE); // pro_base_price
 		$this->BuildSearchSql($sWhere, $this->pro_sell_price, $Default, FALSE); // pro_sell_price
 		$this->BuildSearchSql($sWhere, $this->featured_image, $Default, FALSE); // featured_image
-		$this->BuildSearchSql($sWhere, $this->folder_image, $Default, FALSE); // folder_image
+		$this->BuildSearchSql($sWhere, $this->folder_image, $Default, TRUE); // folder_image
 		$this->BuildSearchSql($sWhere, $this->img1, $Default, FALSE); // img1
 		$this->BuildSearchSql($sWhere, $this->img2, $Default, FALSE); // img2
 		$this->BuildSearchSql($sWhere, $this->img3, $Default, FALSE); // img3
 		$this->BuildSearchSql($sWhere, $this->img4, $Default, FALSE); // img4
 		$this->BuildSearchSql($sWhere, $this->img5, $Default, FALSE); // img5
 		$this->BuildSearchSql($sWhere, $this->pro_status, $Default, FALSE); // pro_status
+		$this->BuildSearchSql($sWhere, $this->branch_id, $Default, FALSE); // branch_id
+		$this->BuildSearchSql($sWhere, $this->lang, $Default, FALSE); // lang
 
 		// Set up search parm
 		if (!$Default && $sWhere <> "" && in_array($this->Command, array("", "reset", "resetall"))) {
@@ -1041,7 +1095,6 @@ class cproducts_list extends cproducts {
 			$this->pro_name->AdvancedSearch->Save(); // pro_name
 			$this->pro_description->AdvancedSearch->Save(); // pro_description
 			$this->pro_condition->AdvancedSearch->Save(); // pro_condition
-			$this->pro_brand->AdvancedSearch->Save(); // pro_brand
 			$this->pro_features->AdvancedSearch->Save(); // pro_features
 			$this->pro_model->AdvancedSearch->Save(); // pro_model
 			$this->post_date->AdvancedSearch->Save(); // post_date
@@ -1056,6 +1109,8 @@ class cproducts_list extends cproducts {
 			$this->img4->AdvancedSearch->Save(); // img4
 			$this->img5->AdvancedSearch->Save(); // img5
 			$this->pro_status->AdvancedSearch->Save(); // pro_status
+			$this->branch_id->AdvancedSearch->Save(); // branch_id
+			$this->lang->AdvancedSearch->Save(); // lang
 		}
 		return $sWhere;
 	}
@@ -1110,7 +1165,6 @@ class cproducts_list extends cproducts {
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_name, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_description, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_condition, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->pro_brand, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_features, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_model, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->ads_id, $arKeywords, $type);
@@ -1121,6 +1175,8 @@ class cproducts_list extends cproducts {
 		$this->BuildBasicSearchSQL($sWhere, $this->img3, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->img4, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->img5, $arKeywords, $type);
+		$this->BuildBasicSearchSQL($sWhere, $this->branch_id, $arKeywords, $type);
+		$this->BuildBasicSearchSQL($sWhere, $this->lang, $arKeywords, $type);
 		return $sWhere;
 	}
 
@@ -1240,8 +1296,6 @@ class cproducts_list extends cproducts {
 			return TRUE;
 		if ($this->pro_condition->AdvancedSearch->IssetSession())
 			return TRUE;
-		if ($this->pro_brand->AdvancedSearch->IssetSession())
-			return TRUE;
 		if ($this->pro_features->AdvancedSearch->IssetSession())
 			return TRUE;
 		if ($this->pro_model->AdvancedSearch->IssetSession())
@@ -1269,6 +1323,10 @@ class cproducts_list extends cproducts {
 		if ($this->img5->AdvancedSearch->IssetSession())
 			return TRUE;
 		if ($this->pro_status->AdvancedSearch->IssetSession())
+			return TRUE;
+		if ($this->branch_id->AdvancedSearch->IssetSession())
+			return TRUE;
+		if ($this->lang->AdvancedSearch->IssetSession())
 			return TRUE;
 		return FALSE;
 	}
@@ -1305,7 +1363,6 @@ class cproducts_list extends cproducts {
 		$this->pro_name->AdvancedSearch->UnsetSession();
 		$this->pro_description->AdvancedSearch->UnsetSession();
 		$this->pro_condition->AdvancedSearch->UnsetSession();
-		$this->pro_brand->AdvancedSearch->UnsetSession();
 		$this->pro_features->AdvancedSearch->UnsetSession();
 		$this->pro_model->AdvancedSearch->UnsetSession();
 		$this->post_date->AdvancedSearch->UnsetSession();
@@ -1320,6 +1377,8 @@ class cproducts_list extends cproducts {
 		$this->img4->AdvancedSearch->UnsetSession();
 		$this->img5->AdvancedSearch->UnsetSession();
 		$this->pro_status->AdvancedSearch->UnsetSession();
+		$this->branch_id->AdvancedSearch->UnsetSession();
+		$this->lang->AdvancedSearch->UnsetSession();
 	}
 
 	// Restore all search parameters
@@ -1336,7 +1395,6 @@ class cproducts_list extends cproducts {
 		$this->pro_name->AdvancedSearch->Load();
 		$this->pro_description->AdvancedSearch->Load();
 		$this->pro_condition->AdvancedSearch->Load();
-		$this->pro_brand->AdvancedSearch->Load();
 		$this->pro_features->AdvancedSearch->Load();
 		$this->pro_model->AdvancedSearch->Load();
 		$this->post_date->AdvancedSearch->Load();
@@ -1351,35 +1409,32 @@ class cproducts_list extends cproducts {
 		$this->img4->AdvancedSearch->Load();
 		$this->img5->AdvancedSearch->Load();
 		$this->pro_status->AdvancedSearch->Load();
+		$this->branch_id->AdvancedSearch->Load();
+		$this->lang->AdvancedSearch->Load();
 	}
 
 	// Set up sort parameters
 	function SetupSortOrder() {
 
+		// Check for Ctrl pressed
+		$bCtrl = (@$_GET["ctrl"] <> "");
+
 		// Check for "order" parameter
 		if (@$_GET["order"] <> "") {
 			$this->CurrentOrder = @$_GET["order"];
 			$this->CurrentOrderType = @$_GET["ordertype"];
-			$this->UpdateSort($this->product_id); // product_id
-			$this->UpdateSort($this->cat_id); // cat_id
-			$this->UpdateSort($this->company_id); // company_id
-			$this->UpdateSort($this->pro_name); // pro_name
-			$this->UpdateSort($this->pro_condition); // pro_condition
-			$this->UpdateSort($this->pro_brand); // pro_brand
-			$this->UpdateSort($this->pro_features); // pro_features
-			$this->UpdateSort($this->pro_model); // pro_model
-			$this->UpdateSort($this->post_date); // post_date
-			$this->UpdateSort($this->ads_id); // ads_id
-			$this->UpdateSort($this->pro_base_price); // pro_base_price
-			$this->UpdateSort($this->pro_sell_price); // pro_sell_price
-			$this->UpdateSort($this->featured_image); // featured_image
-			$this->UpdateSort($this->folder_image); // folder_image
-			$this->UpdateSort($this->img1); // img1
-			$this->UpdateSort($this->img2); // img2
-			$this->UpdateSort($this->img3); // img3
-			$this->UpdateSort($this->img4); // img4
-			$this->UpdateSort($this->img5); // img5
-			$this->UpdateSort($this->pro_status); // pro_status
+			$this->UpdateSort($this->product_id, $bCtrl); // product_id
+			$this->UpdateSort($this->cat_id, $bCtrl); // cat_id
+			$this->UpdateSort($this->company_id, $bCtrl); // company_id
+			$this->UpdateSort($this->pro_name, $bCtrl); // pro_name
+			$this->UpdateSort($this->pro_condition, $bCtrl); // pro_condition
+			$this->UpdateSort($this->ads_id, $bCtrl); // ads_id
+			$this->UpdateSort($this->pro_base_price, $bCtrl); // pro_base_price
+			$this->UpdateSort($this->pro_sell_price, $bCtrl); // pro_sell_price
+			$this->UpdateSort($this->featured_image, $bCtrl); // featured_image
+			$this->UpdateSort($this->pro_status, $bCtrl); // pro_status
+			$this->UpdateSort($this->branch_id, $bCtrl); // branch_id
+			$this->UpdateSort($this->lang, $bCtrl); // lang
 			$this->setStartRecordNumber(1); // Reset start position
 		}
 	}
@@ -1412,26 +1467,19 @@ class cproducts_list extends cproducts {
 			if ($this->Command == "resetsort") {
 				$sOrderBy = "";
 				$this->setSessionOrderBy($sOrderBy);
+				$this->setSessionOrderByList($sOrderBy);
 				$this->product_id->setSort("");
 				$this->cat_id->setSort("");
 				$this->company_id->setSort("");
 				$this->pro_name->setSort("");
 				$this->pro_condition->setSort("");
-				$this->pro_brand->setSort("");
-				$this->pro_features->setSort("");
-				$this->pro_model->setSort("");
-				$this->post_date->setSort("");
 				$this->ads_id->setSort("");
 				$this->pro_base_price->setSort("");
 				$this->pro_sell_price->setSort("");
 				$this->featured_image->setSort("");
-				$this->folder_image->setSort("");
-				$this->img1->setSort("");
-				$this->img2->setSort("");
-				$this->img3->setSort("");
-				$this->img4->setSort("");
-				$this->img5->setSort("");
 				$this->pro_status->setSort("");
+				$this->branch_id->setSort("");
+				$this->lang->setSort("");
 			}
 
 			// Reset start position
@@ -1447,52 +1495,47 @@ class cproducts_list extends cproducts {
 		// Add group option item
 		$item = &$this->ListOptions->Add($this->ListOptions->GroupOptionName);
 		$item->Body = "";
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 		$item->Visible = FALSE;
 
 		// "view"
 		$item = &$this->ListOptions->Add("view");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanView();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// "edit"
 		$item = &$this->ListOptions->Add("edit");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanEdit();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// "copy"
 		$item = &$this->ListOptions->Add("copy");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanAdd();
-		$item->OnLeft = FALSE;
-
-		// "delete"
-		$item = &$this->ListOptions->Add("delete");
-		$item->CssClass = "text-nowrap";
-		$item->Visible = $Security->CanDelete();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// List actions
 		$item = &$this->ListOptions->Add("listactions");
 		$item->CssClass = "text-nowrap";
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 		$item->Visible = FALSE;
 		$item->ShowInButtonGroup = FALSE;
 		$item->ShowInDropDown = FALSE;
 
 		// "checkbox"
 		$item = &$this->ListOptions->Add("checkbox");
-		$item->Visible = FALSE;
-		$item->OnLeft = FALSE;
+		$item->Visible = TRUE;
+		$item->OnLeft = TRUE;
 		$item->Header = "<input type=\"checkbox\" name=\"key\" id=\"key\" onclick=\"ew_SelectAllKey(this);\">";
+		$item->MoveTo(0);
 		$item->ShowInDropDown = FALSE;
 		$item->ShowInButtonGroup = FALSE;
 
 		// Drop down button for ListOptions
 		$this->ListOptions->UseImageAndText = TRUE;
-		$this->ListOptions->UseDropDownButton = FALSE;
+		$this->ListOptions->UseDropDownButton = TRUE;
 		$this->ListOptions->DropDownButtonPhrase = $Language->Phrase("ButtonListOptions");
 		$this->ListOptions->UseButtonGroup = FALSE;
 		if ($this->ListOptions->UseButtonGroup && ew_IsMobile())
@@ -1540,13 +1583,6 @@ class cproducts_list extends cproducts {
 		} else {
 			$oListOpt->Body = "";
 		}
-
-		// "delete"
-		$oListOpt = &$this->ListOptions->Items["delete"];
-		if ($Security->CanDelete())
-			$oListOpt->Body = "<a class=\"ewRowLink ewDelete\"" . "" . " title=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" href=\"" . ew_HtmlEncode($this->DeleteUrl) . "\">" . $Language->Phrase("DeleteLink") . "</a>";
-		else
-			$oListOpt->Body = "";
 
 		// Set up list action buttons
 		$oListOpt = &$this->ListOptions->GetItem("listactions");
@@ -1599,10 +1635,15 @@ class cproducts_list extends cproducts {
 		$item->Visible = ($this->AddUrl <> "" && $Security->CanAdd());
 		$option = $options["action"];
 
+		// Add multi delete
+		$item = &$option->Add("multidelete");
+		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fproductslist,url:'" . $this->MultiDeleteUrl . "'});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
+		$item->Visible = ($Security->CanDelete());
+
 		// Set up options default
 		foreach ($options as &$option) {
 			$option->UseImageAndText = TRUE;
-			$option->UseDropDownButton = FALSE;
+			$option->UseDropDownButton = TRUE;
 			$option->UseButtonGroup = TRUE;
 			$option->ButtonClass = "btn-sm"; // Class for button group
 			$item = &$option->Add($option->GroupOptionName);
@@ -1862,11 +1903,6 @@ class cproducts_list extends cproducts {
 		if ($this->pro_condition->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
 		$this->pro_condition->AdvancedSearch->SearchOperator = @$_GET["z_pro_condition"];
 
-		// pro_brand
-		$this->pro_brand->AdvancedSearch->SearchValue = @$_GET["x_pro_brand"];
-		if ($this->pro_brand->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_brand->AdvancedSearch->SearchOperator = @$_GET["z_pro_brand"];
-
 		// pro_features
 		$this->pro_features->AdvancedSearch->SearchValue = @$_GET["x_pro_features"];
 		if ($this->pro_features->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
@@ -1906,6 +1942,8 @@ class cproducts_list extends cproducts {
 		$this->folder_image->AdvancedSearch->SearchValue = @$_GET["x_folder_image"];
 		if ($this->folder_image->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
 		$this->folder_image->AdvancedSearch->SearchOperator = @$_GET["z_folder_image"];
+		if (is_array($this->folder_image->AdvancedSearch->SearchValue)) $this->folder_image->AdvancedSearch->SearchValue = implode(",", $this->folder_image->AdvancedSearch->SearchValue);
+		if (is_array($this->folder_image->AdvancedSearch->SearchValue2)) $this->folder_image->AdvancedSearch->SearchValue2 = implode(",", $this->folder_image->AdvancedSearch->SearchValue2);
 
 		// img1
 		$this->img1->AdvancedSearch->SearchValue = @$_GET["x_img1"];
@@ -1938,6 +1976,16 @@ class cproducts_list extends cproducts {
 		$this->pro_status->AdvancedSearch->SearchOperator = @$_GET["z_pro_status"];
 		if (is_array($this->pro_status->AdvancedSearch->SearchValue)) $this->pro_status->AdvancedSearch->SearchValue = implode(",", $this->pro_status->AdvancedSearch->SearchValue);
 		if (is_array($this->pro_status->AdvancedSearch->SearchValue2)) $this->pro_status->AdvancedSearch->SearchValue2 = implode(",", $this->pro_status->AdvancedSearch->SearchValue2);
+
+		// branch_id
+		$this->branch_id->AdvancedSearch->SearchValue = @$_GET["x_branch_id"];
+		if ($this->branch_id->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
+		$this->branch_id->AdvancedSearch->SearchOperator = @$_GET["z_branch_id"];
+
+		// lang
+		$this->lang->AdvancedSearch->SearchValue = @$_GET["x_lang"];
+		if ($this->lang->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
+		$this->lang->AdvancedSearch->SearchOperator = @$_GET["z_lang"];
 	}
 
 	// Load recordset
@@ -1952,7 +2000,7 @@ class cproducts_list extends cproducts {
 		if ($this->UseSelectLimit) {
 			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 			if ($dbtype == "MSSQL") {
-				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderBy())));
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderByList())));
 			} else {
 				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset);
 			}
@@ -2001,18 +2049,28 @@ class cproducts_list extends cproducts {
 			return;
 		$this->product_id->setDbValue($row['product_id']);
 		$this->cat_id->setDbValue($row['cat_id']);
+		if (array_key_exists('EV__cat_id', $rs->fields)) {
+			$this->cat_id->VirtualValue = $rs->fields('EV__cat_id'); // Set up virtual field value
+		} else {
+			$this->cat_id->VirtualValue = ""; // Clear value
+		}
 		$this->company_id->setDbValue($row['company_id']);
+		if (array_key_exists('EV__company_id', $rs->fields)) {
+			$this->company_id->VirtualValue = $rs->fields('EV__company_id'); // Set up virtual field value
+		} else {
+			$this->company_id->VirtualValue = ""; // Clear value
+		}
 		$this->pro_name->setDbValue($row['pro_name']);
 		$this->pro_description->setDbValue($row['pro_description']);
 		$this->pro_condition->setDbValue($row['pro_condition']);
-		$this->pro_brand->setDbValue($row['pro_brand']);
 		$this->pro_features->setDbValue($row['pro_features']);
 		$this->pro_model->setDbValue($row['pro_model']);
 		$this->post_date->setDbValue($row['post_date']);
 		$this->ads_id->setDbValue($row['ads_id']);
 		$this->pro_base_price->setDbValue($row['pro_base_price']);
 		$this->pro_sell_price->setDbValue($row['pro_sell_price']);
-		$this->featured_image->setDbValue($row['featured_image']);
+		$this->featured_image->Upload->DbValue = $row['featured_image'];
+		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
 		$this->img1->setDbValue($row['img1']);
 		$this->img2->setDbValue($row['img2']);
@@ -2020,6 +2078,8 @@ class cproducts_list extends cproducts {
 		$this->img4->setDbValue($row['img4']);
 		$this->img5->setDbValue($row['img5']);
 		$this->pro_status->setDbValue($row['pro_status']);
+		$this->branch_id->setDbValue($row['branch_id']);
+		$this->lang->setDbValue($row['lang']);
 	}
 
 	// Return a row with default values
@@ -2031,7 +2091,6 @@ class cproducts_list extends cproducts {
 		$row['pro_name'] = NULL;
 		$row['pro_description'] = NULL;
 		$row['pro_condition'] = NULL;
-		$row['pro_brand'] = NULL;
 		$row['pro_features'] = NULL;
 		$row['pro_model'] = NULL;
 		$row['post_date'] = NULL;
@@ -2046,6 +2105,8 @@ class cproducts_list extends cproducts {
 		$row['img4'] = NULL;
 		$row['img5'] = NULL;
 		$row['pro_status'] = NULL;
+		$row['branch_id'] = NULL;
+		$row['lang'] = NULL;
 		return $row;
 	}
 
@@ -2060,14 +2121,13 @@ class cproducts_list extends cproducts {
 		$this->pro_name->DbValue = $row['pro_name'];
 		$this->pro_description->DbValue = $row['pro_description'];
 		$this->pro_condition->DbValue = $row['pro_condition'];
-		$this->pro_brand->DbValue = $row['pro_brand'];
 		$this->pro_features->DbValue = $row['pro_features'];
 		$this->pro_model->DbValue = $row['pro_model'];
 		$this->post_date->DbValue = $row['post_date'];
 		$this->ads_id->DbValue = $row['ads_id'];
 		$this->pro_base_price->DbValue = $row['pro_base_price'];
 		$this->pro_sell_price->DbValue = $row['pro_sell_price'];
-		$this->featured_image->DbValue = $row['featured_image'];
+		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->folder_image->DbValue = $row['folder_image'];
 		$this->img1->DbValue = $row['img1'];
 		$this->img2->DbValue = $row['img2'];
@@ -2075,6 +2135,8 @@ class cproducts_list extends cproducts {
 		$this->img4->DbValue = $row['img4'];
 		$this->img5->DbValue = $row['img5'];
 		$this->pro_status->DbValue = $row['pro_status'];
+		$this->branch_id->DbValue = $row['branch_id'];
+		$this->lang->DbValue = $row['lang'];
 	}
 
 	// Load old record
@@ -2137,7 +2199,6 @@ class cproducts_list extends cproducts {
 		// pro_name
 		// pro_description
 		// pro_condition
-		// pro_brand
 		// pro_features
 		// pro_model
 		// post_date
@@ -2152,6 +2213,8 @@ class cproducts_list extends cproducts {
 		// img4
 		// img5
 		// pro_status
+		// branch_id
+		// lang
 
 		if ($this->RowType == EW_ROWTYPE_VIEW) { // View row
 
@@ -2160,11 +2223,59 @@ class cproducts_list extends cproducts {
 		$this->product_id->ViewCustomAttributes = "";
 
 		// cat_id
-		$this->cat_id->ViewValue = $this->cat_id->CurrentValue;
+		if ($this->cat_id->VirtualValue <> "") {
+			$this->cat_id->ViewValue = $this->cat_id->VirtualValue;
+		} else {
+		if (strval($this->cat_id->CurrentValue) <> "") {
+			$sFilterWrk = "`cat_id`" . ew_SearchString("=", $this->cat_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `cat_id`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `categories`";
+		$sWhereWrk = "";
+		$this->cat_id->LookupFilters = array("dx1" => '`cat_name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->cat_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$this->cat_id->ViewValue = $this->cat_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->cat_id->ViewValue = $this->cat_id->CurrentValue;
+			}
+		} else {
+			$this->cat_id->ViewValue = NULL;
+		}
+		}
 		$this->cat_id->ViewCustomAttributes = "";
 
 		// company_id
-		$this->company_id->ViewValue = $this->company_id->CurrentValue;
+		if ($this->company_id->VirtualValue <> "") {
+			$this->company_id->ViewValue = $this->company_id->VirtualValue;
+		} else {
+		if (strval($this->company_id->CurrentValue) <> "") {
+			$sFilterWrk = "`company_id`" . ew_SearchString("=", $this->company_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `company_id`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `company`";
+		$sWhereWrk = "";
+		$this->company_id->LookupFilters = array("dx1" => '`com_fname`', "dx2" => '`com_lname`', "dx3" => '`com_name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->company_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->company_id->ViewValue = $this->company_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->company_id->ViewValue = $this->company_id->CurrentValue;
+			}
+		} else {
+			$this->company_id->ViewValue = NULL;
+		}
+		}
 		$this->company_id->ViewCustomAttributes = "";
 
 		// pro_name
@@ -2172,12 +2283,12 @@ class cproducts_list extends cproducts {
 		$this->pro_name->ViewCustomAttributes = "";
 
 		// pro_condition
-		$this->pro_condition->ViewValue = $this->pro_condition->CurrentValue;
+		if (strval($this->pro_condition->CurrentValue) <> "") {
+			$this->pro_condition->ViewValue = $this->pro_condition->OptionCaption($this->pro_condition->CurrentValue);
+		} else {
+			$this->pro_condition->ViewValue = NULL;
+		}
 		$this->pro_condition->ViewCustomAttributes = "";
-
-		// pro_brand
-		$this->pro_brand->ViewValue = $this->pro_brand->CurrentValue;
-		$this->pro_brand->ViewCustomAttributes = "";
 
 		// pro_features
 		$this->pro_features->ViewValue = $this->pro_features->CurrentValue;
@@ -2205,11 +2316,50 @@ class cproducts_list extends cproducts {
 		$this->pro_sell_price->ViewCustomAttributes = "";
 
 		// featured_image
-		$this->featured_image->ViewValue = $this->featured_image->CurrentValue;
+		$this->featured_image->UploadPath = "../uploads/product/";
+		if (!ew_Empty($this->featured_image->Upload->DbValue)) {
+			$this->featured_image->ImageWidth = 0;
+			$this->featured_image->ImageHeight = 94;
+			$this->featured_image->ImageAlt = $this->featured_image->FldAlt();
+			$this->featured_image->ViewValue = $this->featured_image->Upload->DbValue;
+		} else {
+			$this->featured_image->ViewValue = "";
+		}
 		$this->featured_image->ViewCustomAttributes = "";
 
 		// folder_image
-		$this->folder_image->ViewValue = $this->folder_image->CurrentValue;
+		if (strval($this->folder_image->CurrentValue) <> "") {
+			$arwrk = explode(",", $this->folder_image->CurrentValue);
+			$sFilterWrk = "";
+			foreach ($arwrk as $wrk) {
+				if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
+				$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
+			}
+		$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+		$sWhereWrk = "";
+		$this->folder_image->LookupFilters = array("dx1" => '`image`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->folder_image, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$this->folder_image->ViewValue = "";
+				$ari = 0;
+				while (!$rswrk->EOF) {
+					$arwrk = array();
+					$arwrk[1] = $rswrk->fields('DispFld');
+					$this->folder_image->ViewValue .= $this->folder_image->DisplayValue($arwrk);
+					$rswrk->MoveNext();
+					if (!$rswrk->EOF) $this->folder_image->ViewValue .= ew_ViewOptionSeparator($ari); // Separate Options
+					$ari++;
+				}
+				$rswrk->Close();
+			} else {
+				$this->folder_image->ViewValue = $this->folder_image->CurrentValue;
+			}
+		} else {
+			$this->folder_image->ViewValue = NULL;
+		}
 		$this->folder_image->ViewCustomAttributes = "";
 
 		// img1
@@ -2240,6 +2390,35 @@ class cproducts_list extends cproducts {
 		}
 		$this->pro_status->ViewCustomAttributes = "";
 
+		// branch_id
+		if (strval($this->branch_id->CurrentValue) <> "") {
+			$sFilterWrk = "`branch_id`" . ew_SearchString("=", $this->branch_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `branch_id`, `branch_id` AS `DispFld`, `name` AS `Disp2Fld`, `image` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `branch`";
+		$sWhereWrk = "";
+		$this->branch_id->LookupFilters = array("dx1" => '`branch_id`', "dx2" => '`name`', "dx3" => '`image`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->branch_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->branch_id->ViewValue = $this->branch_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->branch_id->ViewValue = $this->branch_id->CurrentValue;
+			}
+		} else {
+			$this->branch_id->ViewValue = NULL;
+		}
+		$this->branch_id->ViewCustomAttributes = "";
+
+		// lang
+		$this->lang->ViewValue = $this->lang->CurrentValue;
+		$this->lang->ViewCustomAttributes = "";
+
 			// product_id
 			$this->product_id->LinkCustomAttributes = "";
 			$this->product_id->HrefValue = "";
@@ -2265,26 +2444,6 @@ class cproducts_list extends cproducts {
 			$this->pro_condition->HrefValue = "";
 			$this->pro_condition->TooltipValue = "";
 
-			// pro_brand
-			$this->pro_brand->LinkCustomAttributes = "";
-			$this->pro_brand->HrefValue = "";
-			$this->pro_brand->TooltipValue = "";
-
-			// pro_features
-			$this->pro_features->LinkCustomAttributes = "";
-			$this->pro_features->HrefValue = "";
-			$this->pro_features->TooltipValue = "";
-
-			// pro_model
-			$this->pro_model->LinkCustomAttributes = "";
-			$this->pro_model->HrefValue = "";
-			$this->pro_model->TooltipValue = "";
-
-			// post_date
-			$this->post_date->LinkCustomAttributes = "";
-			$this->post_date->HrefValue = "";
-			$this->post_date->TooltipValue = "";
-
 			// ads_id
 			$this->ads_id->LinkCustomAttributes = "";
 			$this->ads_id->HrefValue = "";
@@ -2302,43 +2461,37 @@ class cproducts_list extends cproducts {
 
 			// featured_image
 			$this->featured_image->LinkCustomAttributes = "";
-			$this->featured_image->HrefValue = "";
+			$this->featured_image->UploadPath = "../uploads/product/";
+			if (!ew_Empty($this->featured_image->Upload->DbValue)) {
+				$this->featured_image->HrefValue = ew_GetFileUploadUrl($this->featured_image, $this->featured_image->Upload->DbValue); // Add prefix/suffix
+				$this->featured_image->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->featured_image->HrefValue = ew_FullUrl($this->featured_image->HrefValue, "href");
+			} else {
+				$this->featured_image->HrefValue = "";
+			}
+			$this->featured_image->HrefValue2 = $this->featured_image->UploadPath . $this->featured_image->Upload->DbValue;
 			$this->featured_image->TooltipValue = "";
-
-			// folder_image
-			$this->folder_image->LinkCustomAttributes = "";
-			$this->folder_image->HrefValue = "";
-			$this->folder_image->TooltipValue = "";
-
-			// img1
-			$this->img1->LinkCustomAttributes = "";
-			$this->img1->HrefValue = "";
-			$this->img1->TooltipValue = "";
-
-			// img2
-			$this->img2->LinkCustomAttributes = "";
-			$this->img2->HrefValue = "";
-			$this->img2->TooltipValue = "";
-
-			// img3
-			$this->img3->LinkCustomAttributes = "";
-			$this->img3->HrefValue = "";
-			$this->img3->TooltipValue = "";
-
-			// img4
-			$this->img4->LinkCustomAttributes = "";
-			$this->img4->HrefValue = "";
-			$this->img4->TooltipValue = "";
-
-			// img5
-			$this->img5->LinkCustomAttributes = "";
-			$this->img5->HrefValue = "";
-			$this->img5->TooltipValue = "";
+			if ($this->featured_image->UseColorbox) {
+				if (ew_Empty($this->featured_image->TooltipValue))
+					$this->featured_image->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+				$this->featured_image->LinkAttrs["data-rel"] = "products_x" . $this->RowCnt . "_featured_image";
+				ew_AppendClass($this->featured_image->LinkAttrs["class"], "ewLightbox");
+			}
 
 			// pro_status
 			$this->pro_status->LinkCustomAttributes = "";
 			$this->pro_status->HrefValue = "";
 			$this->pro_status->TooltipValue = "";
+
+			// branch_id
+			$this->branch_id->LinkCustomAttributes = "";
+			$this->branch_id->HrefValue = "";
+			$this->branch_id->TooltipValue = "";
+
+			// lang
+			$this->lang->LinkCustomAttributes = "";
+			$this->lang->HrefValue = "";
+			$this->lang->TooltipValue = "";
 		} elseif ($this->RowType == EW_ROWTYPE_SEARCH) { // Search row
 
 			// product_id
@@ -2368,32 +2521,7 @@ class cproducts_list extends cproducts {
 			// pro_condition
 			$this->pro_condition->EditAttrs["class"] = "form-control";
 			$this->pro_condition->EditCustomAttributes = "";
-			$this->pro_condition->EditValue = ew_HtmlEncode($this->pro_condition->AdvancedSearch->SearchValue);
-			$this->pro_condition->PlaceHolder = ew_RemoveHtml($this->pro_condition->FldCaption());
-
-			// pro_brand
-			$this->pro_brand->EditAttrs["class"] = "form-control";
-			$this->pro_brand->EditCustomAttributes = "";
-			$this->pro_brand->EditValue = ew_HtmlEncode($this->pro_brand->AdvancedSearch->SearchValue);
-			$this->pro_brand->PlaceHolder = ew_RemoveHtml($this->pro_brand->FldCaption());
-
-			// pro_features
-			$this->pro_features->EditAttrs["class"] = "form-control";
-			$this->pro_features->EditCustomAttributes = "";
-			$this->pro_features->EditValue = ew_HtmlEncode($this->pro_features->AdvancedSearch->SearchValue);
-			$this->pro_features->PlaceHolder = ew_RemoveHtml($this->pro_features->FldCaption());
-
-			// pro_model
-			$this->pro_model->EditAttrs["class"] = "form-control";
-			$this->pro_model->EditCustomAttributes = "";
-			$this->pro_model->EditValue = ew_HtmlEncode($this->pro_model->AdvancedSearch->SearchValue);
-			$this->pro_model->PlaceHolder = ew_RemoveHtml($this->pro_model->FldCaption());
-
-			// post_date
-			$this->post_date->EditAttrs["class"] = "form-control";
-			$this->post_date->EditCustomAttributes = "";
-			$this->post_date->EditValue = ew_HtmlEncode(ew_FormatDateTime(ew_UnFormatDateTime($this->post_date->AdvancedSearch->SearchValue, 0), 8));
-			$this->post_date->PlaceHolder = ew_RemoveHtml($this->post_date->FldCaption());
+			$this->pro_condition->EditValue = $this->pro_condition->Options(TRUE);
 
 			// ads_id
 			$this->ads_id->EditAttrs["class"] = "form-control";
@@ -2419,45 +2547,19 @@ class cproducts_list extends cproducts {
 			$this->featured_image->EditValue = ew_HtmlEncode($this->featured_image->AdvancedSearch->SearchValue);
 			$this->featured_image->PlaceHolder = ew_RemoveHtml($this->featured_image->FldCaption());
 
-			// folder_image
-			$this->folder_image->EditAttrs["class"] = "form-control";
-			$this->folder_image->EditCustomAttributes = "";
-			$this->folder_image->EditValue = ew_HtmlEncode($this->folder_image->AdvancedSearch->SearchValue);
-			$this->folder_image->PlaceHolder = ew_RemoveHtml($this->folder_image->FldCaption());
-
-			// img1
-			$this->img1->EditAttrs["class"] = "form-control";
-			$this->img1->EditCustomAttributes = "";
-			$this->img1->EditValue = ew_HtmlEncode($this->img1->AdvancedSearch->SearchValue);
-			$this->img1->PlaceHolder = ew_RemoveHtml($this->img1->FldCaption());
-
-			// img2
-			$this->img2->EditAttrs["class"] = "form-control";
-			$this->img2->EditCustomAttributes = "";
-			$this->img2->EditValue = ew_HtmlEncode($this->img2->AdvancedSearch->SearchValue);
-			$this->img2->PlaceHolder = ew_RemoveHtml($this->img2->FldCaption());
-
-			// img3
-			$this->img3->EditAttrs["class"] = "form-control";
-			$this->img3->EditCustomAttributes = "";
-			$this->img3->EditValue = ew_HtmlEncode($this->img3->AdvancedSearch->SearchValue);
-			$this->img3->PlaceHolder = ew_RemoveHtml($this->img3->FldCaption());
-
-			// img4
-			$this->img4->EditAttrs["class"] = "form-control";
-			$this->img4->EditCustomAttributes = "";
-			$this->img4->EditValue = ew_HtmlEncode($this->img4->AdvancedSearch->SearchValue);
-			$this->img4->PlaceHolder = ew_RemoveHtml($this->img4->FldCaption());
-
-			// img5
-			$this->img5->EditAttrs["class"] = "form-control";
-			$this->img5->EditCustomAttributes = "";
-			$this->img5->EditValue = ew_HtmlEncode($this->img5->AdvancedSearch->SearchValue);
-			$this->img5->PlaceHolder = ew_RemoveHtml($this->img5->FldCaption());
-
 			// pro_status
 			$this->pro_status->EditCustomAttributes = "";
 			$this->pro_status->EditValue = $this->pro_status->Options(FALSE);
+
+			// branch_id
+			$this->branch_id->EditAttrs["class"] = "form-control";
+			$this->branch_id->EditCustomAttributes = "";
+
+			// lang
+			$this->lang->EditAttrs["class"] = "form-control";
+			$this->lang->EditCustomAttributes = "";
+			$this->lang->EditValue = ew_HtmlEncode($this->lang->AdvancedSearch->SearchValue);
+			$this->lang->PlaceHolder = ew_RemoveHtml($this->lang->FldCaption());
 		}
 		if ($this->RowType == EW_ROWTYPE_ADD || $this->RowType == EW_ROWTYPE_EDIT || $this->RowType == EW_ROWTYPE_SEARCH) // Add/Edit/Search row
 			$this->SetupFieldTitles();
@@ -2498,7 +2600,6 @@ class cproducts_list extends cproducts {
 		$this->pro_name->AdvancedSearch->Load();
 		$this->pro_description->AdvancedSearch->Load();
 		$this->pro_condition->AdvancedSearch->Load();
-		$this->pro_brand->AdvancedSearch->Load();
 		$this->pro_features->AdvancedSearch->Load();
 		$this->pro_model->AdvancedSearch->Load();
 		$this->post_date->AdvancedSearch->Load();
@@ -2513,6 +2614,280 @@ class cproducts_list extends cproducts {
 		$this->img4->AdvancedSearch->Load();
 		$this->img5->AdvancedSearch->Load();
 		$this->pro_status->AdvancedSearch->Load();
+		$this->branch_id->AdvancedSearch->Load();
+		$this->lang->AdvancedSearch->Load();
+	}
+
+	// Build export filter for selected records
+	function BuildExportSelectedFilter() {
+		global $Language;
+		$sWrkFilter = "";
+		if ($this->Export <> "") {
+			$sWrkFilter = $this->GetKeyFilter();
+		}
+		return $sWrkFilter;
+	}
+
+	// Set up export options
+	function SetupExportOptions() {
+		global $Language;
+
+		// Printer friendly
+		$item = &$this->ExportOptions->Add("print");
+		$item->Body = "<a class=\"ewExportLink ewPrint\" title=\"" . ew_HtmlEncode($Language->Phrase("PrinterFriendlyText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("PrinterFriendlyText")) . "\" onclick=\"ew_Export(document.fproductslist,'" . ew_CurrentPage() . "','print',false,true);\">" . $Language->Phrase("PrinterFriendly") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Excel
+		$item = &$this->ExportOptions->Add("excel");
+		$item->Body = "<a class=\"ewExportLink ewExcel\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToExcelText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToExcelText")) . "\" onclick=\"ew_Export(document.fproductslist,'" . ew_CurrentPage() . "','excel',false,true);\">" . $Language->Phrase("ExportToExcel") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Word
+		$item = &$this->ExportOptions->Add("word");
+		$item->Body = "<a class=\"ewExportLink ewWord\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToWordText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToWordText")) . "\" onclick=\"ew_Export(document.fproductslist,'" . ew_CurrentPage() . "','word',false,true);\">" . $Language->Phrase("ExportToWord") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Html
+		$item = &$this->ExportOptions->Add("html");
+		$item->Body = "<a class=\"ewExportLink ewHtml\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToHtmlText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToHtmlText")) . "\" onclick=\"ew_Export(document.fproductslist,'" . ew_CurrentPage() . "','html',false,true);\">" . $Language->Phrase("ExportToHtml") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Xml
+		$item = &$this->ExportOptions->Add("xml");
+		$item->Body = "<a class=\"ewExportLink ewXml\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToXmlText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToXmlText")) . "\" onclick=\"ew_Export(document.fproductslist,'" . ew_CurrentPage() . "','xml',false,true);\">" . $Language->Phrase("ExportToXml") . "</a>";
+		$item->Visible = FALSE;
+
+		// Export to Csv
+		$item = &$this->ExportOptions->Add("csv");
+		$item->Body = "<a class=\"ewExportLink ewCsv\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToCsvText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToCsvText")) . "\" onclick=\"ew_Export(document.fproductslist,'" . ew_CurrentPage() . "','csv',false,true);\">" . $Language->Phrase("ExportToCsv") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Pdf
+		$item = &$this->ExportOptions->Add("pdf");
+		$item->Body = "<a class=\"ewExportLink ewPdf\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToPDFText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToPDFText")) . "\" onclick=\"ew_Export(document.fproductslist,'" . ew_CurrentPage() . "','pdf',false,true);\">" . $Language->Phrase("ExportToPDF") . "</a>";
+		$item->Visible = FALSE;
+
+		// Export to Email
+		$item = &$this->ExportOptions->Add("email");
+		$url = "";
+		$item->Body = "<button id=\"emf_products\" class=\"ewExportLink ewEmail\" title=\"" . $Language->Phrase("ExportToEmailText") . "\" data-caption=\"" . $Language->Phrase("ExportToEmailText") . "\" onclick=\"ew_EmailDialogShow({lnk:'emf_products',hdr:ewLanguage.Phrase('ExportToEmailText'),f:document.fproductslist,sel:true" . $url . "});\">" . $Language->Phrase("ExportToEmail") . "</button>";
+		$item->Visible = TRUE;
+
+		// Drop down button for export
+		$this->ExportOptions->UseButtonGroup = TRUE;
+		$this->ExportOptions->UseImageAndText = TRUE;
+		$this->ExportOptions->UseDropDownButton = TRUE;
+		if ($this->ExportOptions->UseButtonGroup && ew_IsMobile())
+			$this->ExportOptions->UseDropDownButton = TRUE;
+		$this->ExportOptions->DropDownButtonPhrase = $Language->Phrase("ButtonExport");
+
+		// Add group option item
+		$item = &$this->ExportOptions->Add($this->ExportOptions->GroupOptionName);
+		$item->Body = "";
+		$item->Visible = FALSE;
+	}
+
+	// Export data in HTML/CSV/Word/Excel/XML/Email/PDF format
+	function ExportData() {
+		$utf8 = (strtolower(EW_CHARSET) == "utf-8");
+		$bSelectLimit = $this->UseSelectLimit;
+
+		// Load recordset
+		if ($bSelectLimit) {
+			$this->TotalRecs = $this->ListRecordCount();
+		} else {
+			if (!$this->Recordset)
+				$this->Recordset = $this->LoadRecordset();
+			$rs = &$this->Recordset;
+			if ($rs)
+				$this->TotalRecs = $rs->RecordCount();
+		}
+		$this->StartRec = 1;
+
+		// Export all
+		if ($this->ExportAll) {
+			set_time_limit(EW_EXPORT_ALL_TIME_LIMIT);
+			$this->DisplayRecs = $this->TotalRecs;
+			$this->StopRec = $this->TotalRecs;
+		} else { // Export one page only
+			$this->SetupStartRec(); // Set up start record position
+
+			// Set the last record to display
+			if ($this->DisplayRecs <= 0) {
+				$this->StopRec = $this->TotalRecs;
+			} else {
+				$this->StopRec = $this->StartRec + $this->DisplayRecs - 1;
+			}
+		}
+		if ($bSelectLimit)
+			$rs = $this->LoadRecordset($this->StartRec-1, $this->DisplayRecs <= 0 ? $this->TotalRecs : $this->DisplayRecs);
+		if (!$rs) {
+			header("Content-Type:"); // Remove header
+			header("Content-Disposition:");
+			$this->ShowMessage();
+			return;
+		}
+		$this->ExportDoc = ew_ExportDocument($this, "h");
+		$Doc = &$this->ExportDoc;
+		if ($bSelectLimit) {
+			$this->StartRec = 1;
+			$this->StopRec = $this->DisplayRecs <= 0 ? $this->TotalRecs : $this->DisplayRecs;
+		} else {
+
+			//$this->StartRec = $this->StartRec;
+			//$this->StopRec = $this->StopRec;
+
+		}
+
+		// Call Page Exporting server event
+		$this->ExportDoc->ExportCustom = !$this->Page_Exporting();
+		$ParentTable = "";
+		$sHeader = $this->PageHeader;
+		$this->Page_DataRendering($sHeader);
+		$Doc->Text .= $sHeader;
+		$this->ExportDocument($Doc, $rs, $this->StartRec, $this->StopRec, "");
+		$sFooter = $this->PageFooter;
+		$this->Page_DataRendered($sFooter);
+		$Doc->Text .= $sFooter;
+
+		// Close recordset
+		$rs->Close();
+
+		// Call Page Exported server event
+		$this->Page_Exported();
+
+		// Export header and footer
+		$Doc->ExportHeaderAndFooter();
+
+		// Clean output buffer
+		if (!EW_DEBUG_ENABLED && ob_get_length())
+			ob_end_clean();
+
+		// Write debug message if enabled
+		if (EW_DEBUG_ENABLED && $this->Export <> "pdf")
+			echo ew_DebugMsg();
+
+		// Output data
+		if ($this->Export == "email") {
+			echo $this->ExportEmail($Doc->Text);
+		} else {
+			$Doc->Export();
+		}
+	}
+
+	// Export email
+	function ExportEmail($EmailContent) {
+		global $gTmpImages, $Language;
+		$sSender = @$_POST["sender"];
+		$sRecipient = @$_POST["recipient"];
+		$sCc = @$_POST["cc"];
+		$sBcc = @$_POST["bcc"];
+
+		// Subject
+		$sSubject = @$_POST["subject"];
+		$sEmailSubject = $sSubject;
+
+		// Message
+		$sContent = @$_POST["message"];
+		$sEmailMessage = $sContent;
+
+		// Check sender
+		if ($sSender == "") {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterSenderEmail") . "</p>";
+		}
+		if (!ew_CheckEmail($sSender)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperSenderEmail") . "</p>";
+		}
+
+		// Check recipient
+		if (!ew_CheckEmailList($sRecipient, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperRecipientEmail") . "</p>";
+		}
+
+		// Check cc
+		if (!ew_CheckEmailList($sCc, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperCcEmail") . "</p>";
+		}
+
+		// Check bcc
+		if (!ew_CheckEmailList($sBcc, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperBccEmail") . "</p>";
+		}
+
+		// Check email sent count
+		if (!isset($_SESSION[EW_EXPORT_EMAIL_COUNTER]))
+			$_SESSION[EW_EXPORT_EMAIL_COUNTER] = 0;
+		if (intval($_SESSION[EW_EXPORT_EMAIL_COUNTER]) > EW_MAX_EMAIL_SENT_COUNT) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("ExceedMaxEmailExport") . "</p>";
+		}
+
+		// Send email
+		$Email = new cEmail();
+		$Email->Sender = $sSender; // Sender
+		$Email->Recipient = $sRecipient; // Recipient
+		$Email->Cc = $sCc; // Cc
+		$Email->Bcc = $sBcc; // Bcc
+		$Email->Subject = $sEmailSubject; // Subject
+		$Email->Format = "html";
+		if ($sEmailMessage <> "")
+			$sEmailMessage = ew_RemoveXSS($sEmailMessage) . "<br><br>";
+		foreach ($gTmpImages as $tmpimage)
+			$Email->AddEmbeddedImage($tmpimage);
+		$Email->Content = $sEmailMessage . ew_CleanEmailContent($EmailContent); // Content
+		$EventArgs = array();
+		if ($this->Recordset) {
+			$this->RecCnt = $this->StartRec - 1;
+			$this->Recordset->MoveFirst();
+			if ($this->StartRec > 1)
+				$this->Recordset->Move($this->StartRec - 1);
+			$EventArgs["rs"] = &$this->Recordset;
+		}
+		$bEmailSent = FALSE;
+		if ($this->Email_Sending($Email, $EventArgs))
+			$bEmailSent = $Email->Send();
+
+		// Check email sent status
+		if ($bEmailSent) {
+
+			// Update email sent count
+			$_SESSION[EW_EXPORT_EMAIL_COUNTER]++;
+
+			// Sent email success
+			return "<p class=\"text-success\">" . $Language->Phrase("SendEmailSuccess") . "</p>"; // Set up success message
+		} else {
+
+			// Sent email failure
+			return "<p class=\"text-danger\">" . $Email->SendErrDescription . "</p>";
+		}
+	}
+
+	// Export QueryString
+	function ExportQueryString() {
+
+		// Initialize
+		$sQry = "export=html";
+		if (isset($_GET["key_m"])) {
+			$nKeys = count($_GET["key_m"]);
+			foreach ($_GET["key_m"] as $key)
+				$sQry .= "&key_m[]=" . $key;
+		}
+		return $sQry;
+	}
+
+	// Add search QueryString
+	function AddSearchQueryString(&$Qry, &$Fld) {
+		$FldSearchValue = $Fld->AdvancedSearch->getValue("x");
+		$FldParm = substr($Fld->FldVar,2);
+		if (strval($FldSearchValue) <> "") {
+			$Qry .= "&x_" . $FldParm . "=" . urlencode($FldSearchValue) .
+				"&z_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("z"));
+		}
+		$FldSearchValue2 = $Fld->AdvancedSearch->getValue("y");
+		if (strval($FldSearchValue2) <> "") {
+			$Qry .= "&v_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("v")) .
+				"&y_" . $FldParm . "=" . urlencode($FldSearchValue2) .
+				"&w_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("w"));
+		}
 	}
 
 	// Set up Breadcrumb
@@ -2698,6 +3073,7 @@ Page_Rendering();
 $products_list->Page_Render();
 ?>
 <?php include_once "header.php" ?>
+<?php if ($products->Export == "") { ?>
 <script type="text/javascript">
 
 // Form object
@@ -2717,8 +3093,16 @@ fproductslist.Form_CustomValidate =
 fproductslist.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 
 // Dynamic selection lists
+fproductslist.Lists["x_cat_id"] = {"LinkField":"x_cat_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_cat_name","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"categories"};
+fproductslist.Lists["x_cat_id"].Data = "<?php echo $products_list->cat_id->LookupFilterQuery(FALSE, "list") ?>";
+fproductslist.Lists["x_company_id"] = {"LinkField":"x_company_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_com_fname","x_com_lname","x_com_name",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"company"};
+fproductslist.Lists["x_company_id"].Data = "<?php echo $products_list->company_id->LookupFilterQuery(FALSE, "list") ?>";
+fproductslist.Lists["x_pro_condition"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fproductslist.Lists["x_pro_condition"].Options = <?php echo json_encode($products_list->pro_condition->Options()) ?>;
 fproductslist.Lists["x_pro_status[]"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
 fproductslist.Lists["x_pro_status[]"].Options = <?php echo json_encode($products_list->pro_status->Options()) ?>;
+fproductslist.Lists["x_branch_id"] = {"LinkField":"x_branch_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_branch_id","x_name","x_image",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"branch"};
+fproductslist.Lists["x_branch_id"].Data = "<?php echo $products_list->branch_id->LookupFilterQuery(FALSE, "list") ?>";
 
 // Form object for search
 var CurrentSearchForm = fproductslistsrch = new ew_Form("fproductslistsrch");
@@ -2755,6 +3139,8 @@ fproductslistsrch.Lists["x_pro_status[]"].Options = <?php echo json_encode($prod
 
 // Write your client script here, no need to add script tags.
 </script>
+<?php } ?>
+<?php if ($products->Export == "") { ?>
 <div class="ewToolbar">
 <?php if ($products_list->TotalRecs > 0 && $products_list->ExportOptions->Visible()) { ?>
 <?php $products_list->ExportOptions->Render("body") ?>
@@ -2767,6 +3153,7 @@ fproductslistsrch.Lists["x_pro_status[]"].Options = <?php echo json_encode($prod
 <?php } ?>
 <div class="clearfix"></div>
 </div>
+<?php } ?>
 <?php
 	$bSelectLimit = $products_list->UseSelectLimit;
 	if ($bSelectLimit) {
@@ -2855,11 +3242,72 @@ $products_list->ShowMessage();
 ?>
 <?php if ($products_list->TotalRecs > 0 || $products->CurrentAction <> "") { ?>
 <div class="box ewBox ewGrid<?php if ($products_list->IsAddOrEdit()) { ?> ewGridAddEdit<?php } ?> products">
+<?php if ($products->Export == "") { ?>
+<div class="box-header ewGridUpperPanel">
+<?php if ($products->CurrentAction <> "gridadd" && $products->CurrentAction <> "gridedit") { ?>
+<form name="ewPagerForm" class="form-inline ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
+<?php if (!isset($products_list->Pager)) $products_list->Pager = new cPrevNextPager($products_list->StartRec, $products_list->DisplayRecs, $products_list->TotalRecs, $products_list->AutoHidePager) ?>
+<?php if ($products_list->Pager->RecordCount > 0 && $products_list->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($products_list->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $products_list->PageUrl() ?>start=<?php echo $products_list->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($products_list->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $products_list->PageUrl() ?>start=<?php echo $products_list->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $products_list->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($products_list->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $products_list->PageUrl() ?>start=<?php echo $products_list->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($products_list->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $products_list->PageUrl() ?>start=<?php echo $products_list->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $products_list->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<?php if ($products_list->Pager->RecordCount > 0) { ?>
+<div class="ewPager ewRec">
+	<span><?php echo $Language->Phrase("Record") ?>&nbsp;<?php echo $products_list->Pager->FromIndex ?>&nbsp;<?php echo $Language->Phrase("To") ?>&nbsp;<?php echo $products_list->Pager->ToIndex ?>&nbsp;<?php echo $Language->Phrase("Of") ?>&nbsp;<?php echo $products_list->Pager->RecordCount ?></span>
+</div>
+<?php } ?>
+</form>
+<?php } ?>
+<div class="ewListOtherOptions">
+<?php
+	foreach ($products_list->OtherOptions as &$option)
+		$option->Render("body");
+?>
+</div>
+<div class="clearfix"></div>
+</div>
+<?php } ?>
 <form name="fproductslist" id="fproductslist" class="form-inline ewForm ewListForm" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($products_list->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $products_list->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="products">
+<input type="hidden" name="exporttype" id="exporttype" value="">
 <div id="gmp_products" class="<?php if (ew_IsResponsiveLayout()) { ?>table-responsive <?php } ?>ewGridMiddlePanel">
 <?php if ($products_list->TotalRecs > 0 || $products->CurrentAction == "gridedit") { ?>
 <table id="tbl_productslist" class="table ewTable">
@@ -2880,7 +3328,7 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->product_id) == "") { ?>
 		<th data-name="product_id" class="<?php echo $products->product_id->HeaderCellClass() ?>"><div id="elh_products_product_id" class="products_product_id"><div class="ewTableHeaderCaption"><?php echo $products->product_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="product_id" class="<?php echo $products->product_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->product_id) ?>',1);"><div id="elh_products_product_id" class="products_product_id">
+		<th data-name="product_id" class="<?php echo $products->product_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->product_id) ?>',2);"><div id="elh_products_product_id" class="products_product_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->product_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->product_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->product_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2889,7 +3337,7 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->cat_id) == "") { ?>
 		<th data-name="cat_id" class="<?php echo $products->cat_id->HeaderCellClass() ?>"><div id="elh_products_cat_id" class="products_cat_id"><div class="ewTableHeaderCaption"><?php echo $products->cat_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="cat_id" class="<?php echo $products->cat_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->cat_id) ?>',1);"><div id="elh_products_cat_id" class="products_cat_id">
+		<th data-name="cat_id" class="<?php echo $products->cat_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->cat_id) ?>',2);"><div id="elh_products_cat_id" class="products_cat_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->cat_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->cat_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->cat_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2898,7 +3346,7 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->company_id) == "") { ?>
 		<th data-name="company_id" class="<?php echo $products->company_id->HeaderCellClass() ?>"><div id="elh_products_company_id" class="products_company_id"><div class="ewTableHeaderCaption"><?php echo $products->company_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="company_id" class="<?php echo $products->company_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->company_id) ?>',1);"><div id="elh_products_company_id" class="products_company_id">
+		<th data-name="company_id" class="<?php echo $products->company_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->company_id) ?>',2);"><div id="elh_products_company_id" class="products_company_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->company_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->company_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->company_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2907,7 +3355,7 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->pro_name) == "") { ?>
 		<th data-name="pro_name" class="<?php echo $products->pro_name->HeaderCellClass() ?>"><div id="elh_products_pro_name" class="products_pro_name"><div class="ewTableHeaderCaption"><?php echo $products->pro_name->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="pro_name" class="<?php echo $products->pro_name->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_name) ?>',1);"><div id="elh_products_pro_name" class="products_pro_name">
+		<th data-name="pro_name" class="<?php echo $products->pro_name->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_name) ?>',2);"><div id="elh_products_pro_name" class="products_pro_name">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_name->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_name->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_name->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2916,44 +3364,8 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->pro_condition) == "") { ?>
 		<th data-name="pro_condition" class="<?php echo $products->pro_condition->HeaderCellClass() ?>"><div id="elh_products_pro_condition" class="products_pro_condition"><div class="ewTableHeaderCaption"><?php echo $products->pro_condition->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="pro_condition" class="<?php echo $products->pro_condition->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_condition) ?>',1);"><div id="elh_products_pro_condition" class="products_pro_condition">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_condition->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_condition->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_condition->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->pro_brand->Visible) { // pro_brand ?>
-	<?php if ($products->SortUrl($products->pro_brand) == "") { ?>
-		<th data-name="pro_brand" class="<?php echo $products->pro_brand->HeaderCellClass() ?>"><div id="elh_products_pro_brand" class="products_pro_brand"><div class="ewTableHeaderCaption"><?php echo $products->pro_brand->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="pro_brand" class="<?php echo $products->pro_brand->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_brand) ?>',1);"><div id="elh_products_pro_brand" class="products_pro_brand">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_brand->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_brand->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_brand->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->pro_features->Visible) { // pro_features ?>
-	<?php if ($products->SortUrl($products->pro_features) == "") { ?>
-		<th data-name="pro_features" class="<?php echo $products->pro_features->HeaderCellClass() ?>"><div id="elh_products_pro_features" class="products_pro_features"><div class="ewTableHeaderCaption"><?php echo $products->pro_features->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="pro_features" class="<?php echo $products->pro_features->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_features) ?>',1);"><div id="elh_products_pro_features" class="products_pro_features">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_features->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_features->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_features->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->pro_model->Visible) { // pro_model ?>
-	<?php if ($products->SortUrl($products->pro_model) == "") { ?>
-		<th data-name="pro_model" class="<?php echo $products->pro_model->HeaderCellClass() ?>"><div id="elh_products_pro_model" class="products_pro_model"><div class="ewTableHeaderCaption"><?php echo $products->pro_model->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="pro_model" class="<?php echo $products->pro_model->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_model) ?>',1);"><div id="elh_products_pro_model" class="products_pro_model">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_model->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_model->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_model->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->post_date->Visible) { // post_date ?>
-	<?php if ($products->SortUrl($products->post_date) == "") { ?>
-		<th data-name="post_date" class="<?php echo $products->post_date->HeaderCellClass() ?>"><div id="elh_products_post_date" class="products_post_date"><div class="ewTableHeaderCaption"><?php echo $products->post_date->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="post_date" class="<?php echo $products->post_date->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->post_date) ?>',1);"><div id="elh_products_post_date" class="products_post_date">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->post_date->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->post_date->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->post_date->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
+		<th data-name="pro_condition" class="<?php echo $products->pro_condition->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_condition) ?>',2);"><div id="elh_products_pro_condition" class="products_pro_condition">
+			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_condition->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_condition->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_condition->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
@@ -2961,7 +3373,7 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->ads_id) == "") { ?>
 		<th data-name="ads_id" class="<?php echo $products->ads_id->HeaderCellClass() ?>"><div id="elh_products_ads_id" class="products_ads_id"><div class="ewTableHeaderCaption"><?php echo $products->ads_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="ads_id" class="<?php echo $products->ads_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->ads_id) ?>',1);"><div id="elh_products_ads_id" class="products_ads_id">
+		<th data-name="ads_id" class="<?php echo $products->ads_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->ads_id) ?>',2);"><div id="elh_products_ads_id" class="products_ads_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->ads_id->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->ads_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->ads_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2970,7 +3382,7 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->pro_base_price) == "") { ?>
 		<th data-name="pro_base_price" class="<?php echo $products->pro_base_price->HeaderCellClass() ?>"><div id="elh_products_pro_base_price" class="products_pro_base_price"><div class="ewTableHeaderCaption"><?php echo $products->pro_base_price->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="pro_base_price" class="<?php echo $products->pro_base_price->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_base_price) ?>',1);"><div id="elh_products_pro_base_price" class="products_pro_base_price">
+		<th data-name="pro_base_price" class="<?php echo $products->pro_base_price->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_base_price) ?>',2);"><div id="elh_products_pro_base_price" class="products_pro_base_price">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_base_price->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_base_price->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_base_price->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2979,7 +3391,7 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->pro_sell_price) == "") { ?>
 		<th data-name="pro_sell_price" class="<?php echo $products->pro_sell_price->HeaderCellClass() ?>"><div id="elh_products_pro_sell_price" class="products_pro_sell_price"><div class="ewTableHeaderCaption"><?php echo $products->pro_sell_price->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="pro_sell_price" class="<?php echo $products->pro_sell_price->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_sell_price) ?>',1);"><div id="elh_products_pro_sell_price" class="products_pro_sell_price">
+		<th data-name="pro_sell_price" class="<?php echo $products->pro_sell_price->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_sell_price) ?>',2);"><div id="elh_products_pro_sell_price" class="products_pro_sell_price">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_sell_price->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_sell_price->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_sell_price->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2988,62 +3400,8 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->featured_image) == "") { ?>
 		<th data-name="featured_image" class="<?php echo $products->featured_image->HeaderCellClass() ?>"><div id="elh_products_featured_image" class="products_featured_image"><div class="ewTableHeaderCaption"><?php echo $products->featured_image->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="featured_image" class="<?php echo $products->featured_image->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->featured_image) ?>',1);"><div id="elh_products_featured_image" class="products_featured_image">
+		<th data-name="featured_image" class="<?php echo $products->featured_image->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->featured_image) ?>',2);"><div id="elh_products_featured_image" class="products_featured_image">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->featured_image->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->featured_image->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->featured_image->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->folder_image->Visible) { // folder_image ?>
-	<?php if ($products->SortUrl($products->folder_image) == "") { ?>
-		<th data-name="folder_image" class="<?php echo $products->folder_image->HeaderCellClass() ?>"><div id="elh_products_folder_image" class="products_folder_image"><div class="ewTableHeaderCaption"><?php echo $products->folder_image->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="folder_image" class="<?php echo $products->folder_image->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->folder_image) ?>',1);"><div id="elh_products_folder_image" class="products_folder_image">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->folder_image->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->folder_image->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->folder_image->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->img1->Visible) { // img1 ?>
-	<?php if ($products->SortUrl($products->img1) == "") { ?>
-		<th data-name="img1" class="<?php echo $products->img1->HeaderCellClass() ?>"><div id="elh_products_img1" class="products_img1"><div class="ewTableHeaderCaption"><?php echo $products->img1->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="img1" class="<?php echo $products->img1->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->img1) ?>',1);"><div id="elh_products_img1" class="products_img1">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->img1->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->img1->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->img1->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->img2->Visible) { // img2 ?>
-	<?php if ($products->SortUrl($products->img2) == "") { ?>
-		<th data-name="img2" class="<?php echo $products->img2->HeaderCellClass() ?>"><div id="elh_products_img2" class="products_img2"><div class="ewTableHeaderCaption"><?php echo $products->img2->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="img2" class="<?php echo $products->img2->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->img2) ?>',1);"><div id="elh_products_img2" class="products_img2">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->img2->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->img2->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->img2->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->img3->Visible) { // img3 ?>
-	<?php if ($products->SortUrl($products->img3) == "") { ?>
-		<th data-name="img3" class="<?php echo $products->img3->HeaderCellClass() ?>"><div id="elh_products_img3" class="products_img3"><div class="ewTableHeaderCaption"><?php echo $products->img3->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="img3" class="<?php echo $products->img3->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->img3) ?>',1);"><div id="elh_products_img3" class="products_img3">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->img3->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->img3->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->img3->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->img4->Visible) { // img4 ?>
-	<?php if ($products->SortUrl($products->img4) == "") { ?>
-		<th data-name="img4" class="<?php echo $products->img4->HeaderCellClass() ?>"><div id="elh_products_img4" class="products_img4"><div class="ewTableHeaderCaption"><?php echo $products->img4->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="img4" class="<?php echo $products->img4->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->img4) ?>',1);"><div id="elh_products_img4" class="products_img4">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->img4->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->img4->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->img4->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->img5->Visible) { // img5 ?>
-	<?php if ($products->SortUrl($products->img5) == "") { ?>
-		<th data-name="img5" class="<?php echo $products->img5->HeaderCellClass() ?>"><div id="elh_products_img5" class="products_img5"><div class="ewTableHeaderCaption"><?php echo $products->img5->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="img5" class="<?php echo $products->img5->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->img5) ?>',1);"><div id="elh_products_img5" class="products_img5">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->img5->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->img5->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->img5->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
@@ -3051,8 +3409,26 @@ $products_list->ListOptions->Render("header", "left");
 	<?php if ($products->SortUrl($products->pro_status) == "") { ?>
 		<th data-name="pro_status" class="<?php echo $products->pro_status->HeaderCellClass() ?>"><div id="elh_products_pro_status" class="products_pro_status"><div class="ewTableHeaderCaption"><?php echo $products->pro_status->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="pro_status" class="<?php echo $products->pro_status->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_status) ?>',1);"><div id="elh_products_pro_status" class="products_pro_status">
+		<th data-name="pro_status" class="<?php echo $products->pro_status->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_status) ?>',2);"><div id="elh_products_pro_status" class="products_pro_status">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_status->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_status->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_status->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
+		</div></div></th>
+	<?php } ?>
+<?php } ?>
+<?php if ($products->branch_id->Visible) { // branch_id ?>
+	<?php if ($products->SortUrl($products->branch_id) == "") { ?>
+		<th data-name="branch_id" class="<?php echo $products->branch_id->HeaderCellClass() ?>"><div id="elh_products_branch_id" class="products_branch_id"><div class="ewTableHeaderCaption"><?php echo $products->branch_id->FldCaption() ?></div></div></th>
+	<?php } else { ?>
+		<th data-name="branch_id" class="<?php echo $products->branch_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->branch_id) ?>',2);"><div id="elh_products_branch_id" class="products_branch_id">
+			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->branch_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->branch_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->branch_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
+		</div></div></th>
+	<?php } ?>
+<?php } ?>
+<?php if ($products->lang->Visible) { // lang ?>
+	<?php if ($products->SortUrl($products->lang) == "") { ?>
+		<th data-name="lang" class="<?php echo $products->lang->HeaderCellClass() ?>"><div id="elh_products_lang" class="products_lang"><div class="ewTableHeaderCaption"><?php echo $products->lang->FldCaption() ?></div></div></th>
+	<?php } else { ?>
+		<th data-name="lang" class="<?php echo $products->lang->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->lang) ?>',2);"><div id="elh_products_lang" class="products_lang">
+			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->lang->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->lang->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->lang->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
@@ -3161,38 +3537,6 @@ $products_list->ListOptions->Render("body", "left", $products_list->RowCnt);
 </span>
 </td>
 	<?php } ?>
-	<?php if ($products->pro_brand->Visible) { // pro_brand ?>
-		<td data-name="pro_brand"<?php echo $products->pro_brand->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_pro_brand" class="products_pro_brand">
-<span<?php echo $products->pro_brand->ViewAttributes() ?>>
-<?php echo $products->pro_brand->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->pro_features->Visible) { // pro_features ?>
-		<td data-name="pro_features"<?php echo $products->pro_features->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_pro_features" class="products_pro_features">
-<span<?php echo $products->pro_features->ViewAttributes() ?>>
-<?php echo $products->pro_features->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->pro_model->Visible) { // pro_model ?>
-		<td data-name="pro_model"<?php echo $products->pro_model->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_pro_model" class="products_pro_model">
-<span<?php echo $products->pro_model->ViewAttributes() ?>>
-<?php echo $products->pro_model->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->post_date->Visible) { // post_date ?>
-		<td data-name="post_date"<?php echo $products->post_date->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_post_date" class="products_post_date">
-<span<?php echo $products->post_date->ViewAttributes() ?>>
-<?php echo $products->post_date->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
 	<?php if ($products->ads_id->Visible) { // ads_id ?>
 		<td data-name="ads_id"<?php echo $products->ads_id->CellAttributes() ?>>
 <span id="el<?php echo $products_list->RowCnt ?>_products_ads_id" class="products_ads_id">
@@ -3220,56 +3564,9 @@ $products_list->ListOptions->Render("body", "left", $products_list->RowCnt);
 	<?php if ($products->featured_image->Visible) { // featured_image ?>
 		<td data-name="featured_image"<?php echo $products->featured_image->CellAttributes() ?>>
 <span id="el<?php echo $products_list->RowCnt ?>_products_featured_image" class="products_featured_image">
-<span<?php echo $products->featured_image->ViewAttributes() ?>>
-<?php echo $products->featured_image->ListViewValue() ?></span>
+<span>
+<?php echo ew_GetFileViewTag($products->featured_image, $products->featured_image->ListViewValue()) ?>
 </span>
-</td>
-	<?php } ?>
-	<?php if ($products->folder_image->Visible) { // folder_image ?>
-		<td data-name="folder_image"<?php echo $products->folder_image->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_folder_image" class="products_folder_image">
-<span<?php echo $products->folder_image->ViewAttributes() ?>>
-<?php echo $products->folder_image->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->img1->Visible) { // img1 ?>
-		<td data-name="img1"<?php echo $products->img1->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_img1" class="products_img1">
-<span<?php echo $products->img1->ViewAttributes() ?>>
-<?php echo $products->img1->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->img2->Visible) { // img2 ?>
-		<td data-name="img2"<?php echo $products->img2->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_img2" class="products_img2">
-<span<?php echo $products->img2->ViewAttributes() ?>>
-<?php echo $products->img2->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->img3->Visible) { // img3 ?>
-		<td data-name="img3"<?php echo $products->img3->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_img3" class="products_img3">
-<span<?php echo $products->img3->ViewAttributes() ?>>
-<?php echo $products->img3->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->img4->Visible) { // img4 ?>
-		<td data-name="img4"<?php echo $products->img4->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_img4" class="products_img4">
-<span<?php echo $products->img4->ViewAttributes() ?>>
-<?php echo $products->img4->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->img5->Visible) { // img5 ?>
-		<td data-name="img5"<?php echo $products->img5->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_img5" class="products_img5">
-<span<?php echo $products->img5->ViewAttributes() ?>>
-<?php echo $products->img5->ListViewValue() ?></span>
 </span>
 </td>
 	<?php } ?>
@@ -3283,6 +3580,22 @@ $products_list->ListOptions->Render("body", "left", $products_list->RowCnt);
 <input type="checkbox" value="<?php echo $products->pro_status->ListViewValue() ?>" disabled>
 <?php } ?>
 </span>
+</span>
+</td>
+	<?php } ?>
+	<?php if ($products->branch_id->Visible) { // branch_id ?>
+		<td data-name="branch_id"<?php echo $products->branch_id->CellAttributes() ?>>
+<span id="el<?php echo $products_list->RowCnt ?>_products_branch_id" class="products_branch_id">
+<span<?php echo $products->branch_id->ViewAttributes() ?>>
+<?php echo $products->branch_id->ListViewValue() ?></span>
+</span>
+</td>
+	<?php } ?>
+	<?php if ($products->lang->Visible) { // lang ?>
+		<td data-name="lang"<?php echo $products->lang->CellAttributes() ?>>
+<span id="el<?php echo $products_list->RowCnt ?>_products_lang" class="products_lang">
+<span<?php echo $products->lang->ViewAttributes() ?>>
+<?php echo $products->lang->ListViewValue() ?></span>
 </span>
 </td>
 	<?php } ?>
@@ -3312,6 +3625,7 @@ $products_list->ListOptions->Render("body", "right", $products_list->RowCnt);
 if ($products_list->Recordset)
 	$products_list->Recordset->Close();
 ?>
+<?php if ($products->Export == "") { ?>
 <div class="box-footer ewGridLowerPanel">
 <?php if ($products->CurrentAction <> "gridadd" && $products->CurrentAction <> "gridedit") { ?>
 <form name="ewPagerForm" class="ewForm form-inline ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
@@ -3370,6 +3684,7 @@ if ($products_list->Recordset)
 </div>
 <div class="clearfix"></div>
 </div>
+<?php } ?>
 </div>
 <?php } ?>
 <?php if ($products_list->TotalRecs == 0 && $products->CurrentAction == "") { // Show other options ?>
@@ -3383,22 +3698,26 @@ if ($products_list->Recordset)
 </div>
 <div class="clearfix"></div>
 <?php } ?>
+<?php if ($products->Export == "") { ?>
 <script type="text/javascript">
 fproductslistsrch.FilterList = <?php echo $products_list->GetFilterList() ?>;
 fproductslistsrch.Init();
 fproductslist.Init();
 </script>
+<?php } ?>
 <?php
 $products_list->ShowPageFooter();
 if (EW_DEBUG_ENABLED)
 	echo ew_DebugMsg();
 ?>
+<?php if ($products->Export == "") { ?>
 <script type="text/javascript">
 
 // Write your table-specific startup script here
 // document.write("page loaded");
 
 </script>
+<?php } ?>
 <?php include_once "footer.php" ?>
 <?php
 $products_list->Page_Terminate();

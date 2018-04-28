@@ -314,6 +314,12 @@ class cdefault {
 			$this->Page_Terminate("provincelist.php");
 		if ($Security->AllowList(CurrentProjectID() . 'tbl_pages'))
 			$this->Page_Terminate("tbl_pageslist.php");
+		if ($Security->AllowList(CurrentProjectID() . 'branch'))
+			$this->Page_Terminate("branchlist.php");
+		if ($Security->AllowList(CurrentProjectID() . 'langs'))
+			$this->Page_Terminate("langslist.php");
+		if ($Security->AllowList(CurrentProjectID() . 'product_gallery'))
+			$this->Page_Terminate("product_gallerylist.php");
 		if ($Security->IsLoggedIn()) {
 			$this->setFailureMessage(ew_DeniedMsg() . "<br><br><a href=\"logout.php\">" . $Language->Phrase("BackToLogin") . "</a>");
 		} else {

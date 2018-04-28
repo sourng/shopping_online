@@ -469,6 +469,8 @@ class ccategories_view extends ccategories {
 	var $StopRec;
 	var $TotalRecs = 0;
 	var $RecRange = 10;
+	var $Pager;
+	var $AutoHidePager = EW_AUTO_HIDE_PAGER;
 	var $RecCnt;
 	var $RecKey = array();
 	var $IsModal = FALSE;
@@ -483,6 +485,9 @@ class ccategories_view extends ccategories {
 		// Check modal
 		if ($this->IsModal)
 			$gbSkipHeaderFooter = TRUE;
+
+		// Load current record
+		$bLoadCurrentRecord = FALSE;
 		$sReturnUrl = "";
 		$bMatchRecord = FALSE;
 		if ($this->IsPageRequest()) { // Validate request
@@ -493,17 +498,46 @@ class ccategories_view extends ccategories {
 				$this->cat_id->setFormValue($_POST["cat_id"]);
 				$this->RecKey["cat_id"] = $this->cat_id->FormValue;
 			} else {
-				$sReturnUrl = "categorieslist.php"; // Return to list
+				$bLoadCurrentRecord = TRUE;
 			}
 
 			// Get action
 			$this->CurrentAction = "I"; // Display form
 			switch ($this->CurrentAction) {
 				case "I": // Get a record to display
-					if (!$this->LoadRow()) { // Load record based on key
+					$this->StartRec = 1; // Initialize start position
+					if ($this->Recordset = $this->LoadRecordset()) // Load records
+						$this->TotalRecs = $this->Recordset->RecordCount(); // Get record count
+					if ($this->TotalRecs <= 0) { // No record found
+						if ($this->getSuccessMessage() == "" && $this->getFailureMessage() == "")
+							$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
+						$this->Page_Terminate("categorieslist.php"); // Return to list page
+					} elseif ($bLoadCurrentRecord) { // Load current record position
+						$this->SetupStartRec(); // Set up start record position
+
+						// Point to current record
+						if (intval($this->StartRec) <= intval($this->TotalRecs)) {
+							$bMatchRecord = TRUE;
+							$this->Recordset->Move($this->StartRec-1);
+						}
+					} else { // Match key values
+						while (!$this->Recordset->EOF) {
+							if (strval($this->cat_id->CurrentValue) == strval($this->Recordset->fields('cat_id'))) {
+								$this->setStartRecordNumber($this->StartRec); // Save record position
+								$bMatchRecord = TRUE;
+								break;
+							} else {
+								$this->StartRec++;
+								$this->Recordset->MoveNext();
+							}
+						}
+					}
+					if (!$bMatchRecord) {
 						if ($this->getSuccessMessage() == "" && $this->getFailureMessage() == "")
 							$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 						$sReturnUrl = "categorieslist.php"; // No matching record, return to list
+					} else {
+						$this->LoadRowValues($this->Recordset); // Load row values
 					}
 			}
 		} else {
@@ -567,7 +601,7 @@ class ccategories_view extends ccategories {
 		$option = &$options["action"];
 		$option->DropDownButtonPhrase = $Language->Phrase("ButtonActions");
 		$option->UseImageAndText = TRUE;
-		$option->UseDropDownButton = FALSE;
+		$option->UseDropDownButton = TRUE;
 		$option->UseButtonGroup = TRUE;
 		$item = &$option->Add($option->GroupOptionName);
 		$item->Body = "";
@@ -608,6 +642,32 @@ class ccategories_view extends ccategories {
 			$this->StartRec = intval(($this->StartRec-1)/$this->DisplayRecs)*$this->DisplayRecs+1; // Point to page boundary
 			$this->setStartRecordNumber($this->StartRec);
 		}
+	}
+
+	// Load recordset
+	function LoadRecordset($offset = -1, $rowcnt = -1) {
+
+		// Load List page SQL
+		$sSql = $this->ListSQL();
+		$conn = &$this->Connection();
+
+		// Load recordset
+		$dbtype = ew_GetConnectionType($this->DBID);
+		if ($this->UseSelectLimit) {
+			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+			if ($dbtype == "MSSQL") {
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderBy())));
+			} else {
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset);
+			}
+			$conn->raiseErrorFn = '';
+		} else {
+			$rs = ew_LoadRecordset($sSql, $conn);
+		}
+
+		// Call Recordset Selected event
+		$this->Recordset_Selected($rs);
+		return $rs;
 	}
 
 	// Load row based on key values
@@ -923,6 +983,51 @@ fcategoriesview.Lists["x_cat_home[]"].Options = <?php echo json_encode($categori
 <?php
 $categories_view->ShowMessage();
 ?>
+<?php if (!$categories_view->IsModal) { ?>
+<form name="ewPagerForm" class="form-inline ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
+<?php if (!isset($categories_view->Pager)) $categories_view->Pager = new cPrevNextPager($categories_view->StartRec, $categories_view->DisplayRecs, $categories_view->TotalRecs, $categories_view->AutoHidePager) ?>
+<?php if ($categories_view->Pager->RecordCount > 0 && $categories_view->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($categories_view->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($categories_view->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $categories_view->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($categories_view->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($categories_view->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $categories_view->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<div class="clearfix"></div>
+</form>
+<?php } ?>
 <form name="fcategoriesview" id="fcategoriesview" class="form-inline ewForm ewViewForm" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($categories_view->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $categories_view->Token ?>">
@@ -991,6 +1096,49 @@ $categories_view->ShowMessage();
 	</tr>
 <?php } ?>
 </table>
+<?php if (!$categories_view->IsModal) { ?>
+<?php if (!isset($categories_view->Pager)) $categories_view->Pager = new cPrevNextPager($categories_view->StartRec, $categories_view->DisplayRecs, $categories_view->TotalRecs, $categories_view->AutoHidePager) ?>
+<?php if ($categories_view->Pager->RecordCount > 0 && $categories_view->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($categories_view->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($categories_view->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $categories_view->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($categories_view->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($categories_view->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $categories_view->PageUrl() ?>start=<?php echo $categories_view->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $categories_view->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<div class="clearfix"></div>
+<?php } ?>
 </form>
 <script type="text/javascript">
 fcategoriesview.Init();

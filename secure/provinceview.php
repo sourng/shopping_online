@@ -482,6 +482,8 @@ class cprovince_view extends cprovince {
 	var $StopRec;
 	var $TotalRecs = 0;
 	var $RecRange = 10;
+	var $Pager;
+	var $AutoHidePager = EW_AUTO_HIDE_PAGER;
 	var $RecCnt;
 	var $RecKey = array();
 	var $IsModal = FALSE;
@@ -496,6 +498,9 @@ class cprovince_view extends cprovince {
 		// Check modal
 		if ($this->IsModal)
 			$gbSkipHeaderFooter = TRUE;
+
+		// Load current record
+		$bLoadCurrentRecord = FALSE;
 		$sReturnUrl = "";
 		$bMatchRecord = FALSE;
 		if ($this->IsPageRequest()) { // Validate request
@@ -506,7 +511,7 @@ class cprovince_view extends cprovince {
 				$this->province_id->setFormValue($_POST["province_id"]);
 				$this->RecKey["province_id"] = $this->province_id->FormValue;
 			} else {
-				$sReturnUrl = "provincelist.php"; // Return to list
+				$bLoadCurrentRecord = TRUE;
 			}
 			if (@$_GET["country_id"] <> "") {
 				$this->country_id->setQueryStringValue($_GET["country_id"]);
@@ -515,17 +520,46 @@ class cprovince_view extends cprovince {
 				$this->country_id->setFormValue($_POST["country_id"]);
 				$this->RecKey["country_id"] = $this->country_id->FormValue;
 			} else {
-				$sReturnUrl = "provincelist.php"; // Return to list
+				$bLoadCurrentRecord = TRUE;
 			}
 
 			// Get action
 			$this->CurrentAction = "I"; // Display form
 			switch ($this->CurrentAction) {
 				case "I": // Get a record to display
-					if (!$this->LoadRow()) { // Load record based on key
+					$this->StartRec = 1; // Initialize start position
+					if ($this->Recordset = $this->LoadRecordset()) // Load records
+						$this->TotalRecs = $this->Recordset->RecordCount(); // Get record count
+					if ($this->TotalRecs <= 0) { // No record found
+						if ($this->getSuccessMessage() == "" && $this->getFailureMessage() == "")
+							$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
+						$this->Page_Terminate("provincelist.php"); // Return to list page
+					} elseif ($bLoadCurrentRecord) { // Load current record position
+						$this->SetupStartRec(); // Set up start record position
+
+						// Point to current record
+						if (intval($this->StartRec) <= intval($this->TotalRecs)) {
+							$bMatchRecord = TRUE;
+							$this->Recordset->Move($this->StartRec-1);
+						}
+					} else { // Match key values
+						while (!$this->Recordset->EOF) {
+							if (strval($this->province_id->CurrentValue) == strval($this->Recordset->fields('province_id')) && strval($this->country_id->CurrentValue) == strval($this->Recordset->fields('country_id'))) {
+								$this->setStartRecordNumber($this->StartRec); // Save record position
+								$bMatchRecord = TRUE;
+								break;
+							} else {
+								$this->StartRec++;
+								$this->Recordset->MoveNext();
+							}
+						}
+					}
+					if (!$bMatchRecord) {
 						if ($this->getSuccessMessage() == "" && $this->getFailureMessage() == "")
 							$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 						$sReturnUrl = "provincelist.php"; // No matching record, return to list
+					} else {
+						$this->LoadRowValues($this->Recordset); // Load row values
 					}
 			}
 		} else {
@@ -589,7 +623,7 @@ class cprovince_view extends cprovince {
 		$option = &$options["action"];
 		$option->DropDownButtonPhrase = $Language->Phrase("ButtonActions");
 		$option->UseImageAndText = TRUE;
-		$option->UseDropDownButton = FALSE;
+		$option->UseDropDownButton = TRUE;
 		$option->UseButtonGroup = TRUE;
 		$item = &$option->Add($option->GroupOptionName);
 		$item->Body = "";
@@ -630,6 +664,32 @@ class cprovince_view extends cprovince {
 			$this->StartRec = intval(($this->StartRec-1)/$this->DisplayRecs)*$this->DisplayRecs+1; // Point to page boundary
 			$this->setStartRecordNumber($this->StartRec);
 		}
+	}
+
+	// Load recordset
+	function LoadRecordset($offset = -1, $rowcnt = -1) {
+
+		// Load List page SQL
+		$sSql = $this->ListSQL();
+		$conn = &$this->Connection();
+
+		// Load recordset
+		$dbtype = ew_GetConnectionType($this->DBID);
+		if ($this->UseSelectLimit) {
+			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+			if ($dbtype == "MSSQL") {
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderBy())));
+			} else {
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset);
+			}
+			$conn->raiseErrorFn = '';
+		} else {
+			$rs = ew_LoadRecordset($sSql, $conn);
+		}
+
+		// Call Recordset Selected event
+		$this->Recordset_Selected($rs);
+		return $rs;
 	}
 
 	// Load row based on key values
@@ -1056,6 +1116,51 @@ fprovinceview.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 <?php
 $province_view->ShowMessage();
 ?>
+<?php if (!$province_view->IsModal) { ?>
+<form name="ewPagerForm" class="form-inline ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
+<?php if (!isset($province_view->Pager)) $province_view->Pager = new cPrevNextPager($province_view->StartRec, $province_view->DisplayRecs, $province_view->TotalRecs, $province_view->AutoHidePager) ?>
+<?php if ($province_view->Pager->RecordCount > 0 && $province_view->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($province_view->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($province_view->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $province_view->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($province_view->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($province_view->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $province_view->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<div class="clearfix"></div>
+</form>
+<?php } ?>
 <form name="fprovinceview" id="fprovinceview" class="form-inline ewForm ewViewForm" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($province_view->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $province_view->Token ?>">
@@ -1218,6 +1323,49 @@ $province_view->ShowMessage();
 	</tr>
 <?php } ?>
 </table>
+<?php if (!$province_view->IsModal) { ?>
+<?php if (!isset($province_view->Pager)) $province_view->Pager = new cPrevNextPager($province_view->StartRec, $province_view->DisplayRecs, $province_view->TotalRecs, $province_view->AutoHidePager) ?>
+<?php if ($province_view->Pager->RecordCount > 0 && $province_view->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($province_view->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($province_view->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $province_view->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($province_view->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($province_view->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $province_view->PageUrl() ?>start=<?php echo $province_view->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $province_view->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<div class="clearfix"></div>
+<?php } ?>
 </form>
 <script type="text/javascript">
 fprovinceview.Init();

@@ -38,8 +38,8 @@
 							</ul>								
 						</div><!-- language-dropdown -->
 					
-						<input type="text" class="form-control" placeholder="Type Your key word">
-						<button type="submit" class="form-control" value="Search">Search</button>
+						<input type="text" class="form-control" placeholder="<?php echo $this->m_crud->get_langs('Type_Your_key_word',$lang); ?>">
+						<button type="submit" class="form-control" value="Search"><?php echo $this->m_crud->get_langs('Search',$lang); ?></button>
 					</form>
 				</div><!-- banner-form -->
 			</div><!-- banner -->
@@ -135,22 +135,22 @@
 							
 							<!-- short-info -->
 							<div class="short-info">
-								<h4>Short Info</h4>
-								<p><strong>Condition: </strong><a href="#">New</a> </p>
-								<p><strong>Brand: </strong><a href="#">Apple</a> </p>
-								<p><strong>Features: </strong><a href="#">Camera,</a> <a href="#">Dual SIM,</a> <a href="#">GSM,</a> <a href="#">Touch screen</a> </p>
-								<p><strong>Model: </strong><a href="#">iPhone 6</a></p>
+								<h4><?php echo $this->m_crud->get_langs('short_info',$lang); ?></h4>
+								<p><strong><?php echo $this->m_crud->get_langs('Condition',$lang); ?>: </strong><a href="#">New</a> </p>
+								<p><strong><?php echo $this->m_crud->get_langs('Brand',$lang); ?>: </strong><a href="#">Apple</a> </p>
+								<p><strong><?php echo $this->m_crud->get_langs('Features',$lang); ?>: </strong><a href="#">Camera,</a> <a href="#">Dual SIM,</a> <a href="#">GSM,</a> <a href="#">Touch screen</a> </p>
+								<p><strong><?php echo $this->m_crud->get_langs('Model',$lang); ?>: </strong><a href="#">iPhone 6</a></p>
 							</div><!-- short-info -->
 							
 							<!-- contact-with -->
 							<div class="contact-with">
-								<h4>Contact with </h4>
+								<h4><?php echo $this->m_crud->get_langs('Contact_with',$lang); ?> </h4>
 								<span class="btn btn-red show-number">
 									<i class="fa fa-phone-square"></i>
-									<span class="hide-text">Click to show phone number </span> 
+									<span class="hide-text"><?php echo $this->m_crud->get_langs('Click_to_show_phone_number',$lang); ?></span> 
 									<span class="hide-number">012-1234567890</span>
 								</span>
-								<a href="#" class="btn"><i class="fa fa-envelope-square"></i>Reply by email</a>
+								<a href="#" class="btn"><i class="fa fa-envelope-square"></i><?php echo $this->m_crud->get_langs('Reply_by_email',$lang); ?></a>
 							</div><!-- contact-with -->
 							
 							<!-- social-links -->
@@ -175,7 +175,7 @@
 					<!-- description -->
 					<div class="col-md-8">
 						<div class="description">
-							<h4>Description</h4>
+							<h4><?php echo $this->m_crud->get_langs('description',$lang); ?></h4>
 							<?php 
 								echo $getItem[0]['pro_description']; 
 							?>
@@ -204,50 +204,19 @@
 				<div class="row">
 					<div class="col-sm-8">				
 						<div class="section recommended-ads">
-							<div class="featured-top">
-								<h4>Recommended Ads for You</h4>
-							</div>
-							<!-- ad-item -->
-							<div class="ad-item row">
-								<!-- item-image -->
-								<div class="item-image-box col-sm-4">
-									<div class="item-image">
-										<a href="details.html"><img src="<?php echo base_url(); ?>public/images/trending/1.jpg" alt="Image" class="img-responsive"></a>
-									</div><!-- item-image -->
-								</div>								
-								
-								<div class="item-info col-sm-8">
-									<!-- ad-info -->
-									<div class="ad-info">
-										<h3 class="item-price">$800.00</h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details">Apple TV - Everything you need to know!</a></h4>
-										<div class="item-cat">
-											<span><a href="#">Electronics & Gedgets</a></span> /
-											<span><a href="#">Tv & Video</a></span>
-										</div>										
-									</div><!-- ad-info -->
-									
-									<!-- ad-meta -->
-									<div class="ad-meta">
-										<div class="meta-content">
-											<span class="dated"><a href="#">7 Jan, 16  10:10 pm </a></span>
-											<a href="#" class="tag"><i class="fa fa-tags"></i> New</a>
-										</div>										
-										<!-- item-info-right -->
-										<div class="user-option pull-right">
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Los Angeles, USA"><i class="fa fa-map-marker"></i> </a>
-											<a class="online" href="#" data-toggle="tooltip" data-placement="top" title="Individual"><i class="fa fa-user"></i> </a>
-										</div><!-- item-info-right -->
-									</div><!-- ad-meta -->
-								</div><!-- item-info -->
-							</div><!-- ad-item -->
-
-							<!-- ad-item -->
+						<div class="featured-top">
+							<h4><?php echo $this->m_crud->get_langs('recommended_ads_for_you',$lang); ?></h4>
+						</div>					
+						
+							<?php 
+								foreach ($getRecommendedAds as $rows) {
+									?>
+<!-- ad-item -->
 							<div class="ad-item row">
 								<div class="item-image-box col-sm-4">
 									<!-- item-image -->
 									<div class="item-image">
-										<a href="<?php echo site_url(); ?>categories/details"><img src="<?php echo base_url(); ?>public/images/trending/2.jpg" alt="Image" class="img-responsive"></a>
+										<a href="<?php echo site_url(); ?>categories/details"><img src="<?php echo base_url(); ?>uploads/product/<?php echo $rows['featured_image']; ?>" alt="Image" class="img-responsive"></a>
 									</div><!-- item-image -->
 								</div><!-- item-image-box -->
 								
@@ -256,7 +225,7 @@
 									<!-- ad-info -->
 									<div class="ad-info">
 										<h3 class="item-price">$250.00 <span>(Negotiable)</span></h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details">Bark Furniture, Handmade Bespoke Furniture</a></h4>
+										<h4 class="item-title"><a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><?php echo $rows['pro_name']; ?></a></h4>
 										<div class="item-cat">
 											<span><a href="#">Home Appliances</a></span> /
 											<span><a href="#">Sofa</a></span>
@@ -277,78 +246,13 @@
 									</div><!-- ad-meta -->
 								</div><!-- item-info -->
 							</div><!-- ad-item -->
+									<?php
+								}
+
+							?>
 							
-							<!-- ad-item -->
-							<div class="ad-item row">
-								<div class="item-image-box col-sm-4">
-									<!-- item-image -->
-									<div class="item-image">
-										<a href="<?php echo site_url(); ?>categories/details"><img src="<?php echo base_url(); ?>public/images/trending/3.jpg" alt="Image" class="img-responsive"></a>
-									</div><!-- item-image -->
-								</div><!-- item-image-box -->
-								
-								
-								<div class="item-info col-sm-8">
-									<!-- ad-info -->
-									<div class="ad-info">
-										<h3 class="item-price">$890.00 <span>(Negotiable)</span></h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details">Samsung Galaxy S6 Edge</a></h4>
-										<div class="item-cat">
-											<span><a href="#">Electronics & Gedgets</a></span> /
-											<span><a href="#">Mobile Phone</a></span>
-										</div>										
-									</div><!-- ad-info -->									
-																	
-									<!-- ad-meta -->
-									<div class="ad-meta">
-										<div class="meta-content">
-											<span class="dated"><a href="#">7 Jan, 16  10:10 pm </a></span>
-											<a href="#" class="tag"><i class="fa fa-tags"></i> Used</a>
-										</div>									
-										<!-- item-info-right -->
-										<div class="user-option pull-right">
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Los Angeles, USA"><i class="fa fa-map-marker"></i> </a>
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Dealer"><i class="fa fa-suitcase"></i> </a>
-										</div><!-- item-info-right -->
-									</div><!-- ad-meta -->
-								</div><!-- item-info -->
-							</div><!-- ad-item -->	
 							
-							<!-- ad-item -->
-							<div class="ad-item row">
-								<div class="item-image-box col-sm-4">
-									<!-- item-image -->
-									<div class="item-image">
-										<a href="<?php echo site_url(); ?>categories/details"><img src="<?php echo base_url(); ?>public/images/trending/4.jpg" alt="Image" class="img-responsive"></a>
-									</div><!-- item-image -->
-								</div><!-- item-image-box -->
-								
-								
-								<div class="item-info col-sm-8">
-									<!-- ad-info -->
-									<div class="ad-info">
-										<h3 class="item-price">$800.00</h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details">Rick Morton- Magicius Chase</a></h4>
-										<div class="item-cat">
-											<span><a href="#">Books & Magazines</a></span> /
-											<span><a href="#">Story book</a></span>
-										</div>										
-									</div><!-- ad-info -->
-																		
-									<!-- ad-meta -->
-									<div class="ad-meta">
-										<div class="meta-content">
-											<span class="dated"><a href="#">7 Jan, 16  10:10 pm </a></span>
-											<a href="#" class="tag"><i class="fa fa-tags"></i> Used</a>
-										</div>									
-										<!-- item-info-right -->
-										<div class="user-option pull-right">
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Los Angeles, USA"><i class="fa fa-map-marker"></i> </a>
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Individual"><i class="fa fa-user"></i> </a>
-										</div><!-- item-info-right -->
-									</div><!-- ad-meta -->
-								</div><!-- item-info -->
-							</div><!-- ad-item -->
+							
 						</div>
 					</div><!-- recommended-ads -->
 

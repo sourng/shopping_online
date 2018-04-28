@@ -636,6 +636,15 @@
     <menu id="6">
       <phrase id="menutext" value="គ្រប់​គ្រង​ទំព័រ​" />
     </menu>
+    <menu id="7">
+      <phrase id="menutext" value="branch" />
+    </menu>
+    <menu id="8">
+      <phrase id="menutext" value="langs" />
+    </menu>
+    <menu id="9">
+      <phrase id="menutext" value="product gallery" />
+    </menu>
     <table id="categories">
       <phrase id="tblcaption" value="គ្រប់​គ្រង​ប្រ​ភេទ​ផលិតផល​" />
       <field id="cat_id">
@@ -754,71 +763,80 @@
     <table id="products">
       <phrase id="tblcaption" value="គ្រប់​គ្រង​ផលិតផល​" />
       <field id="product_id">
-        <phrase id="fldcaption" value="product id" />
+        <phrase id="fldcaption" value="ល.រ" />
       </field>
       <field id="cat_id">
-        <phrase id="fldcaption" value="cat id" />
+        <phrase id="fldcaption" value="ប្រភេទ" />
       </field>
       <field id="company_id">
-        <phrase id="fldcaption" value="company id" />
+        <phrase id="fldcaption" value="ក្រុមហ៊ុន​" />
       </field>
       <field id="pro_name">
-        <phrase id="fldcaption" value="pro name" />
+        <phrase id="fldcaption" value="ឈ្មោះ​ផលិតផល​" />
       </field>
       <field id="pro_description">
-        <phrase id="fldcaption" value="pro description" />
+        <phrase id="fldcaption" value="អធិប្បាយ​ខ្លីៗ​" />
       </field>
       <field id="pro_condition">
-        <phrase id="fldcaption" value="pro condition" />
-      </field>
-      <field id="pro_brand">
-        <phrase id="fldcaption" value="pro brand" />
+        <phrase id="fldcaption" value="លក្ខ័ណ្ឌ​ផលិតផល​" />
+        <phrase id="fldtagvalue1" value="Used" />
+        <phrase id="fldtagcaption1" value="Used" />
+        <phrase id="fldtagvalue2" value="New" />
+        <phrase id="fldtagcaption2" value="New" />
+        <phrase id="fldtagvalue3" value="Other" />
+        <phrase id="fldtagcaption3" value="Other" />
       </field>
       <field id="pro_features">
-        <phrase id="fldcaption" value="pro features" />
+        <phrase id="fldcaption" value="បង្ហាញមុខ​" />
       </field>
       <field id="pro_model">
-        <phrase id="fldcaption" value="pro model" />
+        <phrase id="fldcaption" value="ម៉ូដែល​ (Model)" />
       </field>
       <field id="post_date">
-        <phrase id="fldcaption" value="post date" />
+        <phrase id="fldcaption" value="ថ្ងៃ​ផ្សព្វ​ផ្សាយ​" />
       </field>
       <field id="ads_id">
-        <phrase id="fldcaption" value="ads id" />
+        <phrase id="fldcaption" value="លេខកូដ​ Ads" />
       </field>
       <field id="pro_base_price">
-        <phrase id="fldcaption" value="pro base price" />
+        <phrase id="fldcaption" value="តម្លៃដើម​" />
       </field>
       <field id="pro_sell_price">
-        <phrase id="fldcaption" value="pro sell price" />
+        <phrase id="fldcaption" value="តម្លៃលក់​" />
       </field>
       <field id="featured_image">
-        <phrase id="fldcaption" value="featured image" />
+        <phrase id="fldcaption" value="រូបភាព​តំណាង​" />
       </field>
       <field id="folder_image">
         <phrase id="fldcaption" value="folder image" />
       </field>
       <field id="img1">
-        <phrase id="fldcaption" value="img 1" />
+        <phrase id="fldcaption" value="រូបទី​១​" />
       </field>
       <field id="img2">
-        <phrase id="fldcaption" value="img 2" />
+        <phrase id="fldcaption" value="រូប​ទី​២" />
       </field>
       <field id="img3">
-        <phrase id="fldcaption" value="img 3" />
+        <phrase id="fldcaption" value="រូប​ទី​៣" />
       </field>
       <field id="img4">
-        <phrase id="fldcaption" value="img 4" />
+        <phrase id="fldcaption" value="រូប​ទី​៤" />
       </field>
       <field id="img5">
-        <phrase id="fldcaption" value="img 5" />
+        <phrase id="fldcaption" value="រូប​ទី​៥" />
       </field>
       <field id="pro_status">
-        <phrase id="fldcaption" value="pro status" />
+        <phrase id="fldcaption" value="Status" />
         <phrase id="fldtagvalue1" value="Y" />
         <phrase id="fldtagcaption1" value="Y" />
         <phrase id="fldtagvalue2" value="N" />
         <phrase id="fldtagcaption2" value="N" />
+      </field>
+      <field id="branch_id">
+        <phrase id="fldcaption" value="branch id" />
+      </field>
+      <field id="lang">
+        <phrase id="fldcaption" value="lang" />
       </field>
     </table>
     <table id="province">
@@ -891,6 +909,54 @@
       </field>
       <field id="lang">
         <phrase id="fldcaption" value="ភាសា" />
+      </field>
+    </table>
+    <table id="branch">
+      <phrase id="tblcaption" value="branch" />
+      <field id="branch_id">
+        <phrase id="fldcaption" value="branch id" />
+      </field>
+      <field id="name">
+        <phrase id="fldcaption" value="name" />
+      </field>
+      <field id="image">
+        <phrase id="fldcaption" value="image" />
+      </field>
+      <field id="status">
+        <phrase id="fldcaption" value="status" />
+      </field>
+      <field id="lang">
+        <phrase id="fldcaption" value="lang" />
+      </field>
+    </table>
+    <table id="langs">
+      <phrase id="tblcaption" value="langs" />
+      <field id="lang_id">
+        <phrase id="fldcaption" value="lang id" />
+      </field>
+      <field id="lang_name_lable">
+        <phrase id="fldcaption" value="lang name lable" />
+      </field>
+      <field id="english">
+        <phrase id="fldcaption" value="english" />
+      </field>
+      <field id="khmer">
+        <phrase id="fldcaption" value="khmer" />
+      </field>
+    </table>
+    <table id="product_gallery">
+      <phrase id="tblcaption" value="product gallery" />
+      <field id="pro_gallery_id">
+        <phrase id="fldcaption" value="ល.រ" />
+      </field>
+      <field id="product_id">
+        <phrase id="fldcaption" value="ផលិតផល​" />
+      </field>
+      <field id="thumnail">
+        <phrase id="fldcaption" value="រូបតូច" />
+      </field>
+      <field id="image">
+        <phrase id="fldcaption" value="រូប​ធំ" />
       </field>
     </table>
   </project>

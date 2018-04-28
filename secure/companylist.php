@@ -389,7 +389,45 @@ class ccompany_list extends ccompany {
 		// 
 		// Security = null;
 		// 
+		// Get export parameters
 
+		$custom = "";
+		if (@$_GET["export"] <> "") {
+			$this->Export = $_GET["export"];
+			$custom = @$_GET["custom"];
+		} elseif (@$_POST["export"] <> "") {
+			$this->Export = $_POST["export"];
+			$custom = @$_POST["custom"];
+		} elseif (ew_IsPost()) {
+			if (@$_POST["exporttype"] <> "")
+				$this->Export = $_POST["exporttype"];
+			$custom = @$_POST["custom"];
+		} elseif (@$_GET["cmd"] == "json") {
+			$this->Export = $_GET["cmd"];
+		} else {
+			$this->setExportReturnUrl(ew_CurrentUrl());
+		}
+		$gsExportFile = $this->TableVar; // Get export file, used in header
+
+		// Get custom export parameters
+		if ($this->Export <> "" && $custom <> "") {
+			$this->CustomExport = $this->Export;
+			$this->Export = "print";
+		}
+		$gsCustomExport = $this->CustomExport;
+		$gsExport = $this->Export; // Get export parameter, used in header
+
+		// Update Export URLs
+		if (defined("EW_USE_PHPEXCEL"))
+			$this->ExportExcelCustom = FALSE;
+		if ($this->ExportExcelCustom)
+			$this->ExportExcelUrl .= "&amp;custom=1";
+		if (defined("EW_USE_PHPWORD"))
+			$this->ExportWordCustom = FALSE;
+		if ($this->ExportWordCustom)
+			$this->ExportWordUrl .= "&amp;custom=1";
+		if ($this->ExportPdfCustom)
+			$this->ExportPdfUrl .= "&amp;custom=1";
 		$this->CurrentAction = (@$_GET["a"] <> "") ? $_GET["a"] : @$_POST["a_list"]; // Set up current action
 
 		// Get grid add count
@@ -399,6 +437,9 @@ class ccompany_list extends ccompany {
 
 		// Set up list options
 		$this->SetupListOptions();
+
+		// Setup export options
+		$this->SetupExportOptions();
 		$this->company_id->SetVisibility();
 		if ($this->IsAdd() || $this->IsCopy() || $this->IsGridAdd())
 			$this->company_id->Visible = FALSE;
@@ -670,6 +711,17 @@ class ccompany_list extends ccompany {
 		} else {
 			$this->setSessionWhere($sFilter);
 			$this->CurrentFilter = "";
+		}
+
+		// Export selected records
+		if ($this->Export <> "")
+			$this->CurrentFilter = $this->BuildExportSelectedFilter();
+
+		// Export data only
+		if ($this->CustomExport == "" && in_array($this->Export, array_keys($EW_EXPORT))) {
+			$this->ExportData();
+			$this->Page_Terminate(); // Terminate response
+			exit();
 		}
 
 		// Load record count first
@@ -1116,20 +1168,23 @@ class ccompany_list extends ccompany {
 	// Set up sort parameters
 	function SetupSortOrder() {
 
+		// Check for Ctrl pressed
+		$bCtrl = (@$_GET["ctrl"] <> "");
+
 		// Check for "order" parameter
 		if (@$_GET["order"] <> "") {
 			$this->CurrentOrder = @$_GET["order"];
 			$this->CurrentOrderType = @$_GET["ordertype"];
-			$this->UpdateSort($this->company_id); // company_id
-			$this->UpdateSort($this->com_fname); // com_fname
-			$this->UpdateSort($this->com_lname); // com_lname
-			$this->UpdateSort($this->com_name); // com_name
-			$this->UpdateSort($this->com_phone); // com_phone
-			$this->UpdateSort($this->com_email); // com_email
-			$this->UpdateSort($this->com_logo); // com_logo
-			$this->UpdateSort($this->com_username); // com_username
-			$this->UpdateSort($this->country_id); // country_id
-			$this->UpdateSort($this->province_id); // province_id
+			$this->UpdateSort($this->company_id, $bCtrl); // company_id
+			$this->UpdateSort($this->com_fname, $bCtrl); // com_fname
+			$this->UpdateSort($this->com_lname, $bCtrl); // com_lname
+			$this->UpdateSort($this->com_name, $bCtrl); // com_name
+			$this->UpdateSort($this->com_phone, $bCtrl); // com_phone
+			$this->UpdateSort($this->com_email, $bCtrl); // com_email
+			$this->UpdateSort($this->com_logo, $bCtrl); // com_logo
+			$this->UpdateSort($this->com_username, $bCtrl); // com_username
+			$this->UpdateSort($this->country_id, $bCtrl); // country_id
+			$this->UpdateSort($this->province_id, $bCtrl); // province_id
 			$this->setStartRecordNumber(1); // Reset start position
 		}
 	}
@@ -1188,52 +1243,47 @@ class ccompany_list extends ccompany {
 		// Add group option item
 		$item = &$this->ListOptions->Add($this->ListOptions->GroupOptionName);
 		$item->Body = "";
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 		$item->Visible = FALSE;
 
 		// "view"
 		$item = &$this->ListOptions->Add("view");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanView();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// "edit"
 		$item = &$this->ListOptions->Add("edit");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanEdit();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// "copy"
 		$item = &$this->ListOptions->Add("copy");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanAdd();
-		$item->OnLeft = FALSE;
-
-		// "delete"
-		$item = &$this->ListOptions->Add("delete");
-		$item->CssClass = "text-nowrap";
-		$item->Visible = $Security->CanDelete();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// List actions
 		$item = &$this->ListOptions->Add("listactions");
 		$item->CssClass = "text-nowrap";
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 		$item->Visible = FALSE;
 		$item->ShowInButtonGroup = FALSE;
 		$item->ShowInDropDown = FALSE;
 
 		// "checkbox"
 		$item = &$this->ListOptions->Add("checkbox");
-		$item->Visible = FALSE;
-		$item->OnLeft = FALSE;
+		$item->Visible = TRUE;
+		$item->OnLeft = TRUE;
 		$item->Header = "<input type=\"checkbox\" name=\"key\" id=\"key\" onclick=\"ew_SelectAllKey(this);\">";
+		$item->MoveTo(0);
 		$item->ShowInDropDown = FALSE;
 		$item->ShowInButtonGroup = FALSE;
 
 		// Drop down button for ListOptions
 		$this->ListOptions->UseImageAndText = TRUE;
-		$this->ListOptions->UseDropDownButton = FALSE;
+		$this->ListOptions->UseDropDownButton = TRUE;
 		$this->ListOptions->DropDownButtonPhrase = $Language->Phrase("ButtonListOptions");
 		$this->ListOptions->UseButtonGroup = FALSE;
 		if ($this->ListOptions->UseButtonGroup && ew_IsMobile())
@@ -1281,13 +1331,6 @@ class ccompany_list extends ccompany {
 		} else {
 			$oListOpt->Body = "";
 		}
-
-		// "delete"
-		$oListOpt = &$this->ListOptions->Items["delete"];
-		if ($Security->CanDelete())
-			$oListOpt->Body = "<a class=\"ewRowLink ewDelete\"" . "" . " title=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" href=\"" . ew_HtmlEncode($this->DeleteUrl) . "\">" . $Language->Phrase("DeleteLink") . "</a>";
-		else
-			$oListOpt->Body = "";
 
 		// Set up list action buttons
 		$oListOpt = &$this->ListOptions->GetItem("listactions");
@@ -1340,10 +1383,15 @@ class ccompany_list extends ccompany {
 		$item->Visible = ($this->AddUrl <> "" && $Security->CanAdd());
 		$option = $options["action"];
 
+		// Add multi delete
+		$item = &$option->Add("multidelete");
+		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fcompanylist,url:'" . $this->MultiDeleteUrl . "'});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
+		$item->Visible = ($Security->CanDelete());
+
 		// Set up options default
 		foreach ($options as &$option) {
 			$option->UseImageAndText = TRUE;
-			$option->UseDropDownButton = FALSE;
+			$option->UseDropDownButton = TRUE;
 			$option->UseButtonGroup = TRUE;
 			$option->ButtonClass = "btn-sm"; // Class for button group
 			$item = &$option->Add($option->GroupOptionName);
@@ -1996,6 +2044,278 @@ class ccompany_list extends ccompany {
 			$this->Row_Rendered();
 	}
 
+	// Build export filter for selected records
+	function BuildExportSelectedFilter() {
+		global $Language;
+		$sWrkFilter = "";
+		if ($this->Export <> "") {
+			$sWrkFilter = $this->GetKeyFilter();
+		}
+		return $sWrkFilter;
+	}
+
+	// Set up export options
+	function SetupExportOptions() {
+		global $Language;
+
+		// Printer friendly
+		$item = &$this->ExportOptions->Add("print");
+		$item->Body = "<a class=\"ewExportLink ewPrint\" title=\"" . ew_HtmlEncode($Language->Phrase("PrinterFriendlyText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("PrinterFriendlyText")) . "\" onclick=\"ew_Export(document.fcompanylist,'" . ew_CurrentPage() . "','print',false,true);\">" . $Language->Phrase("PrinterFriendly") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Excel
+		$item = &$this->ExportOptions->Add("excel");
+		$item->Body = "<a class=\"ewExportLink ewExcel\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToExcelText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToExcelText")) . "\" onclick=\"ew_Export(document.fcompanylist,'" . ew_CurrentPage() . "','excel',false,true);\">" . $Language->Phrase("ExportToExcel") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Word
+		$item = &$this->ExportOptions->Add("word");
+		$item->Body = "<a class=\"ewExportLink ewWord\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToWordText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToWordText")) . "\" onclick=\"ew_Export(document.fcompanylist,'" . ew_CurrentPage() . "','word',false,true);\">" . $Language->Phrase("ExportToWord") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Html
+		$item = &$this->ExportOptions->Add("html");
+		$item->Body = "<a class=\"ewExportLink ewHtml\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToHtmlText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToHtmlText")) . "\" onclick=\"ew_Export(document.fcompanylist,'" . ew_CurrentPage() . "','html',false,true);\">" . $Language->Phrase("ExportToHtml") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Xml
+		$item = &$this->ExportOptions->Add("xml");
+		$item->Body = "<a class=\"ewExportLink ewXml\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToXmlText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToXmlText")) . "\" onclick=\"ew_Export(document.fcompanylist,'" . ew_CurrentPage() . "','xml',false,true);\">" . $Language->Phrase("ExportToXml") . "</a>";
+		$item->Visible = FALSE;
+
+		// Export to Csv
+		$item = &$this->ExportOptions->Add("csv");
+		$item->Body = "<a class=\"ewExportLink ewCsv\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToCsvText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToCsvText")) . "\" onclick=\"ew_Export(document.fcompanylist,'" . ew_CurrentPage() . "','csv',false,true);\">" . $Language->Phrase("ExportToCsv") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Pdf
+		$item = &$this->ExportOptions->Add("pdf");
+		$item->Body = "<a class=\"ewExportLink ewPdf\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToPDFText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToPDFText")) . "\" onclick=\"ew_Export(document.fcompanylist,'" . ew_CurrentPage() . "','pdf',false,true);\">" . $Language->Phrase("ExportToPDF") . "</a>";
+		$item->Visible = FALSE;
+
+		// Export to Email
+		$item = &$this->ExportOptions->Add("email");
+		$url = "";
+		$item->Body = "<button id=\"emf_company\" class=\"ewExportLink ewEmail\" title=\"" . $Language->Phrase("ExportToEmailText") . "\" data-caption=\"" . $Language->Phrase("ExportToEmailText") . "\" onclick=\"ew_EmailDialogShow({lnk:'emf_company',hdr:ewLanguage.Phrase('ExportToEmailText'),f:document.fcompanylist,sel:true" . $url . "});\">" . $Language->Phrase("ExportToEmail") . "</button>";
+		$item->Visible = TRUE;
+
+		// Drop down button for export
+		$this->ExportOptions->UseButtonGroup = TRUE;
+		$this->ExportOptions->UseImageAndText = TRUE;
+		$this->ExportOptions->UseDropDownButton = TRUE;
+		if ($this->ExportOptions->UseButtonGroup && ew_IsMobile())
+			$this->ExportOptions->UseDropDownButton = TRUE;
+		$this->ExportOptions->DropDownButtonPhrase = $Language->Phrase("ButtonExport");
+
+		// Add group option item
+		$item = &$this->ExportOptions->Add($this->ExportOptions->GroupOptionName);
+		$item->Body = "";
+		$item->Visible = FALSE;
+	}
+
+	// Export data in HTML/CSV/Word/Excel/XML/Email/PDF format
+	function ExportData() {
+		$utf8 = (strtolower(EW_CHARSET) == "utf-8");
+		$bSelectLimit = $this->UseSelectLimit;
+
+		// Load recordset
+		if ($bSelectLimit) {
+			$this->TotalRecs = $this->ListRecordCount();
+		} else {
+			if (!$this->Recordset)
+				$this->Recordset = $this->LoadRecordset();
+			$rs = &$this->Recordset;
+			if ($rs)
+				$this->TotalRecs = $rs->RecordCount();
+		}
+		$this->StartRec = 1;
+
+		// Export all
+		if ($this->ExportAll) {
+			set_time_limit(EW_EXPORT_ALL_TIME_LIMIT);
+			$this->DisplayRecs = $this->TotalRecs;
+			$this->StopRec = $this->TotalRecs;
+		} else { // Export one page only
+			$this->SetupStartRec(); // Set up start record position
+
+			// Set the last record to display
+			if ($this->DisplayRecs <= 0) {
+				$this->StopRec = $this->TotalRecs;
+			} else {
+				$this->StopRec = $this->StartRec + $this->DisplayRecs - 1;
+			}
+		}
+		if ($bSelectLimit)
+			$rs = $this->LoadRecordset($this->StartRec-1, $this->DisplayRecs <= 0 ? $this->TotalRecs : $this->DisplayRecs);
+		if (!$rs) {
+			header("Content-Type:"); // Remove header
+			header("Content-Disposition:");
+			$this->ShowMessage();
+			return;
+		}
+		$this->ExportDoc = ew_ExportDocument($this, "h");
+		$Doc = &$this->ExportDoc;
+		if ($bSelectLimit) {
+			$this->StartRec = 1;
+			$this->StopRec = $this->DisplayRecs <= 0 ? $this->TotalRecs : $this->DisplayRecs;
+		} else {
+
+			//$this->StartRec = $this->StartRec;
+			//$this->StopRec = $this->StopRec;
+
+		}
+
+		// Call Page Exporting server event
+		$this->ExportDoc->ExportCustom = !$this->Page_Exporting();
+		$ParentTable = "";
+		$sHeader = $this->PageHeader;
+		$this->Page_DataRendering($sHeader);
+		$Doc->Text .= $sHeader;
+		$this->ExportDocument($Doc, $rs, $this->StartRec, $this->StopRec, "");
+		$sFooter = $this->PageFooter;
+		$this->Page_DataRendered($sFooter);
+		$Doc->Text .= $sFooter;
+
+		// Close recordset
+		$rs->Close();
+
+		// Call Page Exported server event
+		$this->Page_Exported();
+
+		// Export header and footer
+		$Doc->ExportHeaderAndFooter();
+
+		// Clean output buffer
+		if (!EW_DEBUG_ENABLED && ob_get_length())
+			ob_end_clean();
+
+		// Write debug message if enabled
+		if (EW_DEBUG_ENABLED && $this->Export <> "pdf")
+			echo ew_DebugMsg();
+
+		// Output data
+		if ($this->Export == "email") {
+			echo $this->ExportEmail($Doc->Text);
+		} else {
+			$Doc->Export();
+		}
+	}
+
+	// Export email
+	function ExportEmail($EmailContent) {
+		global $gTmpImages, $Language;
+		$sSender = @$_POST["sender"];
+		$sRecipient = @$_POST["recipient"];
+		$sCc = @$_POST["cc"];
+		$sBcc = @$_POST["bcc"];
+
+		// Subject
+		$sSubject = @$_POST["subject"];
+		$sEmailSubject = $sSubject;
+
+		// Message
+		$sContent = @$_POST["message"];
+		$sEmailMessage = $sContent;
+
+		// Check sender
+		if ($sSender == "") {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterSenderEmail") . "</p>";
+		}
+		if (!ew_CheckEmail($sSender)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperSenderEmail") . "</p>";
+		}
+
+		// Check recipient
+		if (!ew_CheckEmailList($sRecipient, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperRecipientEmail") . "</p>";
+		}
+
+		// Check cc
+		if (!ew_CheckEmailList($sCc, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperCcEmail") . "</p>";
+		}
+
+		// Check bcc
+		if (!ew_CheckEmailList($sBcc, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperBccEmail") . "</p>";
+		}
+
+		// Check email sent count
+		if (!isset($_SESSION[EW_EXPORT_EMAIL_COUNTER]))
+			$_SESSION[EW_EXPORT_EMAIL_COUNTER] = 0;
+		if (intval($_SESSION[EW_EXPORT_EMAIL_COUNTER]) > EW_MAX_EMAIL_SENT_COUNT) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("ExceedMaxEmailExport") . "</p>";
+		}
+
+		// Send email
+		$Email = new cEmail();
+		$Email->Sender = $sSender; // Sender
+		$Email->Recipient = $sRecipient; // Recipient
+		$Email->Cc = $sCc; // Cc
+		$Email->Bcc = $sBcc; // Bcc
+		$Email->Subject = $sEmailSubject; // Subject
+		$Email->Format = "html";
+		if ($sEmailMessage <> "")
+			$sEmailMessage = ew_RemoveXSS($sEmailMessage) . "<br><br>";
+		foreach ($gTmpImages as $tmpimage)
+			$Email->AddEmbeddedImage($tmpimage);
+		$Email->Content = $sEmailMessage . ew_CleanEmailContent($EmailContent); // Content
+		$EventArgs = array();
+		if ($this->Recordset) {
+			$this->RecCnt = $this->StartRec - 1;
+			$this->Recordset->MoveFirst();
+			if ($this->StartRec > 1)
+				$this->Recordset->Move($this->StartRec - 1);
+			$EventArgs["rs"] = &$this->Recordset;
+		}
+		$bEmailSent = FALSE;
+		if ($this->Email_Sending($Email, $EventArgs))
+			$bEmailSent = $Email->Send();
+
+		// Check email sent status
+		if ($bEmailSent) {
+
+			// Update email sent count
+			$_SESSION[EW_EXPORT_EMAIL_COUNTER]++;
+
+			// Sent email success
+			return "<p class=\"text-success\">" . $Language->Phrase("SendEmailSuccess") . "</p>"; // Set up success message
+		} else {
+
+			// Sent email failure
+			return "<p class=\"text-danger\">" . $Email->SendErrDescription . "</p>";
+		}
+	}
+
+	// Export QueryString
+	function ExportQueryString() {
+
+		// Initialize
+		$sQry = "export=html";
+		if (isset($_GET["key_m"])) {
+			$nKeys = count($_GET["key_m"]);
+			foreach ($_GET["key_m"] as $key)
+				$sQry .= "&key_m[]=" . $key;
+		}
+		return $sQry;
+	}
+
+	// Add search QueryString
+	function AddSearchQueryString(&$Qry, &$Fld) {
+		$FldSearchValue = $Fld->AdvancedSearch->getValue("x");
+		$FldParm = substr($Fld->FldVar,2);
+		if (strval($FldSearchValue) <> "") {
+			$Qry .= "&x_" . $FldParm . "=" . urlencode($FldSearchValue) .
+				"&z_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("z"));
+		}
+		$FldSearchValue2 = $Fld->AdvancedSearch->getValue("y");
+		if (strval($FldSearchValue2) <> "") {
+			$Qry .= "&v_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("v")) .
+				"&y_" . $FldParm . "=" . urlencode($FldSearchValue2) .
+				"&w_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("w"));
+		}
+	}
+
 	// Set up Breadcrumb
 	function SetupBreadcrumb() {
 		global $Breadcrumb, $Language;
@@ -2169,6 +2489,7 @@ Page_Rendering();
 $company_list->Page_Render();
 ?>
 <?php include_once "header.php" ?>
+<?php if ($company->Export == "") { ?>
 <script type="text/javascript">
 
 // Form object
@@ -2200,6 +2521,8 @@ var CurrentSearchForm = fcompanylistsrch = new ew_Form("fcompanylistsrch");
 
 // Write your client script here, no need to add script tags.
 </script>
+<?php } ?>
+<?php if ($company->Export == "") { ?>
 <div class="ewToolbar">
 <?php if ($company_list->TotalRecs > 0 && $company_list->ExportOptions->Visible()) { ?>
 <?php $company_list->ExportOptions->Render("body") ?>
@@ -2212,6 +2535,7 @@ var CurrentSearchForm = fcompanylistsrch = new ew_Form("fcompanylistsrch");
 <?php } ?>
 <div class="clearfix"></div>
 </div>
+<?php } ?>
 <?php
 	$bSelectLimit = $company_list->UseSelectLimit;
 	if ($bSelectLimit) {
@@ -2275,11 +2599,72 @@ $company_list->ShowMessage();
 ?>
 <?php if ($company_list->TotalRecs > 0 || $company->CurrentAction <> "") { ?>
 <div class="box ewBox ewGrid<?php if ($company_list->IsAddOrEdit()) { ?> ewGridAddEdit<?php } ?> company">
+<?php if ($company->Export == "") { ?>
+<div class="box-header ewGridUpperPanel">
+<?php if ($company->CurrentAction <> "gridadd" && $company->CurrentAction <> "gridedit") { ?>
+<form name="ewPagerForm" class="form-inline ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
+<?php if (!isset($company_list->Pager)) $company_list->Pager = new cPrevNextPager($company_list->StartRec, $company_list->DisplayRecs, $company_list->TotalRecs, $company_list->AutoHidePager) ?>
+<?php if ($company_list->Pager->RecordCount > 0 && $company_list->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($company_list->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $company_list->PageUrl() ?>start=<?php echo $company_list->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($company_list->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $company_list->PageUrl() ?>start=<?php echo $company_list->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $company_list->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($company_list->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $company_list->PageUrl() ?>start=<?php echo $company_list->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($company_list->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $company_list->PageUrl() ?>start=<?php echo $company_list->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $company_list->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<?php if ($company_list->Pager->RecordCount > 0) { ?>
+<div class="ewPager ewRec">
+	<span><?php echo $Language->Phrase("Record") ?>&nbsp;<?php echo $company_list->Pager->FromIndex ?>&nbsp;<?php echo $Language->Phrase("To") ?>&nbsp;<?php echo $company_list->Pager->ToIndex ?>&nbsp;<?php echo $Language->Phrase("Of") ?>&nbsp;<?php echo $company_list->Pager->RecordCount ?></span>
+</div>
+<?php } ?>
+</form>
+<?php } ?>
+<div class="ewListOtherOptions">
+<?php
+	foreach ($company_list->OtherOptions as &$option)
+		$option->Render("body");
+?>
+</div>
+<div class="clearfix"></div>
+</div>
+<?php } ?>
 <form name="fcompanylist" id="fcompanylist" class="form-inline ewForm ewListForm" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($company_list->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $company_list->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="company">
+<input type="hidden" name="exporttype" id="exporttype" value="">
 <div id="gmp_company" class="<?php if (ew_IsResponsiveLayout()) { ?>table-responsive <?php } ?>ewGridMiddlePanel">
 <?php if ($company_list->TotalRecs > 0 || $company->CurrentAction == "gridedit") { ?>
 <table id="tbl_companylist" class="table ewTable">
@@ -2300,7 +2685,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->company_id) == "") { ?>
 		<th data-name="company_id" class="<?php echo $company->company_id->HeaderCellClass() ?>"><div id="elh_company_company_id" class="company_company_id"><div class="ewTableHeaderCaption"><?php echo $company->company_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="company_id" class="<?php echo $company->company_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->company_id) ?>',1);"><div id="elh_company_company_id" class="company_company_id">
+		<th data-name="company_id" class="<?php echo $company->company_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->company_id) ?>',2);"><div id="elh_company_company_id" class="company_company_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->company_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($company->company_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->company_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2309,7 +2694,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->com_fname) == "") { ?>
 		<th data-name="com_fname" class="<?php echo $company->com_fname->HeaderCellClass() ?>"><div id="elh_company_com_fname" class="company_com_fname"><div class="ewTableHeaderCaption"><?php echo $company->com_fname->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="com_fname" class="<?php echo $company->com_fname->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_fname) ?>',1);"><div id="elh_company_com_fname" class="company_com_fname">
+		<th data-name="com_fname" class="<?php echo $company->com_fname->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_fname) ?>',2);"><div id="elh_company_com_fname" class="company_com_fname">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_fname->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_fname->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_fname->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2318,7 +2703,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->com_lname) == "") { ?>
 		<th data-name="com_lname" class="<?php echo $company->com_lname->HeaderCellClass() ?>"><div id="elh_company_com_lname" class="company_com_lname"><div class="ewTableHeaderCaption"><?php echo $company->com_lname->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="com_lname" class="<?php echo $company->com_lname->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_lname) ?>',1);"><div id="elh_company_com_lname" class="company_com_lname">
+		<th data-name="com_lname" class="<?php echo $company->com_lname->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_lname) ?>',2);"><div id="elh_company_com_lname" class="company_com_lname">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_lname->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_lname->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_lname->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2327,7 +2712,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->com_name) == "") { ?>
 		<th data-name="com_name" class="<?php echo $company->com_name->HeaderCellClass() ?>"><div id="elh_company_com_name" class="company_com_name"><div class="ewTableHeaderCaption"><?php echo $company->com_name->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="com_name" class="<?php echo $company->com_name->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_name) ?>',1);"><div id="elh_company_com_name" class="company_com_name">
+		<th data-name="com_name" class="<?php echo $company->com_name->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_name) ?>',2);"><div id="elh_company_com_name" class="company_com_name">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_name->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_name->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_name->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2336,7 +2721,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->com_phone) == "") { ?>
 		<th data-name="com_phone" class="<?php echo $company->com_phone->HeaderCellClass() ?>"><div id="elh_company_com_phone" class="company_com_phone"><div class="ewTableHeaderCaption"><?php echo $company->com_phone->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="com_phone" class="<?php echo $company->com_phone->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_phone) ?>',1);"><div id="elh_company_com_phone" class="company_com_phone">
+		<th data-name="com_phone" class="<?php echo $company->com_phone->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_phone) ?>',2);"><div id="elh_company_com_phone" class="company_com_phone">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_phone->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_phone->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_phone->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2345,7 +2730,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->com_email) == "") { ?>
 		<th data-name="com_email" class="<?php echo $company->com_email->HeaderCellClass() ?>"><div id="elh_company_com_email" class="company_com_email"><div class="ewTableHeaderCaption"><?php echo $company->com_email->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="com_email" class="<?php echo $company->com_email->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_email) ?>',1);"><div id="elh_company_com_email" class="company_com_email">
+		<th data-name="com_email" class="<?php echo $company->com_email->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_email) ?>',2);"><div id="elh_company_com_email" class="company_com_email">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_email->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_email->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_email->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2354,7 +2739,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->com_logo) == "") { ?>
 		<th data-name="com_logo" class="<?php echo $company->com_logo->HeaderCellClass() ?>"><div id="elh_company_com_logo" class="company_com_logo"><div class="ewTableHeaderCaption"><?php echo $company->com_logo->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="com_logo" class="<?php echo $company->com_logo->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_logo) ?>',1);"><div id="elh_company_com_logo" class="company_com_logo">
+		<th data-name="com_logo" class="<?php echo $company->com_logo->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_logo) ?>',2);"><div id="elh_company_com_logo" class="company_com_logo">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_logo->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_logo->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_logo->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2363,7 +2748,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->com_username) == "") { ?>
 		<th data-name="com_username" class="<?php echo $company->com_username->HeaderCellClass() ?>"><div id="elh_company_com_username" class="company_com_username"><div class="ewTableHeaderCaption"><?php echo $company->com_username->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="com_username" class="<?php echo $company->com_username->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_username) ?>',1);"><div id="elh_company_com_username" class="company_com_username">
+		<th data-name="com_username" class="<?php echo $company->com_username->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->com_username) ?>',2);"><div id="elh_company_com_username" class="company_com_username">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->com_username->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($company->com_username->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->com_username->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2372,7 +2757,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->country_id) == "") { ?>
 		<th data-name="country_id" class="<?php echo $company->country_id->HeaderCellClass() ?>"><div id="elh_company_country_id" class="company_country_id"><div class="ewTableHeaderCaption"><?php echo $company->country_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="country_id" class="<?php echo $company->country_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->country_id) ?>',1);"><div id="elh_company_country_id" class="company_country_id">
+		<th data-name="country_id" class="<?php echo $company->country_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->country_id) ?>',2);"><div id="elh_company_country_id" class="company_country_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->country_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($company->country_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->country_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2381,7 +2766,7 @@ $company_list->ListOptions->Render("header", "left");
 	<?php if ($company->SortUrl($company->province_id) == "") { ?>
 		<th data-name="province_id" class="<?php echo $company->province_id->HeaderCellClass() ?>"><div id="elh_company_province_id" class="company_province_id"><div class="ewTableHeaderCaption"><?php echo $company->province_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="province_id" class="<?php echo $company->province_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->province_id) ?>',1);"><div id="elh_company_province_id" class="company_province_id">
+		<th data-name="province_id" class="<?php echo $company->province_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $company->SortUrl($company->province_id) ?>',2);"><div id="elh_company_province_id" class="company_province_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $company->province_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($company->province_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($company->province_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2558,6 +2943,7 @@ $company_list->ListOptions->Render("body", "right", $company_list->RowCnt);
 if ($company_list->Recordset)
 	$company_list->Recordset->Close();
 ?>
+<?php if ($company->Export == "") { ?>
 <div class="box-footer ewGridLowerPanel">
 <?php if ($company->CurrentAction <> "gridadd" && $company->CurrentAction <> "gridedit") { ?>
 <form name="ewPagerForm" class="ewForm form-inline ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
@@ -2616,6 +3002,7 @@ if ($company_list->Recordset)
 </div>
 <div class="clearfix"></div>
 </div>
+<?php } ?>
 </div>
 <?php } ?>
 <?php if ($company_list->TotalRecs == 0 && $company->CurrentAction == "") { // Show other options ?>
@@ -2629,22 +3016,26 @@ if ($company_list->Recordset)
 </div>
 <div class="clearfix"></div>
 <?php } ?>
+<?php if ($company->Export == "") { ?>
 <script type="text/javascript">
 fcompanylistsrch.FilterList = <?php echo $company_list->GetFilterList() ?>;
 fcompanylistsrch.Init();
 fcompanylist.Init();
 </script>
+<?php } ?>
 <?php
 $company_list->ShowPageFooter();
 if (EW_DEBUG_ENABLED)
 	echo ew_DebugMsg();
 ?>
+<?php if ($company->Export == "") { ?>
 <script type="text/javascript">
 
 // Write your table-specific startup script here
 // document.write("page loaded");
 
 </script>
+<?php } ?>
 <?php include_once "footer.php" ?>
 <?php
 $company_list->Page_Terminate();

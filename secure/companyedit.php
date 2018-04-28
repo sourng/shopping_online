@@ -434,6 +434,15 @@ class ccompany_edit extends ccompany {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $DisplayRecs = 1;
+	var $StartRec;
+	var $StopRec;
+	var $TotalRecs = 0;
+	var $RecRange = 10;
+	var $Pager;
+	var $AutoHidePager = EW_AUTO_HIDE_PAGER;
+	var $RecCnt;
+	var $Recordset;
 
 	//
 	// Page main
@@ -446,6 +455,9 @@ class ccompany_edit extends ccompany {
 			$gbSkipHeaderFooter = TRUE;
 		$this->IsMobileOrModal = ew_IsMobile() || $this->IsModal;
 		$this->FormClassName = "ewForm ewEditForm form-horizontal";
+
+		// Load record by position
+		$loadByPosition = FALSE;
 		$sReturnUrl = "";
 		$loaded = FALSE;
 		$postBack = FALSE;
@@ -489,10 +501,44 @@ class ccompany_edit extends ccompany {
 			} else {
 				$this->province_id->CurrentValue = NULL;
 			}
+			if (!$loadByQuery)
+				$loadByPosition = TRUE;
 		}
 
-		// Load current record
-		$loaded = $this->LoadRow();
+		// Load recordset
+		$this->StartRec = 1; // Initialize start position
+		if ($this->Recordset = $this->LoadRecordset()) // Load records
+			$this->TotalRecs = $this->Recordset->RecordCount(); // Get record count
+		if ($this->TotalRecs <= 0) { // No record found
+			if ($this->getSuccessMessage() == "" && $this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
+			$this->Page_Terminate("companylist.php"); // Return to list page
+		} elseif ($loadByPosition) { // Load record by position
+			$this->SetupStartRec(); // Set up start record position
+
+			// Point to current record
+			if (intval($this->StartRec) <= intval($this->TotalRecs)) {
+				$this->Recordset->Move($this->StartRec-1);
+				$loaded = TRUE;
+			}
+		} else { // Match key values
+			if (!is_null($this->company_id->CurrentValue) && !is_null($this->country_id->CurrentValue) && !is_null($this->province_id->CurrentValue)) {
+				while (!$this->Recordset->EOF) {
+					if (strval($this->company_id->CurrentValue) == strval($this->Recordset->fields('company_id')) && strval($this->country_id->CurrentValue) == strval($this->Recordset->fields('country_id')) && strval($this->province_id->CurrentValue) == strval($this->Recordset->fields('province_id'))) {
+						$this->setStartRecordNumber($this->StartRec); // Save record position
+						$loaded = TRUE;
+						break;
+					} else {
+						$this->StartRec++;
+						$this->Recordset->MoveNext();
+					}
+				}
+			}
+		}
+
+		// Load current row values
+		if ($loaded)
+			$this->LoadRowValues($this->Recordset);
 
 		// Process form if post back
 		if ($postBack) {
@@ -512,9 +558,11 @@ class ccompany_edit extends ccompany {
 		// Perform current action
 		switch ($this->CurrentAction) {
 			case "I": // Get a record to display
-				if (!$loaded) { // Load record based on key
-					if ($this->getFailureMessage() == "") $this->setFailureMessage($Language->Phrase("NoRecord")); // No record found
-					$this->Page_Terminate("companylist.php"); // No matching record, return to list
+				if (!$loaded) {
+					if ($this->getSuccessMessage() == "" && $this->getFailureMessage() == "")
+						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
+					$this->Page_Terminate("companylist.php"); // Return to list page
+				} else {
 				}
 				break;
 			Case "U": // Update
@@ -673,6 +721,32 @@ class ccompany_edit extends ccompany {
 		$this->reg_date->CurrentValue = ew_UnFormatDateTime($this->reg_date->CurrentValue, 1);
 		$this->country_id->CurrentValue = $this->country_id->FormValue;
 		$this->province_id->CurrentValue = $this->province_id->FormValue;
+	}
+
+	// Load recordset
+	function LoadRecordset($offset = -1, $rowcnt = -1) {
+
+		// Load List page SQL
+		$sSql = $this->ListSQL();
+		$conn = &$this->Connection();
+
+		// Load recordset
+		$dbtype = ew_GetConnectionType($this->DBID);
+		if ($this->UseSelectLimit) {
+			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+			if ($dbtype == "MSSQL") {
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset, array("_hasOrderBy" => trim($this->getOrderBy()) || trim($this->getSessionOrderByList())));
+			} else {
+				$rs = $conn->SelectLimit($sSql, $rowcnt, $offset);
+			}
+			$conn->raiseErrorFn = '';
+		} else {
+			$rs = ew_LoadRecordset($sSql, $conn);
+		}
+
+		// Call Recordset Selected event
+		$this->Recordset_Selected($rs);
+		return $rs;
 	}
 
 	// Load row based on key values
@@ -1780,6 +1854,51 @@ fcompanyedit.Lists["x_province_id"].Data = "<?php echo $company_edit->province_i
 <?php
 $company_edit->ShowMessage();
 ?>
+<?php if (!$company_edit->IsModal) { ?>
+<form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
+<?php if (!isset($company_edit->Pager)) $company_edit->Pager = new cPrevNextPager($company_edit->StartRec, $company_edit->DisplayRecs, $company_edit->TotalRecs, $company_edit->AutoHidePager) ?>
+<?php if ($company_edit->Pager->RecordCount > 0 && $company_edit->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($company_edit->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($company_edit->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $company_edit->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($company_edit->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($company_edit->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $company_edit->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<div class="clearfix"></div>
+</form>
+<?php } ?>
 <form name="fcompanyedit" id="fcompanyedit" class="<?php echo $company_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($company_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $company_edit->Token ?>">
@@ -2030,6 +2149,49 @@ $company_edit->ShowMessage();
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $company_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
+<?php } ?>
+<?php if (!$company_edit->IsModal) { ?>
+<?php if (!isset($company_edit->Pager)) $company_edit->Pager = new cPrevNextPager($company_edit->StartRec, $company_edit->DisplayRecs, $company_edit->TotalRecs, $company_edit->AutoHidePager) ?>
+<?php if ($company_edit->Pager->RecordCount > 0 && $company_edit->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($company_edit->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($company_edit->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $company_edit->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($company_edit->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($company_edit->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $company_edit->PageUrl() ?>start=<?php echo $company_edit->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $company_edit->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<div class="clearfix"></div>
 <?php } ?>
 </form>
 <script type="text/javascript">

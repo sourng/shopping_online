@@ -393,7 +393,45 @@ class ccategories_list extends ccategories {
 		// 
 		// Security = null;
 		// 
+		// Get export parameters
 
+		$custom = "";
+		if (@$_GET["export"] <> "") {
+			$this->Export = $_GET["export"];
+			$custom = @$_GET["custom"];
+		} elseif (@$_POST["export"] <> "") {
+			$this->Export = $_POST["export"];
+			$custom = @$_POST["custom"];
+		} elseif (ew_IsPost()) {
+			if (@$_POST["exporttype"] <> "")
+				$this->Export = $_POST["exporttype"];
+			$custom = @$_POST["custom"];
+		} elseif (@$_GET["cmd"] == "json") {
+			$this->Export = $_GET["cmd"];
+		} else {
+			$this->setExportReturnUrl(ew_CurrentUrl());
+		}
+		$gsExportFile = $this->TableVar; // Get export file, used in header
+
+		// Get custom export parameters
+		if ($this->Export <> "" && $custom <> "") {
+			$this->CustomExport = $this->Export;
+			$this->Export = "print";
+		}
+		$gsCustomExport = $this->CustomExport;
+		$gsExport = $this->Export; // Get export parameter, used in header
+
+		// Update Export URLs
+		if (defined("EW_USE_PHPEXCEL"))
+			$this->ExportExcelCustom = FALSE;
+		if ($this->ExportExcelCustom)
+			$this->ExportExcelUrl .= "&amp;custom=1";
+		if (defined("EW_USE_PHPWORD"))
+			$this->ExportWordCustom = FALSE;
+		if ($this->ExportWordCustom)
+			$this->ExportWordUrl .= "&amp;custom=1";
+		if ($this->ExportPdfCustom)
+			$this->ExportPdfUrl .= "&amp;custom=1";
 		$this->CurrentAction = (@$_GET["a"] <> "") ? $_GET["a"] : @$_POST["a_list"]; // Set up current action
 
 		// Get grid add count
@@ -403,6 +441,9 @@ class ccategories_list extends ccategories {
 
 		// Set up list options
 		$this->SetupListOptions();
+
+		// Setup export options
+		$this->SetupExportOptions();
 		$this->cat_id->SetVisibility();
 		if ($this->IsAdd() || $this->IsCopy() || $this->IsGridAdd())
 			$this->cat_id->Visible = FALSE;
@@ -684,6 +725,17 @@ class ccategories_list extends ccategories {
 		} else {
 			$this->setSessionWhere($sFilter);
 			$this->CurrentFilter = "";
+		}
+
+		// Export selected records
+		if ($this->Export <> "")
+			$this->CurrentFilter = $this->BuildExportSelectedFilter();
+
+		// Export data only
+		if ($this->CustomExport == "" && in_array($this->Export, array_keys($EW_EXPORT))) {
+			$this->ExportData();
+			$this->Page_Terminate(); // Terminate response
+			exit();
 		}
 
 		// Load record count first
@@ -1084,15 +1136,18 @@ class ccategories_list extends ccategories {
 	// Set up sort parameters
 	function SetupSortOrder() {
 
+		// Check for Ctrl pressed
+		$bCtrl = (@$_GET["ctrl"] <> "");
+
 		// Check for "order" parameter
 		if (@$_GET["order"] <> "") {
 			$this->CurrentOrder = @$_GET["order"];
 			$this->CurrentOrderType = @$_GET["ordertype"];
-			$this->UpdateSort($this->cat_id); // cat_id
-			$this->UpdateSort($this->cat_name); // cat_name
-			$this->UpdateSort($this->cat_ico_class); // cat_ico_class
-			$this->UpdateSort($this->cat_ico_image); // cat_ico_image
-			$this->UpdateSort($this->cat_home); // cat_home
+			$this->UpdateSort($this->cat_id, $bCtrl); // cat_id
+			$this->UpdateSort($this->cat_name, $bCtrl); // cat_name
+			$this->UpdateSort($this->cat_ico_class, $bCtrl); // cat_ico_class
+			$this->UpdateSort($this->cat_ico_image, $bCtrl); // cat_ico_image
+			$this->UpdateSort($this->cat_home, $bCtrl); // cat_home
 			$this->setStartRecordNumber(1); // Reset start position
 		}
 	}
@@ -1145,52 +1200,47 @@ class ccategories_list extends ccategories {
 		// Add group option item
 		$item = &$this->ListOptions->Add($this->ListOptions->GroupOptionName);
 		$item->Body = "";
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 		$item->Visible = FALSE;
 
 		// "view"
 		$item = &$this->ListOptions->Add("view");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanView();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// "edit"
 		$item = &$this->ListOptions->Add("edit");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanEdit();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// "copy"
 		$item = &$this->ListOptions->Add("copy");
 		$item->CssClass = "text-nowrap";
 		$item->Visible = $Security->CanAdd();
-		$item->OnLeft = FALSE;
-
-		// "delete"
-		$item = &$this->ListOptions->Add("delete");
-		$item->CssClass = "text-nowrap";
-		$item->Visible = $Security->CanDelete();
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 
 		// List actions
 		$item = &$this->ListOptions->Add("listactions");
 		$item->CssClass = "text-nowrap";
-		$item->OnLeft = FALSE;
+		$item->OnLeft = TRUE;
 		$item->Visible = FALSE;
 		$item->ShowInButtonGroup = FALSE;
 		$item->ShowInDropDown = FALSE;
 
 		// "checkbox"
 		$item = &$this->ListOptions->Add("checkbox");
-		$item->Visible = FALSE;
-		$item->OnLeft = FALSE;
+		$item->Visible = TRUE;
+		$item->OnLeft = TRUE;
 		$item->Header = "<input type=\"checkbox\" name=\"key\" id=\"key\" onclick=\"ew_SelectAllKey(this);\">";
+		$item->MoveTo(0);
 		$item->ShowInDropDown = FALSE;
 		$item->ShowInButtonGroup = FALSE;
 
 		// Drop down button for ListOptions
 		$this->ListOptions->UseImageAndText = TRUE;
-		$this->ListOptions->UseDropDownButton = FALSE;
+		$this->ListOptions->UseDropDownButton = TRUE;
 		$this->ListOptions->DropDownButtonPhrase = $Language->Phrase("ButtonListOptions");
 		$this->ListOptions->UseButtonGroup = FALSE;
 		if ($this->ListOptions->UseButtonGroup && ew_IsMobile())
@@ -1238,13 +1288,6 @@ class ccategories_list extends ccategories {
 		} else {
 			$oListOpt->Body = "";
 		}
-
-		// "delete"
-		$oListOpt = &$this->ListOptions->Items["delete"];
-		if ($Security->CanDelete())
-			$oListOpt->Body = "<a class=\"ewRowLink ewDelete\"" . "" . " title=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" href=\"" . ew_HtmlEncode($this->DeleteUrl) . "\">" . $Language->Phrase("DeleteLink") . "</a>";
-		else
-			$oListOpt->Body = "";
 
 		// Set up list action buttons
 		$oListOpt = &$this->ListOptions->GetItem("listactions");
@@ -1297,10 +1340,15 @@ class ccategories_list extends ccategories {
 		$item->Visible = ($this->AddUrl <> "" && $Security->CanAdd());
 		$option = $options["action"];
 
+		// Add multi delete
+		$item = &$option->Add("multidelete");
+		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fcategorieslist,url:'" . $this->MultiDeleteUrl . "'});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
+		$item->Visible = ($Security->CanDelete());
+
 		// Set up options default
 		foreach ($options as &$option) {
 			$option->UseImageAndText = TRUE;
-			$option->UseDropDownButton = FALSE;
+			$option->UseDropDownButton = TRUE;
 			$option->UseButtonGroup = TRUE;
 			$option->ButtonClass = "btn-sm"; // Class for button group
 			$item = &$option->Add($option->GroupOptionName);
@@ -1811,6 +1859,278 @@ class ccategories_list extends ccategories {
 		$this->cat_home->AdvancedSearch->Load();
 	}
 
+	// Build export filter for selected records
+	function BuildExportSelectedFilter() {
+		global $Language;
+		$sWrkFilter = "";
+		if ($this->Export <> "") {
+			$sWrkFilter = $this->GetKeyFilter();
+		}
+		return $sWrkFilter;
+	}
+
+	// Set up export options
+	function SetupExportOptions() {
+		global $Language;
+
+		// Printer friendly
+		$item = &$this->ExportOptions->Add("print");
+		$item->Body = "<a class=\"ewExportLink ewPrint\" title=\"" . ew_HtmlEncode($Language->Phrase("PrinterFriendlyText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("PrinterFriendlyText")) . "\" onclick=\"ew_Export(document.fcategorieslist,'" . ew_CurrentPage() . "','print',false,true);\">" . $Language->Phrase("PrinterFriendly") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Excel
+		$item = &$this->ExportOptions->Add("excel");
+		$item->Body = "<a class=\"ewExportLink ewExcel\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToExcelText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToExcelText")) . "\" onclick=\"ew_Export(document.fcategorieslist,'" . ew_CurrentPage() . "','excel',false,true);\">" . $Language->Phrase("ExportToExcel") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Word
+		$item = &$this->ExportOptions->Add("word");
+		$item->Body = "<a class=\"ewExportLink ewWord\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToWordText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToWordText")) . "\" onclick=\"ew_Export(document.fcategorieslist,'" . ew_CurrentPage() . "','word',false,true);\">" . $Language->Phrase("ExportToWord") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Html
+		$item = &$this->ExportOptions->Add("html");
+		$item->Body = "<a class=\"ewExportLink ewHtml\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToHtmlText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToHtmlText")) . "\" onclick=\"ew_Export(document.fcategorieslist,'" . ew_CurrentPage() . "','html',false,true);\">" . $Language->Phrase("ExportToHtml") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Xml
+		$item = &$this->ExportOptions->Add("xml");
+		$item->Body = "<a class=\"ewExportLink ewXml\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToXmlText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToXmlText")) . "\" onclick=\"ew_Export(document.fcategorieslist,'" . ew_CurrentPage() . "','xml',false,true);\">" . $Language->Phrase("ExportToXml") . "</a>";
+		$item->Visible = FALSE;
+
+		// Export to Csv
+		$item = &$this->ExportOptions->Add("csv");
+		$item->Body = "<a class=\"ewExportLink ewCsv\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToCsvText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToCsvText")) . "\" onclick=\"ew_Export(document.fcategorieslist,'" . ew_CurrentPage() . "','csv',false,true);\">" . $Language->Phrase("ExportToCsv") . "</a>";
+		$item->Visible = TRUE;
+
+		// Export to Pdf
+		$item = &$this->ExportOptions->Add("pdf");
+		$item->Body = "<a class=\"ewExportLink ewPdf\" title=\"" . ew_HtmlEncode($Language->Phrase("ExportToPDFText")) . "\" data-caption=\"" . ew_HtmlEncode($Language->Phrase("ExportToPDFText")) . "\" onclick=\"ew_Export(document.fcategorieslist,'" . ew_CurrentPage() . "','pdf',false,true);\">" . $Language->Phrase("ExportToPDF") . "</a>";
+		$item->Visible = FALSE;
+
+		// Export to Email
+		$item = &$this->ExportOptions->Add("email");
+		$url = "";
+		$item->Body = "<button id=\"emf_categories\" class=\"ewExportLink ewEmail\" title=\"" . $Language->Phrase("ExportToEmailText") . "\" data-caption=\"" . $Language->Phrase("ExportToEmailText") . "\" onclick=\"ew_EmailDialogShow({lnk:'emf_categories',hdr:ewLanguage.Phrase('ExportToEmailText'),f:document.fcategorieslist,sel:true" . $url . "});\">" . $Language->Phrase("ExportToEmail") . "</button>";
+		$item->Visible = TRUE;
+
+		// Drop down button for export
+		$this->ExportOptions->UseButtonGroup = TRUE;
+		$this->ExportOptions->UseImageAndText = TRUE;
+		$this->ExportOptions->UseDropDownButton = TRUE;
+		if ($this->ExportOptions->UseButtonGroup && ew_IsMobile())
+			$this->ExportOptions->UseDropDownButton = TRUE;
+		$this->ExportOptions->DropDownButtonPhrase = $Language->Phrase("ButtonExport");
+
+		// Add group option item
+		$item = &$this->ExportOptions->Add($this->ExportOptions->GroupOptionName);
+		$item->Body = "";
+		$item->Visible = FALSE;
+	}
+
+	// Export data in HTML/CSV/Word/Excel/XML/Email/PDF format
+	function ExportData() {
+		$utf8 = (strtolower(EW_CHARSET) == "utf-8");
+		$bSelectLimit = $this->UseSelectLimit;
+
+		// Load recordset
+		if ($bSelectLimit) {
+			$this->TotalRecs = $this->ListRecordCount();
+		} else {
+			if (!$this->Recordset)
+				$this->Recordset = $this->LoadRecordset();
+			$rs = &$this->Recordset;
+			if ($rs)
+				$this->TotalRecs = $rs->RecordCount();
+		}
+		$this->StartRec = 1;
+
+		// Export all
+		if ($this->ExportAll) {
+			set_time_limit(EW_EXPORT_ALL_TIME_LIMIT);
+			$this->DisplayRecs = $this->TotalRecs;
+			$this->StopRec = $this->TotalRecs;
+		} else { // Export one page only
+			$this->SetupStartRec(); // Set up start record position
+
+			// Set the last record to display
+			if ($this->DisplayRecs <= 0) {
+				$this->StopRec = $this->TotalRecs;
+			} else {
+				$this->StopRec = $this->StartRec + $this->DisplayRecs - 1;
+			}
+		}
+		if ($bSelectLimit)
+			$rs = $this->LoadRecordset($this->StartRec-1, $this->DisplayRecs <= 0 ? $this->TotalRecs : $this->DisplayRecs);
+		if (!$rs) {
+			header("Content-Type:"); // Remove header
+			header("Content-Disposition:");
+			$this->ShowMessage();
+			return;
+		}
+		$this->ExportDoc = ew_ExportDocument($this, "h");
+		$Doc = &$this->ExportDoc;
+		if ($bSelectLimit) {
+			$this->StartRec = 1;
+			$this->StopRec = $this->DisplayRecs <= 0 ? $this->TotalRecs : $this->DisplayRecs;
+		} else {
+
+			//$this->StartRec = $this->StartRec;
+			//$this->StopRec = $this->StopRec;
+
+		}
+
+		// Call Page Exporting server event
+		$this->ExportDoc->ExportCustom = !$this->Page_Exporting();
+		$ParentTable = "";
+		$sHeader = $this->PageHeader;
+		$this->Page_DataRendering($sHeader);
+		$Doc->Text .= $sHeader;
+		$this->ExportDocument($Doc, $rs, $this->StartRec, $this->StopRec, "");
+		$sFooter = $this->PageFooter;
+		$this->Page_DataRendered($sFooter);
+		$Doc->Text .= $sFooter;
+
+		// Close recordset
+		$rs->Close();
+
+		// Call Page Exported server event
+		$this->Page_Exported();
+
+		// Export header and footer
+		$Doc->ExportHeaderAndFooter();
+
+		// Clean output buffer
+		if (!EW_DEBUG_ENABLED && ob_get_length())
+			ob_end_clean();
+
+		// Write debug message if enabled
+		if (EW_DEBUG_ENABLED && $this->Export <> "pdf")
+			echo ew_DebugMsg();
+
+		// Output data
+		if ($this->Export == "email") {
+			echo $this->ExportEmail($Doc->Text);
+		} else {
+			$Doc->Export();
+		}
+	}
+
+	// Export email
+	function ExportEmail($EmailContent) {
+		global $gTmpImages, $Language;
+		$sSender = @$_POST["sender"];
+		$sRecipient = @$_POST["recipient"];
+		$sCc = @$_POST["cc"];
+		$sBcc = @$_POST["bcc"];
+
+		// Subject
+		$sSubject = @$_POST["subject"];
+		$sEmailSubject = $sSubject;
+
+		// Message
+		$sContent = @$_POST["message"];
+		$sEmailMessage = $sContent;
+
+		// Check sender
+		if ($sSender == "") {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterSenderEmail") . "</p>";
+		}
+		if (!ew_CheckEmail($sSender)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperSenderEmail") . "</p>";
+		}
+
+		// Check recipient
+		if (!ew_CheckEmailList($sRecipient, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperRecipientEmail") . "</p>";
+		}
+
+		// Check cc
+		if (!ew_CheckEmailList($sCc, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperCcEmail") . "</p>";
+		}
+
+		// Check bcc
+		if (!ew_CheckEmailList($sBcc, EW_MAX_EMAIL_RECIPIENT)) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("EnterProperBccEmail") . "</p>";
+		}
+
+		// Check email sent count
+		if (!isset($_SESSION[EW_EXPORT_EMAIL_COUNTER]))
+			$_SESSION[EW_EXPORT_EMAIL_COUNTER] = 0;
+		if (intval($_SESSION[EW_EXPORT_EMAIL_COUNTER]) > EW_MAX_EMAIL_SENT_COUNT) {
+			return "<p class=\"text-danger\">" . $Language->Phrase("ExceedMaxEmailExport") . "</p>";
+		}
+
+		// Send email
+		$Email = new cEmail();
+		$Email->Sender = $sSender; // Sender
+		$Email->Recipient = $sRecipient; // Recipient
+		$Email->Cc = $sCc; // Cc
+		$Email->Bcc = $sBcc; // Bcc
+		$Email->Subject = $sEmailSubject; // Subject
+		$Email->Format = "html";
+		if ($sEmailMessage <> "")
+			$sEmailMessage = ew_RemoveXSS($sEmailMessage) . "<br><br>";
+		foreach ($gTmpImages as $tmpimage)
+			$Email->AddEmbeddedImage($tmpimage);
+		$Email->Content = $sEmailMessage . ew_CleanEmailContent($EmailContent); // Content
+		$EventArgs = array();
+		if ($this->Recordset) {
+			$this->RecCnt = $this->StartRec - 1;
+			$this->Recordset->MoveFirst();
+			if ($this->StartRec > 1)
+				$this->Recordset->Move($this->StartRec - 1);
+			$EventArgs["rs"] = &$this->Recordset;
+		}
+		$bEmailSent = FALSE;
+		if ($this->Email_Sending($Email, $EventArgs))
+			$bEmailSent = $Email->Send();
+
+		// Check email sent status
+		if ($bEmailSent) {
+
+			// Update email sent count
+			$_SESSION[EW_EXPORT_EMAIL_COUNTER]++;
+
+			// Sent email success
+			return "<p class=\"text-success\">" . $Language->Phrase("SendEmailSuccess") . "</p>"; // Set up success message
+		} else {
+
+			// Sent email failure
+			return "<p class=\"text-danger\">" . $Email->SendErrDescription . "</p>";
+		}
+	}
+
+	// Export QueryString
+	function ExportQueryString() {
+
+		// Initialize
+		$sQry = "export=html";
+		if (isset($_GET["key_m"])) {
+			$nKeys = count($_GET["key_m"]);
+			foreach ($_GET["key_m"] as $key)
+				$sQry .= "&key_m[]=" . $key;
+		}
+		return $sQry;
+	}
+
+	// Add search QueryString
+	function AddSearchQueryString(&$Qry, &$Fld) {
+		$FldSearchValue = $Fld->AdvancedSearch->getValue("x");
+		$FldParm = substr($Fld->FldVar,2);
+		if (strval($FldSearchValue) <> "") {
+			$Qry .= "&x_" . $FldParm . "=" . urlencode($FldSearchValue) .
+				"&z_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("z"));
+		}
+		$FldSearchValue2 = $Fld->AdvancedSearch->getValue("y");
+		if (strval($FldSearchValue2) <> "") {
+			$Qry .= "&v_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("v")) .
+				"&y_" . $FldParm . "=" . urlencode($FldSearchValue2) .
+				"&w_" . $FldParm . "=" . urlencode($Fld->AdvancedSearch->getValue("w"));
+		}
+	}
+
 	// Set up Breadcrumb
 	function SetupBreadcrumb() {
 		global $Breadcrumb, $Language;
@@ -1994,6 +2314,7 @@ Page_Rendering();
 $categories_list->Page_Render();
 ?>
 <?php include_once "header.php" ?>
+<?php if ($categories->Export == "") { ?>
 <script type="text/javascript">
 
 // Form object
@@ -2051,6 +2372,8 @@ fcategorieslistsrch.Lists["x_cat_home[]"].Options = <?php echo json_encode($cate
 
 // Write your client script here, no need to add script tags.
 </script>
+<?php } ?>
+<?php if ($categories->Export == "") { ?>
 <div class="ewToolbar">
 <?php if ($categories_list->TotalRecs > 0 && $categories_list->ExportOptions->Visible()) { ?>
 <?php $categories_list->ExportOptions->Render("body") ?>
@@ -2063,6 +2386,7 @@ fcategorieslistsrch.Lists["x_cat_home[]"].Options = <?php echo json_encode($cate
 <?php } ?>
 <div class="clearfix"></div>
 </div>
+<?php } ?>
 <?php
 	$bSelectLimit = $categories_list->UseSelectLimit;
 	if ($bSelectLimit) {
@@ -2151,11 +2475,72 @@ $categories_list->ShowMessage();
 ?>
 <?php if ($categories_list->TotalRecs > 0 || $categories->CurrentAction <> "") { ?>
 <div class="box ewBox ewGrid<?php if ($categories_list->IsAddOrEdit()) { ?> ewGridAddEdit<?php } ?> categories">
+<?php if ($categories->Export == "") { ?>
+<div class="box-header ewGridUpperPanel">
+<?php if ($categories->CurrentAction <> "gridadd" && $categories->CurrentAction <> "gridedit") { ?>
+<form name="ewPagerForm" class="form-inline ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
+<?php if (!isset($categories_list->Pager)) $categories_list->Pager = new cPrevNextPager($categories_list->StartRec, $categories_list->DisplayRecs, $categories_list->TotalRecs, $categories_list->AutoHidePager) ?>
+<?php if ($categories_list->Pager->RecordCount > 0 && $categories_list->Pager->Visible) { ?>
+<div class="ewPager">
+<span><?php echo $Language->Phrase("Page") ?>&nbsp;</span>
+<div class="ewPrevNext"><div class="input-group">
+<div class="input-group-btn">
+<!--first page button-->
+	<?php if ($categories_list->Pager->FirstButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerFirst") ?>" href="<?php echo $categories_list->PageUrl() ?>start=<?php echo $categories_list->Pager->FirstButton->Start ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerFirst") ?>"><span class="icon-first ewIcon"></span></a>
+	<?php } ?>
+<!--previous page button-->
+	<?php if ($categories_list->Pager->PrevButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerPrevious") ?>" href="<?php echo $categories_list->PageUrl() ?>start=<?php echo $categories_list->Pager->PrevButton->Start ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerPrevious") ?>"><span class="icon-prev ewIcon"></span></a>
+	<?php } ?>
+</div>
+<!--current page number-->
+	<input class="form-control input-sm" type="text" name="<?php echo EW_TABLE_PAGE_NO ?>" value="<?php echo $categories_list->Pager->CurrentPage ?>">
+<div class="input-group-btn">
+<!--next page button-->
+	<?php if ($categories_list->Pager->NextButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerNext") ?>" href="<?php echo $categories_list->PageUrl() ?>start=<?php echo $categories_list->Pager->NextButton->Start ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerNext") ?>"><span class="icon-next ewIcon"></span></a>
+	<?php } ?>
+<!--last page button-->
+	<?php if ($categories_list->Pager->LastButton->Enabled) { ?>
+	<a class="btn btn-default btn-sm" title="<?php echo $Language->Phrase("PagerLast") ?>" href="<?php echo $categories_list->PageUrl() ?>start=<?php echo $categories_list->Pager->LastButton->Start ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } else { ?>
+	<a class="btn btn-default btn-sm disabled" title="<?php echo $Language->Phrase("PagerLast") ?>"><span class="icon-last ewIcon"></span></a>
+	<?php } ?>
+</div>
+</div>
+</div>
+<span>&nbsp;<?php echo $Language->Phrase("of") ?>&nbsp;<?php echo $categories_list->Pager->PageCount ?></span>
+</div>
+<?php } ?>
+<?php if ($categories_list->Pager->RecordCount > 0) { ?>
+<div class="ewPager ewRec">
+	<span><?php echo $Language->Phrase("Record") ?>&nbsp;<?php echo $categories_list->Pager->FromIndex ?>&nbsp;<?php echo $Language->Phrase("To") ?>&nbsp;<?php echo $categories_list->Pager->ToIndex ?>&nbsp;<?php echo $Language->Phrase("Of") ?>&nbsp;<?php echo $categories_list->Pager->RecordCount ?></span>
+</div>
+<?php } ?>
+</form>
+<?php } ?>
+<div class="ewListOtherOptions">
+<?php
+	foreach ($categories_list->OtherOptions as &$option)
+		$option->Render("body");
+?>
+</div>
+<div class="clearfix"></div>
+</div>
+<?php } ?>
 <form name="fcategorieslist" id="fcategorieslist" class="form-inline ewForm ewListForm" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($categories_list->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $categories_list->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="categories">
+<input type="hidden" name="exporttype" id="exporttype" value="">
 <div id="gmp_categories" class="<?php if (ew_IsResponsiveLayout()) { ?>table-responsive <?php } ?>ewGridMiddlePanel">
 <?php if ($categories_list->TotalRecs > 0 || $categories->CurrentAction == "gridedit") { ?>
 <table id="tbl_categorieslist" class="table ewTable">
@@ -2176,7 +2561,7 @@ $categories_list->ListOptions->Render("header", "left");
 	<?php if ($categories->SortUrl($categories->cat_id) == "") { ?>
 		<th data-name="cat_id" class="<?php echo $categories->cat_id->HeaderCellClass() ?>"><div id="elh_categories_cat_id" class="categories_cat_id"><div class="ewTableHeaderCaption"><?php echo $categories->cat_id->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="cat_id" class="<?php echo $categories->cat_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_id) ?>',1);"><div id="elh_categories_cat_id" class="categories_cat_id">
+		<th data-name="cat_id" class="<?php echo $categories->cat_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_id) ?>',2);"><div id="elh_categories_cat_id" class="categories_cat_id">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $categories->cat_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($categories->cat_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($categories->cat_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2185,7 +2570,7 @@ $categories_list->ListOptions->Render("header", "left");
 	<?php if ($categories->SortUrl($categories->cat_name) == "") { ?>
 		<th data-name="cat_name" class="<?php echo $categories->cat_name->HeaderCellClass() ?>"><div id="elh_categories_cat_name" class="categories_cat_name"><div class="ewTableHeaderCaption"><?php echo $categories->cat_name->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="cat_name" class="<?php echo $categories->cat_name->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_name) ?>',1);"><div id="elh_categories_cat_name" class="categories_cat_name">
+		<th data-name="cat_name" class="<?php echo $categories->cat_name->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_name) ?>',2);"><div id="elh_categories_cat_name" class="categories_cat_name">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $categories->cat_name->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($categories->cat_name->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($categories->cat_name->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2194,7 +2579,7 @@ $categories_list->ListOptions->Render("header", "left");
 	<?php if ($categories->SortUrl($categories->cat_ico_class) == "") { ?>
 		<th data-name="cat_ico_class" class="<?php echo $categories->cat_ico_class->HeaderCellClass() ?>"><div id="elh_categories_cat_ico_class" class="categories_cat_ico_class"><div class="ewTableHeaderCaption"><?php echo $categories->cat_ico_class->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="cat_ico_class" class="<?php echo $categories->cat_ico_class->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_ico_class) ?>',1);"><div id="elh_categories_cat_ico_class" class="categories_cat_ico_class">
+		<th data-name="cat_ico_class" class="<?php echo $categories->cat_ico_class->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_ico_class) ?>',2);"><div id="elh_categories_cat_ico_class" class="categories_cat_ico_class">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $categories->cat_ico_class->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($categories->cat_ico_class->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($categories->cat_ico_class->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2203,7 +2588,7 @@ $categories_list->ListOptions->Render("header", "left");
 	<?php if ($categories->SortUrl($categories->cat_ico_image) == "") { ?>
 		<th data-name="cat_ico_image" class="<?php echo $categories->cat_ico_image->HeaderCellClass() ?>"><div id="elh_categories_cat_ico_image" class="categories_cat_ico_image"><div class="ewTableHeaderCaption"><?php echo $categories->cat_ico_image->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="cat_ico_image" class="<?php echo $categories->cat_ico_image->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_ico_image) ?>',1);"><div id="elh_categories_cat_ico_image" class="categories_cat_ico_image">
+		<th data-name="cat_ico_image" class="<?php echo $categories->cat_ico_image->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_ico_image) ?>',2);"><div id="elh_categories_cat_ico_image" class="categories_cat_ico_image">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $categories->cat_ico_image->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($categories->cat_ico_image->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($categories->cat_ico_image->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2212,7 +2597,7 @@ $categories_list->ListOptions->Render("header", "left");
 	<?php if ($categories->SortUrl($categories->cat_home) == "") { ?>
 		<th data-name="cat_home" class="<?php echo $categories->cat_home->HeaderCellClass() ?>"><div id="elh_categories_cat_home" class="categories_cat_home"><div class="ewTableHeaderCaption"><?php echo $categories->cat_home->FldCaption() ?></div></div></th>
 	<?php } else { ?>
-		<th data-name="cat_home" class="<?php echo $categories->cat_home->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_home) ?>',1);"><div id="elh_categories_cat_home" class="categories_cat_home">
+		<th data-name="cat_home" class="<?php echo $categories->cat_home->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $categories->SortUrl($categories->cat_home) ?>',2);"><div id="elh_categories_cat_home" class="categories_cat_home">
 			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $categories->cat_home->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($categories->cat_home->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($categories->cat_home->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
@@ -2353,6 +2738,7 @@ $categories_list->ListOptions->Render("body", "right", $categories_list->RowCnt)
 if ($categories_list->Recordset)
 	$categories_list->Recordset->Close();
 ?>
+<?php if ($categories->Export == "") { ?>
 <div class="box-footer ewGridLowerPanel">
 <?php if ($categories->CurrentAction <> "gridadd" && $categories->CurrentAction <> "gridedit") { ?>
 <form name="ewPagerForm" class="ewForm form-inline ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
@@ -2411,6 +2797,7 @@ if ($categories_list->Recordset)
 </div>
 <div class="clearfix"></div>
 </div>
+<?php } ?>
 </div>
 <?php } ?>
 <?php if ($categories_list->TotalRecs == 0 && $categories->CurrentAction == "") { // Show other options ?>
@@ -2424,22 +2811,26 @@ if ($categories_list->Recordset)
 </div>
 <div class="clearfix"></div>
 <?php } ?>
+<?php if ($categories->Export == "") { ?>
 <script type="text/javascript">
 fcategorieslistsrch.FilterList = <?php echo $categories_list->GetFilterList() ?>;
 fcategorieslistsrch.Init();
 fcategorieslist.Init();
 </script>
+<?php } ?>
 <?php
 $categories_list->ShowPageFooter();
 if (EW_DEBUG_ENABLED)
 	echo ew_DebugMsg();
 ?>
+<?php if ($categories->Export == "") { ?>
 <script type="text/javascript">
 
 // Write your table-specific startup script here
 // document.write("page loaded");
 
 </script>
+<?php } ?>
 <?php include_once "footer.php" ?>
 <?php
 $categories_list->Page_Terminate();

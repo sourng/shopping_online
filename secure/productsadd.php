@@ -325,7 +325,6 @@ class cproducts_add extends cproducts {
 		$this->pro_name->SetVisibility();
 		$this->pro_description->SetVisibility();
 		$this->pro_condition->SetVisibility();
-		$this->pro_brand->SetVisibility();
 		$this->pro_features->SetVisibility();
 		$this->pro_model->SetVisibility();
 		$this->post_date->SetVisibility();
@@ -340,6 +339,8 @@ class cproducts_add extends cproducts {
 		$this->img4->SetVisibility();
 		$this->img5->SetVisibility();
 		$this->pro_status->SetVisibility();
+		$this->branch_id->SetVisibility();
+		$this->lang->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
 		Page_Loading();
@@ -551,6 +552,9 @@ class cproducts_add extends cproducts {
 		global $objForm, $Language;
 
 		// Get upload data
+		$this->featured_image->Upload->Index = $objForm->Index;
+		$this->featured_image->Upload->UploadFile();
+		$this->featured_image->CurrentValue = $this->featured_image->Upload->FileName;
 	}
 
 	// Load default values
@@ -567,8 +571,6 @@ class cproducts_add extends cproducts {
 		$this->pro_description->OldValue = $this->pro_description->CurrentValue;
 		$this->pro_condition->CurrentValue = NULL;
 		$this->pro_condition->OldValue = $this->pro_condition->CurrentValue;
-		$this->pro_brand->CurrentValue = NULL;
-		$this->pro_brand->OldValue = $this->pro_brand->CurrentValue;
 		$this->pro_features->CurrentValue = NULL;
 		$this->pro_features->OldValue = $this->pro_features->CurrentValue;
 		$this->pro_model->CurrentValue = NULL;
@@ -581,8 +583,9 @@ class cproducts_add extends cproducts {
 		$this->pro_base_price->OldValue = $this->pro_base_price->CurrentValue;
 		$this->pro_sell_price->CurrentValue = NULL;
 		$this->pro_sell_price->OldValue = $this->pro_sell_price->CurrentValue;
-		$this->featured_image->CurrentValue = NULL;
-		$this->featured_image->OldValue = $this->featured_image->CurrentValue;
+		$this->featured_image->Upload->DbValue = NULL;
+		$this->featured_image->OldValue = $this->featured_image->Upload->DbValue;
+		$this->featured_image->CurrentValue = NULL; // Clear file related field
 		$this->folder_image->CurrentValue = NULL;
 		$this->folder_image->OldValue = $this->folder_image->CurrentValue;
 		$this->img1->CurrentValue = NULL;
@@ -597,6 +600,9 @@ class cproducts_add extends cproducts {
 		$this->img5->OldValue = $this->img5->CurrentValue;
 		$this->pro_status->CurrentValue = NULL;
 		$this->pro_status->OldValue = $this->pro_status->CurrentValue;
+		$this->branch_id->CurrentValue = NULL;
+		$this->branch_id->OldValue = $this->branch_id->CurrentValue;
+		$this->lang->CurrentValue = "english";
 	}
 
 	// Load form values
@@ -604,6 +610,7 @@ class cproducts_add extends cproducts {
 
 		// Load from form
 		global $objForm;
+		$this->GetUploadFiles(); // Get upload files
 		if (!$this->cat_id->FldIsDetailKey) {
 			$this->cat_id->setFormValue($objForm->GetValue("x_cat_id"));
 		}
@@ -618,9 +625,6 @@ class cproducts_add extends cproducts {
 		}
 		if (!$this->pro_condition->FldIsDetailKey) {
 			$this->pro_condition->setFormValue($objForm->GetValue("x_pro_condition"));
-		}
-		if (!$this->pro_brand->FldIsDetailKey) {
-			$this->pro_brand->setFormValue($objForm->GetValue("x_pro_brand"));
 		}
 		if (!$this->pro_features->FldIsDetailKey) {
 			$this->pro_features->setFormValue($objForm->GetValue("x_pro_features"));
@@ -640,9 +644,6 @@ class cproducts_add extends cproducts {
 		}
 		if (!$this->pro_sell_price->FldIsDetailKey) {
 			$this->pro_sell_price->setFormValue($objForm->GetValue("x_pro_sell_price"));
-		}
-		if (!$this->featured_image->FldIsDetailKey) {
-			$this->featured_image->setFormValue($objForm->GetValue("x_featured_image"));
 		}
 		if (!$this->folder_image->FldIsDetailKey) {
 			$this->folder_image->setFormValue($objForm->GetValue("x_folder_image"));
@@ -665,6 +666,12 @@ class cproducts_add extends cproducts {
 		if (!$this->pro_status->FldIsDetailKey) {
 			$this->pro_status->setFormValue($objForm->GetValue("x_pro_status"));
 		}
+		if (!$this->branch_id->FldIsDetailKey) {
+			$this->branch_id->setFormValue($objForm->GetValue("x_branch_id"));
+		}
+		if (!$this->lang->FldIsDetailKey) {
+			$this->lang->setFormValue($objForm->GetValue("x_lang"));
+		}
 	}
 
 	// Restore form values
@@ -675,7 +682,6 @@ class cproducts_add extends cproducts {
 		$this->pro_name->CurrentValue = $this->pro_name->FormValue;
 		$this->pro_description->CurrentValue = $this->pro_description->FormValue;
 		$this->pro_condition->CurrentValue = $this->pro_condition->FormValue;
-		$this->pro_brand->CurrentValue = $this->pro_brand->FormValue;
 		$this->pro_features->CurrentValue = $this->pro_features->FormValue;
 		$this->pro_model->CurrentValue = $this->pro_model->FormValue;
 		$this->post_date->CurrentValue = $this->post_date->FormValue;
@@ -683,7 +689,6 @@ class cproducts_add extends cproducts {
 		$this->ads_id->CurrentValue = $this->ads_id->FormValue;
 		$this->pro_base_price->CurrentValue = $this->pro_base_price->FormValue;
 		$this->pro_sell_price->CurrentValue = $this->pro_sell_price->FormValue;
-		$this->featured_image->CurrentValue = $this->featured_image->FormValue;
 		$this->folder_image->CurrentValue = $this->folder_image->FormValue;
 		$this->img1->CurrentValue = $this->img1->FormValue;
 		$this->img2->CurrentValue = $this->img2->FormValue;
@@ -691,6 +696,8 @@ class cproducts_add extends cproducts {
 		$this->img4->CurrentValue = $this->img4->FormValue;
 		$this->img5->CurrentValue = $this->img5->FormValue;
 		$this->pro_status->CurrentValue = $this->pro_status->FormValue;
+		$this->branch_id->CurrentValue = $this->branch_id->FormValue;
+		$this->lang->CurrentValue = $this->lang->FormValue;
 	}
 
 	// Load row based on key values
@@ -728,18 +735,28 @@ class cproducts_add extends cproducts {
 			return;
 		$this->product_id->setDbValue($row['product_id']);
 		$this->cat_id->setDbValue($row['cat_id']);
+		if (array_key_exists('EV__cat_id', $rs->fields)) {
+			$this->cat_id->VirtualValue = $rs->fields('EV__cat_id'); // Set up virtual field value
+		} else {
+			$this->cat_id->VirtualValue = ""; // Clear value
+		}
 		$this->company_id->setDbValue($row['company_id']);
+		if (array_key_exists('EV__company_id', $rs->fields)) {
+			$this->company_id->VirtualValue = $rs->fields('EV__company_id'); // Set up virtual field value
+		} else {
+			$this->company_id->VirtualValue = ""; // Clear value
+		}
 		$this->pro_name->setDbValue($row['pro_name']);
 		$this->pro_description->setDbValue($row['pro_description']);
 		$this->pro_condition->setDbValue($row['pro_condition']);
-		$this->pro_brand->setDbValue($row['pro_brand']);
 		$this->pro_features->setDbValue($row['pro_features']);
 		$this->pro_model->setDbValue($row['pro_model']);
 		$this->post_date->setDbValue($row['post_date']);
 		$this->ads_id->setDbValue($row['ads_id']);
 		$this->pro_base_price->setDbValue($row['pro_base_price']);
 		$this->pro_sell_price->setDbValue($row['pro_sell_price']);
-		$this->featured_image->setDbValue($row['featured_image']);
+		$this->featured_image->Upload->DbValue = $row['featured_image'];
+		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
 		$this->img1->setDbValue($row['img1']);
 		$this->img2->setDbValue($row['img2']);
@@ -747,6 +764,8 @@ class cproducts_add extends cproducts {
 		$this->img4->setDbValue($row['img4']);
 		$this->img5->setDbValue($row['img5']);
 		$this->pro_status->setDbValue($row['pro_status']);
+		$this->branch_id->setDbValue($row['branch_id']);
+		$this->lang->setDbValue($row['lang']);
 	}
 
 	// Return a row with default values
@@ -759,14 +778,13 @@ class cproducts_add extends cproducts {
 		$row['pro_name'] = $this->pro_name->CurrentValue;
 		$row['pro_description'] = $this->pro_description->CurrentValue;
 		$row['pro_condition'] = $this->pro_condition->CurrentValue;
-		$row['pro_brand'] = $this->pro_brand->CurrentValue;
 		$row['pro_features'] = $this->pro_features->CurrentValue;
 		$row['pro_model'] = $this->pro_model->CurrentValue;
 		$row['post_date'] = $this->post_date->CurrentValue;
 		$row['ads_id'] = $this->ads_id->CurrentValue;
 		$row['pro_base_price'] = $this->pro_base_price->CurrentValue;
 		$row['pro_sell_price'] = $this->pro_sell_price->CurrentValue;
-		$row['featured_image'] = $this->featured_image->CurrentValue;
+		$row['featured_image'] = $this->featured_image->Upload->DbValue;
 		$row['folder_image'] = $this->folder_image->CurrentValue;
 		$row['img1'] = $this->img1->CurrentValue;
 		$row['img2'] = $this->img2->CurrentValue;
@@ -774,6 +792,8 @@ class cproducts_add extends cproducts {
 		$row['img4'] = $this->img4->CurrentValue;
 		$row['img5'] = $this->img5->CurrentValue;
 		$row['pro_status'] = $this->pro_status->CurrentValue;
+		$row['branch_id'] = $this->branch_id->CurrentValue;
+		$row['lang'] = $this->lang->CurrentValue;
 		return $row;
 	}
 
@@ -788,14 +808,13 @@ class cproducts_add extends cproducts {
 		$this->pro_name->DbValue = $row['pro_name'];
 		$this->pro_description->DbValue = $row['pro_description'];
 		$this->pro_condition->DbValue = $row['pro_condition'];
-		$this->pro_brand->DbValue = $row['pro_brand'];
 		$this->pro_features->DbValue = $row['pro_features'];
 		$this->pro_model->DbValue = $row['pro_model'];
 		$this->post_date->DbValue = $row['post_date'];
 		$this->ads_id->DbValue = $row['ads_id'];
 		$this->pro_base_price->DbValue = $row['pro_base_price'];
 		$this->pro_sell_price->DbValue = $row['pro_sell_price'];
-		$this->featured_image->DbValue = $row['featured_image'];
+		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->folder_image->DbValue = $row['folder_image'];
 		$this->img1->DbValue = $row['img1'];
 		$this->img2->DbValue = $row['img2'];
@@ -803,6 +822,8 @@ class cproducts_add extends cproducts {
 		$this->img4->DbValue = $row['img4'];
 		$this->img5->DbValue = $row['img5'];
 		$this->pro_status->DbValue = $row['pro_status'];
+		$this->branch_id->DbValue = $row['branch_id'];
+		$this->lang->DbValue = $row['lang'];
 	}
 
 	// Load old record
@@ -859,7 +880,6 @@ class cproducts_add extends cproducts {
 		// pro_name
 		// pro_description
 		// pro_condition
-		// pro_brand
 		// pro_features
 		// pro_model
 		// post_date
@@ -874,6 +894,8 @@ class cproducts_add extends cproducts {
 		// img4
 		// img5
 		// pro_status
+		// branch_id
+		// lang
 
 		if ($this->RowType == EW_ROWTYPE_VIEW) { // View row
 
@@ -882,11 +904,59 @@ class cproducts_add extends cproducts {
 		$this->product_id->ViewCustomAttributes = "";
 
 		// cat_id
-		$this->cat_id->ViewValue = $this->cat_id->CurrentValue;
+		if ($this->cat_id->VirtualValue <> "") {
+			$this->cat_id->ViewValue = $this->cat_id->VirtualValue;
+		} else {
+		if (strval($this->cat_id->CurrentValue) <> "") {
+			$sFilterWrk = "`cat_id`" . ew_SearchString("=", $this->cat_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `cat_id`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `categories`";
+		$sWhereWrk = "";
+		$this->cat_id->LookupFilters = array("dx1" => '`cat_name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->cat_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$this->cat_id->ViewValue = $this->cat_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->cat_id->ViewValue = $this->cat_id->CurrentValue;
+			}
+		} else {
+			$this->cat_id->ViewValue = NULL;
+		}
+		}
 		$this->cat_id->ViewCustomAttributes = "";
 
 		// company_id
-		$this->company_id->ViewValue = $this->company_id->CurrentValue;
+		if ($this->company_id->VirtualValue <> "") {
+			$this->company_id->ViewValue = $this->company_id->VirtualValue;
+		} else {
+		if (strval($this->company_id->CurrentValue) <> "") {
+			$sFilterWrk = "`company_id`" . ew_SearchString("=", $this->company_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT DISTINCT `company_id`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `company`";
+		$sWhereWrk = "";
+		$this->company_id->LookupFilters = array("dx1" => '`com_fname`', "dx2" => '`com_lname`', "dx3" => '`com_name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->company_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->company_id->ViewValue = $this->company_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->company_id->ViewValue = $this->company_id->CurrentValue;
+			}
+		} else {
+			$this->company_id->ViewValue = NULL;
+		}
+		}
 		$this->company_id->ViewCustomAttributes = "";
 
 		// pro_name
@@ -898,12 +968,12 @@ class cproducts_add extends cproducts {
 		$this->pro_description->ViewCustomAttributes = "";
 
 		// pro_condition
-		$this->pro_condition->ViewValue = $this->pro_condition->CurrentValue;
+		if (strval($this->pro_condition->CurrentValue) <> "") {
+			$this->pro_condition->ViewValue = $this->pro_condition->OptionCaption($this->pro_condition->CurrentValue);
+		} else {
+			$this->pro_condition->ViewValue = NULL;
+		}
 		$this->pro_condition->ViewCustomAttributes = "";
-
-		// pro_brand
-		$this->pro_brand->ViewValue = $this->pro_brand->CurrentValue;
-		$this->pro_brand->ViewCustomAttributes = "";
 
 		// pro_features
 		$this->pro_features->ViewValue = $this->pro_features->CurrentValue;
@@ -931,11 +1001,50 @@ class cproducts_add extends cproducts {
 		$this->pro_sell_price->ViewCustomAttributes = "";
 
 		// featured_image
-		$this->featured_image->ViewValue = $this->featured_image->CurrentValue;
+		$this->featured_image->UploadPath = "../uploads/product/";
+		if (!ew_Empty($this->featured_image->Upload->DbValue)) {
+			$this->featured_image->ImageWidth = 0;
+			$this->featured_image->ImageHeight = 94;
+			$this->featured_image->ImageAlt = $this->featured_image->FldAlt();
+			$this->featured_image->ViewValue = $this->featured_image->Upload->DbValue;
+		} else {
+			$this->featured_image->ViewValue = "";
+		}
 		$this->featured_image->ViewCustomAttributes = "";
 
 		// folder_image
-		$this->folder_image->ViewValue = $this->folder_image->CurrentValue;
+		if (strval($this->folder_image->CurrentValue) <> "") {
+			$arwrk = explode(",", $this->folder_image->CurrentValue);
+			$sFilterWrk = "";
+			foreach ($arwrk as $wrk) {
+				if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
+				$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
+			}
+		$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+		$sWhereWrk = "";
+		$this->folder_image->LookupFilters = array("dx1" => '`image`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->folder_image, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$this->folder_image->ViewValue = "";
+				$ari = 0;
+				while (!$rswrk->EOF) {
+					$arwrk = array();
+					$arwrk[1] = $rswrk->fields('DispFld');
+					$this->folder_image->ViewValue .= $this->folder_image->DisplayValue($arwrk);
+					$rswrk->MoveNext();
+					if (!$rswrk->EOF) $this->folder_image->ViewValue .= ew_ViewOptionSeparator($ari); // Separate Options
+					$ari++;
+				}
+				$rswrk->Close();
+			} else {
+				$this->folder_image->ViewValue = $this->folder_image->CurrentValue;
+			}
+		} else {
+			$this->folder_image->ViewValue = NULL;
+		}
 		$this->folder_image->ViewCustomAttributes = "";
 
 		// img1
@@ -966,6 +1075,35 @@ class cproducts_add extends cproducts {
 		}
 		$this->pro_status->ViewCustomAttributes = "";
 
+		// branch_id
+		if (strval($this->branch_id->CurrentValue) <> "") {
+			$sFilterWrk = "`branch_id`" . ew_SearchString("=", $this->branch_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `branch_id`, `branch_id` AS `DispFld`, `name` AS `Disp2Fld`, `image` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `branch`";
+		$sWhereWrk = "";
+		$this->branch_id->LookupFilters = array("dx1" => '`branch_id`', "dx2" => '`name`', "dx3" => '`image`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->branch_id, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$arwrk[2] = $rswrk->fields('Disp2Fld');
+				$arwrk[3] = $rswrk->fields('Disp3Fld');
+				$this->branch_id->ViewValue = $this->branch_id->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->branch_id->ViewValue = $this->branch_id->CurrentValue;
+			}
+		} else {
+			$this->branch_id->ViewValue = NULL;
+		}
+		$this->branch_id->ViewCustomAttributes = "";
+
+		// lang
+		$this->lang->ViewValue = $this->lang->CurrentValue;
+		$this->lang->ViewCustomAttributes = "";
+
 			// cat_id
 			$this->cat_id->LinkCustomAttributes = "";
 			$this->cat_id->HrefValue = "";
@@ -990,11 +1128,6 @@ class cproducts_add extends cproducts {
 			$this->pro_condition->LinkCustomAttributes = "";
 			$this->pro_condition->HrefValue = "";
 			$this->pro_condition->TooltipValue = "";
-
-			// pro_brand
-			$this->pro_brand->LinkCustomAttributes = "";
-			$this->pro_brand->HrefValue = "";
-			$this->pro_brand->TooltipValue = "";
 
 			// pro_features
 			$this->pro_features->LinkCustomAttributes = "";
@@ -1028,8 +1161,22 @@ class cproducts_add extends cproducts {
 
 			// featured_image
 			$this->featured_image->LinkCustomAttributes = "";
-			$this->featured_image->HrefValue = "";
+			$this->featured_image->UploadPath = "../uploads/product/";
+			if (!ew_Empty($this->featured_image->Upload->DbValue)) {
+				$this->featured_image->HrefValue = ew_GetFileUploadUrl($this->featured_image, $this->featured_image->Upload->DbValue); // Add prefix/suffix
+				$this->featured_image->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->featured_image->HrefValue = ew_FullUrl($this->featured_image->HrefValue, "href");
+			} else {
+				$this->featured_image->HrefValue = "";
+			}
+			$this->featured_image->HrefValue2 = $this->featured_image->UploadPath . $this->featured_image->Upload->DbValue;
 			$this->featured_image->TooltipValue = "";
+			if ($this->featured_image->UseColorbox) {
+				if (ew_Empty($this->featured_image->TooltipValue))
+					$this->featured_image->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+				$this->featured_image->LinkAttrs["data-rel"] = "products_x_featured_image";
+				ew_AppendClass($this->featured_image->LinkAttrs["class"], "ewLightbox");
+			}
 
 			// folder_image
 			$this->folder_image->LinkCustomAttributes = "";
@@ -1065,19 +1212,69 @@ class cproducts_add extends cproducts {
 			$this->pro_status->LinkCustomAttributes = "";
 			$this->pro_status->HrefValue = "";
 			$this->pro_status->TooltipValue = "";
+
+			// branch_id
+			$this->branch_id->LinkCustomAttributes = "";
+			$this->branch_id->HrefValue = "";
+			$this->branch_id->TooltipValue = "";
+
+			// lang
+			$this->lang->LinkCustomAttributes = "";
+			$this->lang->HrefValue = "";
+			$this->lang->TooltipValue = "";
 		} elseif ($this->RowType == EW_ROWTYPE_ADD) { // Add row
 
 			// cat_id
-			$this->cat_id->EditAttrs["class"] = "form-control";
 			$this->cat_id->EditCustomAttributes = "";
-			$this->cat_id->EditValue = ew_HtmlEncode($this->cat_id->CurrentValue);
-			$this->cat_id->PlaceHolder = ew_RemoveHtml($this->cat_id->FldCaption());
+			if (trim(strval($this->cat_id->CurrentValue)) == "") {
+				$sFilterWrk = "0=1";
+			} else {
+				$sFilterWrk = "`cat_id`" . ew_SearchString("=", $this->cat_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+			}
+			$sSqlWrk = "SELECT `cat_id`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `categories`";
+			$sWhereWrk = "";
+			$this->cat_id->LookupFilters = array("dx1" => '`cat_name`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->cat_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = ew_HtmlEncode($rswrk->fields('DispFld'));
+				$this->cat_id->ViewValue = $this->cat_id->DisplayValue($arwrk);
+			} else {
+				$this->cat_id->ViewValue = $Language->Phrase("PleaseSelect");
+			}
+			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
+			if ($rswrk) $rswrk->Close();
+			$this->cat_id->EditValue = $arwrk;
 
 			// company_id
-			$this->company_id->EditAttrs["class"] = "form-control";
 			$this->company_id->EditCustomAttributes = "";
-			$this->company_id->EditValue = ew_HtmlEncode($this->company_id->CurrentValue);
-			$this->company_id->PlaceHolder = ew_RemoveHtml($this->company_id->FldCaption());
+			if (trim(strval($this->company_id->CurrentValue)) == "") {
+				$sFilterWrk = "0=1";
+			} else {
+				$sFilterWrk = "`company_id`" . ew_SearchString("=", $this->company_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+			}
+			$sSqlWrk = "SELECT DISTINCT `company_id`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `company`";
+			$sWhereWrk = "";
+			$this->company_id->LookupFilters = array("dx1" => '`com_fname`', "dx2" => '`com_lname`', "dx3" => '`com_name`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->company_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = ew_HtmlEncode($rswrk->fields('DispFld'));
+				$arwrk[2] = ew_HtmlEncode($rswrk->fields('Disp2Fld'));
+				$arwrk[3] = ew_HtmlEncode($rswrk->fields('Disp3Fld'));
+				$this->company_id->ViewValue = $this->company_id->DisplayValue($arwrk);
+			} else {
+				$this->company_id->ViewValue = $Language->Phrase("PleaseSelect");
+			}
+			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
+			if ($rswrk) $rswrk->Close();
+			$this->company_id->EditValue = $arwrk;
 
 			// pro_name
 			$this->pro_name->EditAttrs["class"] = "form-control";
@@ -1094,14 +1291,7 @@ class cproducts_add extends cproducts {
 			// pro_condition
 			$this->pro_condition->EditAttrs["class"] = "form-control";
 			$this->pro_condition->EditCustomAttributes = "";
-			$this->pro_condition->EditValue = ew_HtmlEncode($this->pro_condition->CurrentValue);
-			$this->pro_condition->PlaceHolder = ew_RemoveHtml($this->pro_condition->FldCaption());
-
-			// pro_brand
-			$this->pro_brand->EditAttrs["class"] = "form-control";
-			$this->pro_brand->EditCustomAttributes = "";
-			$this->pro_brand->EditValue = ew_HtmlEncode($this->pro_brand->CurrentValue);
-			$this->pro_brand->PlaceHolder = ew_RemoveHtml($this->pro_brand->FldCaption());
+			$this->pro_condition->EditValue = $this->pro_condition->Options(TRUE);
 
 			// pro_features
 			$this->pro_features->EditAttrs["class"] = "form-control";
@@ -1144,14 +1334,56 @@ class cproducts_add extends cproducts {
 			// featured_image
 			$this->featured_image->EditAttrs["class"] = "form-control";
 			$this->featured_image->EditCustomAttributes = "";
-			$this->featured_image->EditValue = ew_HtmlEncode($this->featured_image->CurrentValue);
-			$this->featured_image->PlaceHolder = ew_RemoveHtml($this->featured_image->FldCaption());
+			$this->featured_image->UploadPath = "../uploads/product/";
+			if (!ew_Empty($this->featured_image->Upload->DbValue)) {
+				$this->featured_image->ImageWidth = 0;
+				$this->featured_image->ImageHeight = 94;
+				$this->featured_image->ImageAlt = $this->featured_image->FldAlt();
+				$this->featured_image->EditValue = $this->featured_image->Upload->DbValue;
+			} else {
+				$this->featured_image->EditValue = "";
+			}
+			if (!ew_Empty($this->featured_image->CurrentValue))
+					$this->featured_image->Upload->FileName = $this->featured_image->CurrentValue;
+			if (($this->CurrentAction == "I" || $this->CurrentAction == "C") && !$this->EventCancelled) ew_RenderUploadField($this->featured_image);
 
 			// folder_image
-			$this->folder_image->EditAttrs["class"] = "form-control";
 			$this->folder_image->EditCustomAttributes = "";
-			$this->folder_image->EditValue = ew_HtmlEncode($this->folder_image->CurrentValue);
-			$this->folder_image->PlaceHolder = ew_RemoveHtml($this->folder_image->FldCaption());
+			if (trim(strval($this->folder_image->CurrentValue)) == "") {
+				$sFilterWrk = "0=1";
+			} else {
+				$arwrk = explode(",", $this->folder_image->CurrentValue);
+				$sFilterWrk = "";
+				foreach ($arwrk as $wrk) {
+					if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
+					$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
+				}
+			}
+			$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `product_gallery`";
+			$sWhereWrk = "";
+			$this->folder_image->LookupFilters = array("dx1" => '`image`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->folder_image, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$this->folder_image->ViewValue = "";
+				$ari = 0;
+				while (!$rswrk->EOF) {
+					$arwrk = array();
+					$arwrk[1] = ew_HtmlEncode($rswrk->fields('DispFld'));
+					$this->folder_image->ViewValue .= $this->folder_image->DisplayValue($arwrk);
+					$rswrk->MoveNext();
+					if (!$rswrk->EOF) $this->folder_image->ViewValue .= ew_ViewOptionSeparator($ari); // Separate Options
+					$ari++;
+				}
+				$rswrk->MoveFirst();
+			} else {
+				$this->folder_image->ViewValue = $Language->Phrase("PleaseSelect");
+			}
+			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
+			if ($rswrk) $rswrk->Close();
+			$this->folder_image->EditValue = $arwrk;
 
 			// img1
 			$this->img1->EditAttrs["class"] = "form-control";
@@ -1187,6 +1419,39 @@ class cproducts_add extends cproducts {
 			$this->pro_status->EditCustomAttributes = "";
 			$this->pro_status->EditValue = $this->pro_status->Options(FALSE);
 
+			// branch_id
+			$this->branch_id->EditCustomAttributes = "";
+			if (trim(strval($this->branch_id->CurrentValue)) == "") {
+				$sFilterWrk = "0=1";
+			} else {
+				$sFilterWrk = "`branch_id`" . ew_SearchString("=", $this->branch_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+			}
+			$sSqlWrk = "SELECT `branch_id`, `branch_id` AS `DispFld`, `name` AS `Disp2Fld`, `image` AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `branch`";
+			$sWhereWrk = "";
+			$this->branch_id->LookupFilters = array("dx1" => '`branch_id`', "dx2" => '`name`', "dx3" => '`image`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->branch_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = ew_HtmlEncode($rswrk->fields('DispFld'));
+				$arwrk[2] = ew_HtmlEncode($rswrk->fields('Disp2Fld'));
+				$arwrk[3] = ew_HtmlEncode($rswrk->fields('Disp3Fld'));
+				$this->branch_id->ViewValue = $this->branch_id->DisplayValue($arwrk);
+			} else {
+				$this->branch_id->ViewValue = $Language->Phrase("PleaseSelect");
+			}
+			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
+			if ($rswrk) $rswrk->Close();
+			$this->branch_id->EditValue = $arwrk;
+
+			// lang
+			$this->lang->EditAttrs["class"] = "form-control";
+			$this->lang->EditCustomAttributes = "";
+			$this->lang->EditValue = ew_HtmlEncode($this->lang->CurrentValue);
+			$this->lang->PlaceHolder = ew_RemoveHtml($this->lang->FldCaption());
+
 			// Add refer script
 			// cat_id
 
@@ -1208,10 +1473,6 @@ class cproducts_add extends cproducts {
 			// pro_condition
 			$this->pro_condition->LinkCustomAttributes = "";
 			$this->pro_condition->HrefValue = "";
-
-			// pro_brand
-			$this->pro_brand->LinkCustomAttributes = "";
-			$this->pro_brand->HrefValue = "";
 
 			// pro_features
 			$this->pro_features->LinkCustomAttributes = "";
@@ -1239,7 +1500,15 @@ class cproducts_add extends cproducts {
 
 			// featured_image
 			$this->featured_image->LinkCustomAttributes = "";
-			$this->featured_image->HrefValue = "";
+			$this->featured_image->UploadPath = "../uploads/product/";
+			if (!ew_Empty($this->featured_image->Upload->DbValue)) {
+				$this->featured_image->HrefValue = ew_GetFileUploadUrl($this->featured_image, $this->featured_image->Upload->DbValue); // Add prefix/suffix
+				$this->featured_image->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->featured_image->HrefValue = ew_FullUrl($this->featured_image->HrefValue, "href");
+			} else {
+				$this->featured_image->HrefValue = "";
+			}
+			$this->featured_image->HrefValue2 = $this->featured_image->UploadPath . $this->featured_image->Upload->DbValue;
 
 			// folder_image
 			$this->folder_image->LinkCustomAttributes = "";
@@ -1268,6 +1537,14 @@ class cproducts_add extends cproducts {
 			// pro_status
 			$this->pro_status->LinkCustomAttributes = "";
 			$this->pro_status->HrefValue = "";
+
+			// branch_id
+			$this->branch_id->LinkCustomAttributes = "";
+			$this->branch_id->HrefValue = "";
+
+			// lang
+			$this->lang->LinkCustomAttributes = "";
+			$this->lang->HrefValue = "";
 		}
 		if ($this->RowType == EW_ROWTYPE_ADD || $this->RowType == EW_ROWTYPE_EDIT || $this->RowType == EW_ROWTYPE_SEARCH) // Add/Edit/Search row
 			$this->SetupFieldTitles();
@@ -1290,14 +1567,8 @@ class cproducts_add extends cproducts {
 		if (!$this->cat_id->FldIsDetailKey && !is_null($this->cat_id->FormValue) && $this->cat_id->FormValue == "") {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->cat_id->FldCaption(), $this->cat_id->ReqErrMsg));
 		}
-		if (!ew_CheckInteger($this->cat_id->FormValue)) {
-			ew_AddMessage($gsFormError, $this->cat_id->FldErrMsg());
-		}
 		if (!$this->company_id->FldIsDetailKey && !is_null($this->company_id->FormValue) && $this->company_id->FormValue == "") {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->company_id->FldCaption(), $this->company_id->ReqErrMsg));
-		}
-		if (!ew_CheckInteger($this->company_id->FormValue)) {
-			ew_AddMessage($gsFormError, $this->company_id->FldErrMsg());
 		}
 		if (!ew_CheckDateDef($this->post_date->FormValue)) {
 			ew_AddMessage($gsFormError, $this->post_date->FldErrMsg());
@@ -1308,10 +1579,10 @@ class cproducts_add extends cproducts {
 		if (!ew_CheckNumber($this->pro_sell_price->FormValue)) {
 			ew_AddMessage($gsFormError, $this->pro_sell_price->FldErrMsg());
 		}
-		if (!$this->featured_image->FldIsDetailKey && !is_null($this->featured_image->FormValue) && $this->featured_image->FormValue == "") {
+		if ($this->featured_image->Upload->FileName == "" && !$this->featured_image->Upload->KeepFile) {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->featured_image->FldCaption(), $this->featured_image->ReqErrMsg));
 		}
-		if (!$this->folder_image->FldIsDetailKey && !is_null($this->folder_image->FormValue) && $this->folder_image->FormValue == "") {
+		if ($this->folder_image->FormValue == "") {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->folder_image->FldCaption(), $this->folder_image->ReqErrMsg));
 		}
 		if (!$this->img1->FldIsDetailKey && !is_null($this->img1->FormValue) && $this->img1->FormValue == "") {
@@ -1350,6 +1621,8 @@ class cproducts_add extends cproducts {
 		// Load db values from rsold
 		$this->LoadDbValues($rsold);
 		if ($rsold) {
+			$this->featured_image->OldUploadPath = "../uploads/product/";
+			$this->featured_image->UploadPath = $this->featured_image->OldUploadPath;
 		}
 		$rsnew = array();
 
@@ -1367,9 +1640,6 @@ class cproducts_add extends cproducts {
 
 		// pro_condition
 		$this->pro_condition->SetDbValueDef($rsnew, $this->pro_condition->CurrentValue, NULL, FALSE);
-
-		// pro_brand
-		$this->pro_brand->SetDbValueDef($rsnew, $this->pro_brand->CurrentValue, NULL, FALSE);
 
 		// pro_features
 		$this->pro_features->SetDbValueDef($rsnew, $this->pro_features->CurrentValue, NULL, FALSE);
@@ -1390,7 +1660,16 @@ class cproducts_add extends cproducts {
 		$this->pro_sell_price->SetDbValueDef($rsnew, $this->pro_sell_price->CurrentValue, NULL, FALSE);
 
 		// featured_image
-		$this->featured_image->SetDbValueDef($rsnew, $this->featured_image->CurrentValue, "", FALSE);
+		if ($this->featured_image->Visible && !$this->featured_image->Upload->KeepFile) {
+			$this->featured_image->Upload->DbValue = ""; // No need to delete old file
+			if ($this->featured_image->Upload->FileName == "") {
+				$rsnew['featured_image'] = NULL;
+			} else {
+				$rsnew['featured_image'] = $this->featured_image->Upload->FileName;
+			}
+			$this->featured_image->ImageWidth = 875; // Resize width
+			$this->featured_image->ImageHeight = 665; // Resize height
+		}
 
 		// folder_image
 		$this->folder_image->SetDbValueDef($rsnew, $this->folder_image->CurrentValue, "", FALSE);
@@ -1416,6 +1695,50 @@ class cproducts_add extends cproducts {
 			$tmpBool = (!empty($tmpBool)) ? "Y" : "N";
 		$this->pro_status->SetDbValueDef($rsnew, $tmpBool, "N", FALSE);
 
+		// branch_id
+		$this->branch_id->SetDbValueDef($rsnew, $this->branch_id->CurrentValue, NULL, FALSE);
+
+		// lang
+		$this->lang->SetDbValueDef($rsnew, $this->lang->CurrentValue, "", strval($this->lang->CurrentValue) == "");
+		if ($this->featured_image->Visible && !$this->featured_image->Upload->KeepFile) {
+			$this->featured_image->UploadPath = "../uploads/product/";
+			$OldFiles = ew_Empty($this->featured_image->Upload->DbValue) ? array() : array($this->featured_image->Upload->DbValue);
+			if (!ew_Empty($this->featured_image->Upload->FileName)) {
+				$NewFiles = array($this->featured_image->Upload->FileName);
+				$NewFileCount = count($NewFiles);
+				for ($i = 0; $i < $NewFileCount; $i++) {
+					$fldvar = ($this->featured_image->Upload->Index < 0) ? $this->featured_image->FldVar : substr($this->featured_image->FldVar, 0, 1) . $this->featured_image->Upload->Index . substr($this->featured_image->FldVar, 1);
+					if ($NewFiles[$i] <> "") {
+						$file = $NewFiles[$i];
+						if (file_exists(ew_UploadTempPath($fldvar, $this->featured_image->TblVar) . $file)) {
+							$OldFileFound = FALSE;
+							$OldFileCount = count($OldFiles);
+							for ($j = 0; $j < $OldFileCount; $j++) {
+								$file1 = $OldFiles[$j];
+								if ($file1 == $file) { // Old file found, no need to delete anymore
+									unset($OldFiles[$j]);
+									$OldFileFound = TRUE;
+									break;
+								}
+							}
+							if ($OldFileFound) // No need to check if file exists further
+								continue;
+							$file1 = ew_UploadFileNameEx($this->featured_image->PhysicalUploadPath(), $file); // Get new file name
+							if ($file1 <> $file) { // Rename temp file
+								while (file_exists(ew_UploadTempPath($fldvar, $this->featured_image->TblVar) . $file1) || file_exists($this->featured_image->PhysicalUploadPath() . $file1)) // Make sure no file name clash
+									$file1 = ew_UniqueFilename($this->featured_image->PhysicalUploadPath(), $file1, TRUE); // Use indexed name
+								rename(ew_UploadTempPath($fldvar, $this->featured_image->TblVar) . $file, ew_UploadTempPath($fldvar, $this->featured_image->TblVar) . $file1);
+								$NewFiles[$i] = $file1;
+							}
+						}
+					}
+				}
+				$this->featured_image->Upload->DbValue = empty($OldFiles) ? "" : implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $OldFiles);
+				$this->featured_image->Upload->FileName = implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $NewFiles);
+				$this->featured_image->SetDbValueDef($rsnew, $this->featured_image->Upload->FileName, "", FALSE);
+			}
+		}
+
 		// Call Row Inserting event
 		$rs = ($rsold == NULL) ? NULL : $rsold->fields;
 		$bInsertRow = $this->Row_Inserting($rs, $rsnew);
@@ -1436,6 +1759,35 @@ class cproducts_add extends cproducts {
 			$AddRow = $this->Insert($rsnew);
 			$conn->raiseErrorFn = '';
 			if ($AddRow) {
+				if ($this->featured_image->Visible && !$this->featured_image->Upload->KeepFile) {
+					$OldFiles = ew_Empty($this->featured_image->Upload->DbValue) ? array() : array($this->featured_image->Upload->DbValue);
+					if (!ew_Empty($this->featured_image->Upload->FileName)) {
+						$NewFiles = array($this->featured_image->Upload->FileName);
+						$NewFiles2 = array($rsnew['featured_image']);
+						$NewFileCount = count($NewFiles);
+						for ($i = 0; $i < $NewFileCount; $i++) {
+							$fldvar = ($this->featured_image->Upload->Index < 0) ? $this->featured_image->FldVar : substr($this->featured_image->FldVar, 0, 1) . $this->featured_image->Upload->Index . substr($this->featured_image->FldVar, 1);
+							if ($NewFiles[$i] <> "") {
+								$file = ew_UploadTempPath($fldvar, $this->featured_image->TblVar) . $NewFiles[$i];
+								if (file_exists($file)) {
+									if (@$NewFiles2[$i] <> "") // Use correct file name
+										$NewFiles[$i] = $NewFiles2[$i];
+									if (!$this->featured_image->Upload->ResizeAndSaveToFile($this->featured_image->ImageWidth, $this->featured_image->ImageHeight, EW_THUMBNAIL_DEFAULT_QUALITY, $NewFiles[$i], TRUE, $i)) {
+										$this->setFailureMessage($Language->Phrase("UploadErrMsg7"));
+										return FALSE;
+									}
+								}
+							}
+						}
+					} else {
+						$NewFiles = array();
+					}
+					$OldFileCount = count($OldFiles);
+					for ($i = 0; $i < $OldFileCount; $i++) {
+						if ($OldFiles[$i] <> "" && !in_array($OldFiles[$i], $NewFiles))
+							@unlink($this->featured_image->OldPhysicalUploadPath() . $OldFiles[$i]);
+					}
+				}
 			}
 		} else {
 			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
@@ -1455,6 +1807,9 @@ class cproducts_add extends cproducts {
 			$rs = ($rsold == NULL) ? NULL : $rsold->fields;
 			$this->Row_Inserted($rs, $rsnew);
 		}
+
+		// featured_image
+		ew_CleanUploadTempPath($this->featured_image, $this->featured_image->Upload->Index);
 		return $AddRow;
 	}
 
@@ -1473,6 +1828,54 @@ class cproducts_add extends cproducts {
 		global $gsLanguage;
 		$pageId = $pageId ?: $this->PageID;
 		switch ($fld->FldVar) {
+		case "x_cat_id":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT `cat_id` AS `LinkFld`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `categories`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`cat_name`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`cat_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->cat_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
+		case "x_company_id":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT DISTINCT `company_id` AS `LinkFld`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `company`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`com_fname`', "dx2" => '`com_lname`', "dx3" => '`com_name`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`company_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->company_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
+		case "x_folder_image":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT `pro_gallery_id` AS `LinkFld`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`image`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`pro_gallery_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->folder_image, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
+		case "x_branch_id":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT `branch_id` AS `LinkFld`, `branch_id` AS `DispFld`, `name` AS `Disp2Fld`, `image` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `branch`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`branch_id`', "dx2" => '`name`', "dx3" => '`image`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`branch_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->branch_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
 		}
 	}
 
@@ -1595,15 +1998,9 @@ fproductsadd.Validate = function() {
 			elm = this.GetElements("x" + infix + "_cat_id");
 			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
 				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->cat_id->FldCaption(), $products->cat_id->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_cat_id");
-			if (elm && !ew_CheckInteger(elm.value))
-				return this.OnError(elm, "<?php echo ew_JsEncode2($products->cat_id->FldErrMsg()) ?>");
 			elm = this.GetElements("x" + infix + "_company_id");
 			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
 				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->company_id->FldCaption(), $products->company_id->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_company_id");
-			if (elm && !ew_CheckInteger(elm.value))
-				return this.OnError(elm, "<?php echo ew_JsEncode2($products->company_id->FldErrMsg()) ?>");
 			elm = this.GetElements("x" + infix + "_post_date");
 			if (elm && !ew_CheckDateDef(elm.value))
 				return this.OnError(elm, "<?php echo ew_JsEncode2($products->post_date->FldErrMsg()) ?>");
@@ -1613,10 +2010,11 @@ fproductsadd.Validate = function() {
 			elm = this.GetElements("x" + infix + "_pro_sell_price");
 			if (elm && !ew_CheckNumber(elm.value))
 				return this.OnError(elm, "<?php echo ew_JsEncode2($products->pro_sell_price->FldErrMsg()) ?>");
-			elm = this.GetElements("x" + infix + "_featured_image");
-			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
-				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->featured_image->FldCaption(), $products->featured_image->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_folder_image");
+			felm = this.GetElements("x" + infix + "_featured_image");
+			elm = this.GetElements("fn_x" + infix + "_featured_image");
+			if (felm && elm && !ew_HasValue(elm))
+				return this.OnError(felm, "<?php echo ew_JsEncode2(str_replace("%s", $products->featured_image->FldCaption(), $products->featured_image->ReqErrMsg)) ?>");
+			elm = this.GetElements("x" + infix + "_folder_image[]");
 			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
 				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->folder_image->FldCaption(), $products->folder_image->ReqErrMsg)) ?>");
 			elm = this.GetElements("x" + infix + "_img1");
@@ -1663,8 +2061,18 @@ fproductsadd.Form_CustomValidate =
 fproductsadd.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 
 // Dynamic selection lists
+fproductsadd.Lists["x_cat_id"] = {"LinkField":"x_cat_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_cat_name","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"categories"};
+fproductsadd.Lists["x_cat_id"].Data = "<?php echo $products_add->cat_id->LookupFilterQuery(FALSE, "add") ?>";
+fproductsadd.Lists["x_company_id"] = {"LinkField":"x_company_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_com_fname","x_com_lname","x_com_name",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"company"};
+fproductsadd.Lists["x_company_id"].Data = "<?php echo $products_add->company_id->LookupFilterQuery(FALSE, "add") ?>";
+fproductsadd.Lists["x_pro_condition"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fproductsadd.Lists["x_pro_condition"].Options = <?php echo json_encode($products_add->pro_condition->Options()) ?>;
+fproductsadd.Lists["x_folder_image[]"] = {"LinkField":"x_pro_gallery_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_image","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"product_gallery"};
+fproductsadd.Lists["x_folder_image[]"].Data = "<?php echo $products_add->folder_image->LookupFilterQuery(FALSE, "add") ?>";
 fproductsadd.Lists["x_pro_status[]"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
 fproductsadd.Lists["x_pro_status[]"].Options = <?php echo json_encode($products_add->pro_status->Options()) ?>;
+fproductsadd.Lists["x_branch_id"] = {"LinkField":"x_branch_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_branch_id","x_name","x_image",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"branch"};
+fproductsadd.Lists["x_branch_id"].Data = "<?php echo $products_add->branch_id->LookupFilterQuery(FALSE, "add") ?>";
 
 // Form object for search
 </script>
@@ -1689,7 +2097,12 @@ $products_add->ShowMessage();
 		<label id="elh_products_cat_id" for="x_cat_id" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->cat_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->cat_id->CellAttributes() ?>>
 <span id="el_products_cat_id">
-<input type="text" data-table="products" data-field="x_cat_id" name="x_cat_id" id="x_cat_id" size="30" placeholder="<?php echo ew_HtmlEncode($products->cat_id->getPlaceHolder()) ?>" value="<?php echo $products->cat_id->EditValue ?>"<?php echo $products->cat_id->EditAttributes() ?>>
+<span class="ewLookupList">
+	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_cat_id"><?php echo (strval($products->cat_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->cat_id->ViewValue); ?></span>
+</span>
+<button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->cat_id->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_cat_id',m:0,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->cat_id->ReadOnly || $products->cat_id->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
+<input type="hidden" data-table="products" data-field="x_cat_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->cat_id->DisplayValueSeparatorAttribute() ?>" name="x_cat_id" id="x_cat_id" value="<?php echo $products->cat_id->CurrentValue ?>"<?php echo $products->cat_id->EditAttributes() ?>>
+<button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->cat_id->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_cat_id',url:'categoriesaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_cat_id"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->cat_id->FldCaption() ?></span></button>
 </span>
 <?php echo $products->cat_id->CustomMsg ?></div></div>
 	</div>
@@ -1699,7 +2112,12 @@ $products_add->ShowMessage();
 		<label id="elh_products_company_id" for="x_company_id" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->company_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->company_id->CellAttributes() ?>>
 <span id="el_products_company_id">
-<input type="text" data-table="products" data-field="x_company_id" name="x_company_id" id="x_company_id" size="30" placeholder="<?php echo ew_HtmlEncode($products->company_id->getPlaceHolder()) ?>" value="<?php echo $products->company_id->EditValue ?>"<?php echo $products->company_id->EditAttributes() ?>>
+<span class="ewLookupList">
+	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_company_id"><?php echo (strval($products->company_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->company_id->ViewValue); ?></span>
+</span>
+<button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->company_id->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_company_id',m:0,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->company_id->ReadOnly || $products->company_id->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
+<input type="hidden" data-table="products" data-field="x_company_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->company_id->DisplayValueSeparatorAttribute() ?>" name="x_company_id" id="x_company_id" value="<?php echo $products->company_id->CurrentValue ?>"<?php echo $products->company_id->EditAttributes() ?>>
+<button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->company_id->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_company_id',url:'companyaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_company_id"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->company_id->FldCaption() ?></span></button>
 </span>
 <?php echo $products->company_id->CustomMsg ?></div></div>
 	</div>
@@ -1729,19 +2147,11 @@ $products_add->ShowMessage();
 		<label id="elh_products_pro_condition" for="x_pro_condition" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_condition->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_condition->CellAttributes() ?>>
 <span id="el_products_pro_condition">
-<input type="text" data-table="products" data-field="x_pro_condition" name="x_pro_condition" id="x_pro_condition" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->pro_condition->getPlaceHolder()) ?>" value="<?php echo $products->pro_condition->EditValue ?>"<?php echo $products->pro_condition->EditAttributes() ?>>
+<select data-table="products" data-field="x_pro_condition" data-value-separator="<?php echo $products->pro_condition->DisplayValueSeparatorAttribute() ?>" id="x_pro_condition" name="x_pro_condition"<?php echo $products->pro_condition->EditAttributes() ?>>
+<?php echo $products->pro_condition->SelectOptionListHtml("x_pro_condition") ?>
+</select>
 </span>
 <?php echo $products->pro_condition->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
-<?php if ($products->pro_brand->Visible) { // pro_brand ?>
-	<div id="r_pro_brand" class="form-group">
-		<label id="elh_products_pro_brand" for="x_pro_brand" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_brand->FldCaption() ?></label>
-		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_brand->CellAttributes() ?>>
-<span id="el_products_pro_brand">
-<input type="text" data-table="products" data-field="x_pro_brand" name="x_pro_brand" id="x_pro_brand" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->pro_brand->getPlaceHolder()) ?>" value="<?php echo $products->pro_brand->EditValue ?>"<?php echo $products->pro_brand->EditAttributes() ?>>
-</span>
-<?php echo $products->pro_brand->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 <?php if ($products->pro_features->Visible) { // pro_features ?>
@@ -1806,10 +2216,21 @@ $products_add->ShowMessage();
 <?php } ?>
 <?php if ($products->featured_image->Visible) { // featured_image ?>
 	<div id="r_featured_image" class="form-group">
-		<label id="elh_products_featured_image" for="x_featured_image" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->featured_image->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
+		<label id="elh_products_featured_image" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->featured_image->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->featured_image->CellAttributes() ?>>
 <span id="el_products_featured_image">
-<input type="text" data-table="products" data-field="x_featured_image" name="x_featured_image" id="x_featured_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->featured_image->getPlaceHolder()) ?>" value="<?php echo $products->featured_image->EditValue ?>"<?php echo $products->featured_image->EditAttributes() ?>>
+<div id="fd_x_featured_image">
+<span title="<?php echo $products->featured_image->FldTitle() ? $products->featured_image->FldTitle() : $Language->Phrase("ChooseFile") ?>" class="btn btn-default btn-sm fileinput-button ewTooltip<?php if ($products->featured_image->ReadOnly || $products->featured_image->Disabled) echo " hide"; ?>">
+	<span><?php echo $Language->Phrase("ChooseFileBtn") ?></span>
+	<input type="file" title=" " data-table="products" data-field="x_featured_image" name="x_featured_image" id="x_featured_image"<?php echo $products->featured_image->EditAttributes() ?>>
+</span>
+<input type="hidden" name="fn_x_featured_image" id= "fn_x_featured_image" value="<?php echo $products->featured_image->Upload->FileName ?>">
+<input type="hidden" name="fa_x_featured_image" id= "fa_x_featured_image" value="0">
+<input type="hidden" name="fs_x_featured_image" id= "fs_x_featured_image" value="250">
+<input type="hidden" name="fx_x_featured_image" id= "fx_x_featured_image" value="<?php echo $products->featured_image->UploadAllowedFileExt ?>">
+<input type="hidden" name="fm_x_featured_image" id= "fm_x_featured_image" value="<?php echo $products->featured_image->UploadMaxFileSize ?>">
+</div>
+<table id="ft_x_featured_image" class="table table-condensed pull-left ewUploadTable"><tbody class="files"></tbody></table>
 </span>
 <?php echo $products->featured_image->CustomMsg ?></div></div>
 	</div>
@@ -1819,7 +2240,11 @@ $products_add->ShowMessage();
 		<label id="elh_products_folder_image" for="x_folder_image" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->folder_image->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->folder_image->CellAttributes() ?>>
 <span id="el_products_folder_image">
-<input type="text" data-table="products" data-field="x_folder_image" name="x_folder_image" id="x_folder_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->folder_image->getPlaceHolder()) ?>" value="<?php echo $products->folder_image->EditValue ?>"<?php echo $products->folder_image->EditAttributes() ?>>
+<span class="ewLookupList">
+	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_folder_image"><?php echo (strval($products->folder_image->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->folder_image->ViewValue); ?></span>
+</span>
+<button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->folder_image->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_folder_image[]',m:1,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->folder_image->ReadOnly || $products->folder_image->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
+<input type="hidden" data-table="products" data-field="x_folder_image" data-multiple="1" data-lookup="1" data-value-separator="<?php echo $products->folder_image->DisplayValueSeparatorAttribute() ?>" name="x_folder_image[]" id="x_folder_image[]" value="<?php echo $products->folder_image->CurrentValue ?>"<?php echo $products->folder_image->EditAttributes() ?>>
 </span>
 <?php echo $products->folder_image->CustomMsg ?></div></div>
 	</div>
@@ -1885,6 +2310,30 @@ $selwrk = (ew_ConvertToBool($products->pro_status->CurrentValue)) ? " checked" :
 <input type="checkbox" data-table="products" data-field="x_pro_status" name="x_pro_status[]" id="x_pro_status[]" value="1"<?php echo $selwrk ?><?php echo $products->pro_status->EditAttributes() ?>>
 </span>
 <?php echo $products->pro_status->CustomMsg ?></div></div>
+	</div>
+<?php } ?>
+<?php if ($products->branch_id->Visible) { // branch_id ?>
+	<div id="r_branch_id" class="form-group">
+		<label id="elh_products_branch_id" for="x_branch_id" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->branch_id->FldCaption() ?></label>
+		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->branch_id->CellAttributes() ?>>
+<span id="el_products_branch_id">
+<span class="ewLookupList">
+	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_branch_id"><?php echo (strval($products->branch_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->branch_id->ViewValue); ?></span>
+</span>
+<button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->branch_id->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_branch_id',m:0,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->branch_id->ReadOnly || $products->branch_id->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
+<input type="hidden" data-table="products" data-field="x_branch_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->branch_id->DisplayValueSeparatorAttribute() ?>" name="x_branch_id" id="x_branch_id" value="<?php echo $products->branch_id->CurrentValue ?>"<?php echo $products->branch_id->EditAttributes() ?>>
+</span>
+<?php echo $products->branch_id->CustomMsg ?></div></div>
+	</div>
+<?php } ?>
+<?php if ($products->lang->Visible) { // lang ?>
+	<div id="r_lang" class="form-group">
+		<label id="elh_products_lang" for="x_lang" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->lang->FldCaption() ?></label>
+		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->lang->CellAttributes() ?>>
+<span id="el_products_lang">
+<input type="text" data-table="products" data-field="x_lang" name="x_lang" id="x_lang" size="30" maxlength="50" placeholder="<?php echo ew_HtmlEncode($products->lang->getPlaceHolder()) ?>" value="<?php echo $products->lang->EditValue ?>"<?php echo $products->lang->EditAttributes() ?>>
+</span>
+<?php echo $products->lang->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 </div><!-- /page* -->
