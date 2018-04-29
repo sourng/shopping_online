@@ -450,13 +450,10 @@ class cproducts_list extends cproducts {
 		$this->cat_id->SetVisibility();
 		$this->company_id->SetVisibility();
 		$this->pro_name->SetVisibility();
-		$this->pro_condition->SetVisibility();
 		$this->ads_id->SetVisibility();
 		$this->pro_base_price->SetVisibility();
 		$this->pro_sell_price->SetVisibility();
 		$this->featured_image->SetVisibility();
-		$this->pro_status->SetVisibility();
-		$this->branch_id->SetVisibility();
 		$this->lang->SetVisibility();
 
 		// Global Page Loading event (in userfn*.php)
@@ -645,18 +642,12 @@ class cproducts_list extends cproducts {
 
 			// Get default search criteria
 			ew_AddFilter($this->DefaultSearchWhere, $this->BasicSearchWhere(TRUE));
-			ew_AddFilter($this->DefaultSearchWhere, $this->AdvancedSearchWhere(TRUE));
 
 			// Get basic search values
 			$this->LoadBasicSearchValues();
 
-			// Get and validate search values for advanced search
-			$this->LoadSearchValues(); // Get search values
-
 			// Process filter list
 			$this->ProcessFilterList();
-			if (!$this->ValidateSearch())
-				$this->setFailureMessage($gsSearchError);
 
 			// Restore search parms from Session if not searching / reset / export
 			if (($this->Export <> "" || $this->Command <> "search" && $this->Command <> "reset" && $this->Command <> "resetall") && $this->Command <> "json" && $this->CheckSearchParms())
@@ -671,10 +662,6 @@ class cproducts_list extends cproducts {
 			// Get basic search criteria
 			if ($gsSearchError == "")
 				$sSrchBasic = $this->BasicSearchWhere();
-
-			// Get search criteria for advanced search
-			if ($gsSearchError == "")
-				$sSrchAdvanced = $this->AdvancedSearchWhere();
 		}
 
 		// Restore display records
@@ -695,11 +682,6 @@ class cproducts_list extends cproducts {
 			$this->BasicSearch->LoadDefault();
 			if ($this->BasicSearch->Keyword != "")
 				$sSrchBasic = $this->BasicSearchWhere();
-
-			// Load advanced search from default
-			if ($this->LoadAdvancedSearchDefault()) {
-				$sSrchAdvanced = $this->AdvancedSearchWhere();
-			}
 		}
 
 		// Build search criteria
@@ -790,15 +772,9 @@ class cproducts_list extends cproducts {
 	// Set up key values
 	function SetupKeyValues($key) {
 		$arrKeyFlds = explode($GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"], $key);
-		if (count($arrKeyFlds) >= 3) {
+		if (count($arrKeyFlds) >= 1) {
 			$this->product_id->setFormValue($arrKeyFlds[0]);
 			if (!is_numeric($this->product_id->FormValue))
-				return FALSE;
-			$this->cat_id->setFormValue($arrKeyFlds[1]);
-			if (!is_numeric($this->cat_id->FormValue))
-				return FALSE;
-			$this->company_id->setFormValue($arrKeyFlds[2]);
-			if (!is_numeric($this->company_id->FormValue))
 				return FALSE;
 		}
 		return TRUE;
@@ -814,22 +790,17 @@ class cproducts_list extends cproducts {
 		$sFilterList = ew_Concat($sFilterList, $this->product_id->AdvancedSearch->ToJson(), ","); // Field product_id
 		$sFilterList = ew_Concat($sFilterList, $this->cat_id->AdvancedSearch->ToJson(), ","); // Field cat_id
 		$sFilterList = ew_Concat($sFilterList, $this->company_id->AdvancedSearch->ToJson(), ","); // Field company_id
+		$sFilterList = ew_Concat($sFilterList, $this->pro_model->AdvancedSearch->ToJson(), ","); // Field pro_model
 		$sFilterList = ew_Concat($sFilterList, $this->pro_name->AdvancedSearch->ToJson(), ","); // Field pro_name
 		$sFilterList = ew_Concat($sFilterList, $this->pro_description->AdvancedSearch->ToJson(), ","); // Field pro_description
 		$sFilterList = ew_Concat($sFilterList, $this->pro_condition->AdvancedSearch->ToJson(), ","); // Field pro_condition
 		$sFilterList = ew_Concat($sFilterList, $this->pro_features->AdvancedSearch->ToJson(), ","); // Field pro_features
-		$sFilterList = ew_Concat($sFilterList, $this->pro_model->AdvancedSearch->ToJson(), ","); // Field pro_model
 		$sFilterList = ew_Concat($sFilterList, $this->post_date->AdvancedSearch->ToJson(), ","); // Field post_date
 		$sFilterList = ew_Concat($sFilterList, $this->ads_id->AdvancedSearch->ToJson(), ","); // Field ads_id
 		$sFilterList = ew_Concat($sFilterList, $this->pro_base_price->AdvancedSearch->ToJson(), ","); // Field pro_base_price
 		$sFilterList = ew_Concat($sFilterList, $this->pro_sell_price->AdvancedSearch->ToJson(), ","); // Field pro_sell_price
 		$sFilterList = ew_Concat($sFilterList, $this->featured_image->AdvancedSearch->ToJson(), ","); // Field featured_image
 		$sFilterList = ew_Concat($sFilterList, $this->folder_image->AdvancedSearch->ToJson(), ","); // Field folder_image
-		$sFilterList = ew_Concat($sFilterList, $this->img1->AdvancedSearch->ToJson(), ","); // Field img1
-		$sFilterList = ew_Concat($sFilterList, $this->img2->AdvancedSearch->ToJson(), ","); // Field img2
-		$sFilterList = ew_Concat($sFilterList, $this->img3->AdvancedSearch->ToJson(), ","); // Field img3
-		$sFilterList = ew_Concat($sFilterList, $this->img4->AdvancedSearch->ToJson(), ","); // Field img4
-		$sFilterList = ew_Concat($sFilterList, $this->img5->AdvancedSearch->ToJson(), ","); // Field img5
 		$sFilterList = ew_Concat($sFilterList, $this->pro_status->AdvancedSearch->ToJson(), ","); // Field pro_status
 		$sFilterList = ew_Concat($sFilterList, $this->branch_id->AdvancedSearch->ToJson(), ","); // Field branch_id
 		$sFilterList = ew_Concat($sFilterList, $this->lang->AdvancedSearch->ToJson(), ","); // Field lang
@@ -901,6 +872,14 @@ class cproducts_list extends cproducts {
 		$this->company_id->AdvancedSearch->SearchOperator2 = @$filter["w_company_id"];
 		$this->company_id->AdvancedSearch->Save();
 
+		// Field pro_model
+		$this->pro_model->AdvancedSearch->SearchValue = @$filter["x_pro_model"];
+		$this->pro_model->AdvancedSearch->SearchOperator = @$filter["z_pro_model"];
+		$this->pro_model->AdvancedSearch->SearchCondition = @$filter["v_pro_model"];
+		$this->pro_model->AdvancedSearch->SearchValue2 = @$filter["y_pro_model"];
+		$this->pro_model->AdvancedSearch->SearchOperator2 = @$filter["w_pro_model"];
+		$this->pro_model->AdvancedSearch->Save();
+
 		// Field pro_name
 		$this->pro_name->AdvancedSearch->SearchValue = @$filter["x_pro_name"];
 		$this->pro_name->AdvancedSearch->SearchOperator = @$filter["z_pro_name"];
@@ -932,14 +911,6 @@ class cproducts_list extends cproducts {
 		$this->pro_features->AdvancedSearch->SearchValue2 = @$filter["y_pro_features"];
 		$this->pro_features->AdvancedSearch->SearchOperator2 = @$filter["w_pro_features"];
 		$this->pro_features->AdvancedSearch->Save();
-
-		// Field pro_model
-		$this->pro_model->AdvancedSearch->SearchValue = @$filter["x_pro_model"];
-		$this->pro_model->AdvancedSearch->SearchOperator = @$filter["z_pro_model"];
-		$this->pro_model->AdvancedSearch->SearchCondition = @$filter["v_pro_model"];
-		$this->pro_model->AdvancedSearch->SearchValue2 = @$filter["y_pro_model"];
-		$this->pro_model->AdvancedSearch->SearchOperator2 = @$filter["w_pro_model"];
-		$this->pro_model->AdvancedSearch->Save();
 
 		// Field post_date
 		$this->post_date->AdvancedSearch->SearchValue = @$filter["x_post_date"];
@@ -989,46 +960,6 @@ class cproducts_list extends cproducts {
 		$this->folder_image->AdvancedSearch->SearchOperator2 = @$filter["w_folder_image"];
 		$this->folder_image->AdvancedSearch->Save();
 
-		// Field img1
-		$this->img1->AdvancedSearch->SearchValue = @$filter["x_img1"];
-		$this->img1->AdvancedSearch->SearchOperator = @$filter["z_img1"];
-		$this->img1->AdvancedSearch->SearchCondition = @$filter["v_img1"];
-		$this->img1->AdvancedSearch->SearchValue2 = @$filter["y_img1"];
-		$this->img1->AdvancedSearch->SearchOperator2 = @$filter["w_img1"];
-		$this->img1->AdvancedSearch->Save();
-
-		// Field img2
-		$this->img2->AdvancedSearch->SearchValue = @$filter["x_img2"];
-		$this->img2->AdvancedSearch->SearchOperator = @$filter["z_img2"];
-		$this->img2->AdvancedSearch->SearchCondition = @$filter["v_img2"];
-		$this->img2->AdvancedSearch->SearchValue2 = @$filter["y_img2"];
-		$this->img2->AdvancedSearch->SearchOperator2 = @$filter["w_img2"];
-		$this->img2->AdvancedSearch->Save();
-
-		// Field img3
-		$this->img3->AdvancedSearch->SearchValue = @$filter["x_img3"];
-		$this->img3->AdvancedSearch->SearchOperator = @$filter["z_img3"];
-		$this->img3->AdvancedSearch->SearchCondition = @$filter["v_img3"];
-		$this->img3->AdvancedSearch->SearchValue2 = @$filter["y_img3"];
-		$this->img3->AdvancedSearch->SearchOperator2 = @$filter["w_img3"];
-		$this->img3->AdvancedSearch->Save();
-
-		// Field img4
-		$this->img4->AdvancedSearch->SearchValue = @$filter["x_img4"];
-		$this->img4->AdvancedSearch->SearchOperator = @$filter["z_img4"];
-		$this->img4->AdvancedSearch->SearchCondition = @$filter["v_img4"];
-		$this->img4->AdvancedSearch->SearchValue2 = @$filter["y_img4"];
-		$this->img4->AdvancedSearch->SearchOperator2 = @$filter["w_img4"];
-		$this->img4->AdvancedSearch->Save();
-
-		// Field img5
-		$this->img5->AdvancedSearch->SearchValue = @$filter["x_img5"];
-		$this->img5->AdvancedSearch->SearchOperator = @$filter["z_img5"];
-		$this->img5->AdvancedSearch->SearchCondition = @$filter["v_img5"];
-		$this->img5->AdvancedSearch->SearchValue2 = @$filter["y_img5"];
-		$this->img5->AdvancedSearch->SearchOperator2 = @$filter["w_img5"];
-		$this->img5->AdvancedSearch->Save();
-
 		// Field pro_status
 		$this->pro_status->AdvancedSearch->SearchValue = @$filter["x_pro_status"];
 		$this->pro_status->AdvancedSearch->SearchOperator = @$filter["z_pro_status"];
@@ -1056,125 +987,17 @@ class cproducts_list extends cproducts {
 		$this->BasicSearch->setType(@$filter[EW_TABLE_BASIC_SEARCH_TYPE]);
 	}
 
-	// Advanced search WHERE clause based on QueryString
-	function AdvancedSearchWhere($Default = FALSE) {
-		global $Security;
-		$sWhere = "";
-		if (!$Security->CanSearch()) return "";
-		$this->BuildSearchSql($sWhere, $this->product_id, $Default, FALSE); // product_id
-		$this->BuildSearchSql($sWhere, $this->cat_id, $Default, FALSE); // cat_id
-		$this->BuildSearchSql($sWhere, $this->company_id, $Default, FALSE); // company_id
-		$this->BuildSearchSql($sWhere, $this->pro_name, $Default, FALSE); // pro_name
-		$this->BuildSearchSql($sWhere, $this->pro_description, $Default, FALSE); // pro_description
-		$this->BuildSearchSql($sWhere, $this->pro_condition, $Default, FALSE); // pro_condition
-		$this->BuildSearchSql($sWhere, $this->pro_features, $Default, FALSE); // pro_features
-		$this->BuildSearchSql($sWhere, $this->pro_model, $Default, FALSE); // pro_model
-		$this->BuildSearchSql($sWhere, $this->post_date, $Default, FALSE); // post_date
-		$this->BuildSearchSql($sWhere, $this->ads_id, $Default, FALSE); // ads_id
-		$this->BuildSearchSql($sWhere, $this->pro_base_price, $Default, FALSE); // pro_base_price
-		$this->BuildSearchSql($sWhere, $this->pro_sell_price, $Default, FALSE); // pro_sell_price
-		$this->BuildSearchSql($sWhere, $this->featured_image, $Default, FALSE); // featured_image
-		$this->BuildSearchSql($sWhere, $this->folder_image, $Default, TRUE); // folder_image
-		$this->BuildSearchSql($sWhere, $this->img1, $Default, FALSE); // img1
-		$this->BuildSearchSql($sWhere, $this->img2, $Default, FALSE); // img2
-		$this->BuildSearchSql($sWhere, $this->img3, $Default, FALSE); // img3
-		$this->BuildSearchSql($sWhere, $this->img4, $Default, FALSE); // img4
-		$this->BuildSearchSql($sWhere, $this->img5, $Default, FALSE); // img5
-		$this->BuildSearchSql($sWhere, $this->pro_status, $Default, FALSE); // pro_status
-		$this->BuildSearchSql($sWhere, $this->branch_id, $Default, FALSE); // branch_id
-		$this->BuildSearchSql($sWhere, $this->lang, $Default, FALSE); // lang
-
-		// Set up search parm
-		if (!$Default && $sWhere <> "" && in_array($this->Command, array("", "reset", "resetall"))) {
-			$this->Command = "search";
-		}
-		if (!$Default && $this->Command == "search") {
-			$this->product_id->AdvancedSearch->Save(); // product_id
-			$this->cat_id->AdvancedSearch->Save(); // cat_id
-			$this->company_id->AdvancedSearch->Save(); // company_id
-			$this->pro_name->AdvancedSearch->Save(); // pro_name
-			$this->pro_description->AdvancedSearch->Save(); // pro_description
-			$this->pro_condition->AdvancedSearch->Save(); // pro_condition
-			$this->pro_features->AdvancedSearch->Save(); // pro_features
-			$this->pro_model->AdvancedSearch->Save(); // pro_model
-			$this->post_date->AdvancedSearch->Save(); // post_date
-			$this->ads_id->AdvancedSearch->Save(); // ads_id
-			$this->pro_base_price->AdvancedSearch->Save(); // pro_base_price
-			$this->pro_sell_price->AdvancedSearch->Save(); // pro_sell_price
-			$this->featured_image->AdvancedSearch->Save(); // featured_image
-			$this->folder_image->AdvancedSearch->Save(); // folder_image
-			$this->img1->AdvancedSearch->Save(); // img1
-			$this->img2->AdvancedSearch->Save(); // img2
-			$this->img3->AdvancedSearch->Save(); // img3
-			$this->img4->AdvancedSearch->Save(); // img4
-			$this->img5->AdvancedSearch->Save(); // img5
-			$this->pro_status->AdvancedSearch->Save(); // pro_status
-			$this->branch_id->AdvancedSearch->Save(); // branch_id
-			$this->lang->AdvancedSearch->Save(); // lang
-		}
-		return $sWhere;
-	}
-
-	// Build search SQL
-	function BuildSearchSql(&$Where, &$Fld, $Default, $MultiValue) {
-		$FldParm = $Fld->FldParm();
-		$FldVal = ($Default) ? $Fld->AdvancedSearch->SearchValueDefault : $Fld->AdvancedSearch->SearchValue; // @$_GET["x_$FldParm"]
-		$FldOpr = ($Default) ? $Fld->AdvancedSearch->SearchOperatorDefault : $Fld->AdvancedSearch->SearchOperator; // @$_GET["z_$FldParm"]
-		$FldCond = ($Default) ? $Fld->AdvancedSearch->SearchConditionDefault : $Fld->AdvancedSearch->SearchCondition; // @$_GET["v_$FldParm"]
-		$FldVal2 = ($Default) ? $Fld->AdvancedSearch->SearchValue2Default : $Fld->AdvancedSearch->SearchValue2; // @$_GET["y_$FldParm"]
-		$FldOpr2 = ($Default) ? $Fld->AdvancedSearch->SearchOperator2Default : $Fld->AdvancedSearch->SearchOperator2; // @$_GET["w_$FldParm"]
-		$sWrk = "";
-		if (is_array($FldVal)) $FldVal = implode(",", $FldVal);
-		if (is_array($FldVal2)) $FldVal2 = implode(",", $FldVal2);
-		$FldOpr = strtoupper(trim($FldOpr));
-		if ($FldOpr == "") $FldOpr = "=";
-		$FldOpr2 = strtoupper(trim($FldOpr2));
-		if ($FldOpr2 == "") $FldOpr2 = "=";
-		if (EW_SEARCH_MULTI_VALUE_OPTION == 1)
-			$MultiValue = FALSE;
-		if ($MultiValue) {
-			$sWrk1 = ($FldVal <> "") ? ew_GetMultiSearchSql($Fld, $FldOpr, $FldVal, $this->DBID) : ""; // Field value 1
-			$sWrk2 = ($FldVal2 <> "") ? ew_GetMultiSearchSql($Fld, $FldOpr2, $FldVal2, $this->DBID) : ""; // Field value 2
-			$sWrk = $sWrk1; // Build final SQL
-			if ($sWrk2 <> "")
-				$sWrk = ($sWrk <> "") ? "($sWrk) $FldCond ($sWrk2)" : $sWrk2;
-		} else {
-			$FldVal = $this->ConvertSearchValue($Fld, $FldVal);
-			$FldVal2 = $this->ConvertSearchValue($Fld, $FldVal2);
-			$sWrk = ew_GetSearchSql($Fld, $FldVal, $FldOpr, $FldCond, $FldVal2, $FldOpr2, $this->DBID);
-		}
-		ew_AddFilter($Where, $sWrk);
-	}
-
-	// Convert search value
-	function ConvertSearchValue(&$Fld, $FldVal) {
-		if ($FldVal == EW_NULL_VALUE || $FldVal == EW_NOT_NULL_VALUE)
-			return $FldVal;
-		$Value = $FldVal;
-		if ($Fld->FldDataType == EW_DATATYPE_BOOLEAN) {
-			if ($FldVal <> "") $Value = ($FldVal == "1" || strtolower(strval($FldVal)) == "y" || strtolower(strval($FldVal)) == "t") ? $Fld->TrueValue : $Fld->FalseValue;
-		} elseif ($Fld->FldDataType == EW_DATATYPE_DATE || $Fld->FldDataType == EW_DATATYPE_TIME) {
-			if ($FldVal <> "") $Value = ew_UnFormatDateTime($FldVal, $Fld->FldDateTimeFormat);
-		}
-		return $Value;
-	}
-
 	// Return basic search SQL
 	function BasicSearchSQL($arKeywords, $type) {
 		$sWhere = "";
+		$this->BuildBasicSearchSQL($sWhere, $this->pro_model, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_name, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_description, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_condition, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->pro_features, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->pro_model, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->ads_id, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->featured_image, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->folder_image, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->img1, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->img2, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->img3, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->img4, $arKeywords, $type);
-		$this->BuildBasicSearchSQL($sWhere, $this->img5, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->branch_id, $arKeywords, $type);
 		$this->BuildBasicSearchSQL($sWhere, $this->lang, $arKeywords, $type);
 		return $sWhere;
@@ -1284,50 +1107,6 @@ class cproducts_list extends cproducts {
 		// Check basic search
 		if ($this->BasicSearch->IssetSession())
 			return TRUE;
-		if ($this->product_id->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->cat_id->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->company_id->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_name->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_description->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_condition->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_features->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_model->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->post_date->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->ads_id->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_base_price->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_sell_price->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->featured_image->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->folder_image->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->img1->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->img2->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->img3->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->img4->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->img5->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->pro_status->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->branch_id->AdvancedSearch->IssetSession())
-			return TRUE;
-		if ($this->lang->AdvancedSearch->IssetSession())
-			return TRUE;
 		return FALSE;
 	}
 
@@ -1340,9 +1119,6 @@ class cproducts_list extends cproducts {
 
 		// Clear basic search parameters
 		$this->ResetBasicSearchParms();
-
-		// Clear advanced search parameters
-		$this->ResetAdvancedSearchParms();
 	}
 
 	// Load advanced search default values
@@ -1355,62 +1131,12 @@ class cproducts_list extends cproducts {
 		$this->BasicSearch->UnsetSession();
 	}
 
-	// Clear all advanced search parameters
-	function ResetAdvancedSearchParms() {
-		$this->product_id->AdvancedSearch->UnsetSession();
-		$this->cat_id->AdvancedSearch->UnsetSession();
-		$this->company_id->AdvancedSearch->UnsetSession();
-		$this->pro_name->AdvancedSearch->UnsetSession();
-		$this->pro_description->AdvancedSearch->UnsetSession();
-		$this->pro_condition->AdvancedSearch->UnsetSession();
-		$this->pro_features->AdvancedSearch->UnsetSession();
-		$this->pro_model->AdvancedSearch->UnsetSession();
-		$this->post_date->AdvancedSearch->UnsetSession();
-		$this->ads_id->AdvancedSearch->UnsetSession();
-		$this->pro_base_price->AdvancedSearch->UnsetSession();
-		$this->pro_sell_price->AdvancedSearch->UnsetSession();
-		$this->featured_image->AdvancedSearch->UnsetSession();
-		$this->folder_image->AdvancedSearch->UnsetSession();
-		$this->img1->AdvancedSearch->UnsetSession();
-		$this->img2->AdvancedSearch->UnsetSession();
-		$this->img3->AdvancedSearch->UnsetSession();
-		$this->img4->AdvancedSearch->UnsetSession();
-		$this->img5->AdvancedSearch->UnsetSession();
-		$this->pro_status->AdvancedSearch->UnsetSession();
-		$this->branch_id->AdvancedSearch->UnsetSession();
-		$this->lang->AdvancedSearch->UnsetSession();
-	}
-
 	// Restore all search parameters
 	function RestoreSearchParms() {
 		$this->RestoreSearch = TRUE;
 
 		// Restore basic search values
 		$this->BasicSearch->Load();
-
-		// Restore advanced search values
-		$this->product_id->AdvancedSearch->Load();
-		$this->cat_id->AdvancedSearch->Load();
-		$this->company_id->AdvancedSearch->Load();
-		$this->pro_name->AdvancedSearch->Load();
-		$this->pro_description->AdvancedSearch->Load();
-		$this->pro_condition->AdvancedSearch->Load();
-		$this->pro_features->AdvancedSearch->Load();
-		$this->pro_model->AdvancedSearch->Load();
-		$this->post_date->AdvancedSearch->Load();
-		$this->ads_id->AdvancedSearch->Load();
-		$this->pro_base_price->AdvancedSearch->Load();
-		$this->pro_sell_price->AdvancedSearch->Load();
-		$this->featured_image->AdvancedSearch->Load();
-		$this->folder_image->AdvancedSearch->Load();
-		$this->img1->AdvancedSearch->Load();
-		$this->img2->AdvancedSearch->Load();
-		$this->img3->AdvancedSearch->Load();
-		$this->img4->AdvancedSearch->Load();
-		$this->img5->AdvancedSearch->Load();
-		$this->pro_status->AdvancedSearch->Load();
-		$this->branch_id->AdvancedSearch->Load();
-		$this->lang->AdvancedSearch->Load();
 	}
 
 	// Set up sort parameters
@@ -1427,13 +1153,10 @@ class cproducts_list extends cproducts {
 			$this->UpdateSort($this->cat_id, $bCtrl); // cat_id
 			$this->UpdateSort($this->company_id, $bCtrl); // company_id
 			$this->UpdateSort($this->pro_name, $bCtrl); // pro_name
-			$this->UpdateSort($this->pro_condition, $bCtrl); // pro_condition
 			$this->UpdateSort($this->ads_id, $bCtrl); // ads_id
 			$this->UpdateSort($this->pro_base_price, $bCtrl); // pro_base_price
 			$this->UpdateSort($this->pro_sell_price, $bCtrl); // pro_sell_price
 			$this->UpdateSort($this->featured_image, $bCtrl); // featured_image
-			$this->UpdateSort($this->pro_status, $bCtrl); // pro_status
-			$this->UpdateSort($this->branch_id, $bCtrl); // branch_id
 			$this->UpdateSort($this->lang, $bCtrl); // lang
 			$this->setStartRecordNumber(1); // Reset start position
 		}
@@ -1472,13 +1195,10 @@ class cproducts_list extends cproducts {
 				$this->cat_id->setSort("");
 				$this->company_id->setSort("");
 				$this->pro_name->setSort("");
-				$this->pro_condition->setSort("");
 				$this->ads_id->setSort("");
 				$this->pro_base_price->setSort("");
 				$this->pro_sell_price->setSort("");
 				$this->featured_image->setSort("");
-				$this->pro_status->setSort("");
-				$this->branch_id->setSort("");
 				$this->lang->setSort("");
 			}
 
@@ -1615,7 +1335,7 @@ class cproducts_list extends cproducts {
 
 		// "checkbox"
 		$oListOpt = &$this->ListOptions->Items["checkbox"];
-		$oListOpt->Body = "<input type=\"checkbox\" name=\"key_m[]\" class=\"ewMultiSelect\" value=\"" . ew_HtmlEncode($this->product_id->CurrentValue . $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"] . $this->cat_id->CurrentValue . $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"] . $this->company_id->CurrentValue) . "\" onclick=\"ew_ClickMultiCheckbox(event);\">";
+		$oListOpt->Body = "<input type=\"checkbox\" name=\"key_m[]\" class=\"ewMultiSelect\" value=\"" . ew_HtmlEncode($this->product_id->CurrentValue) . "\" onclick=\"ew_ClickMultiCheckbox(event);\">";
 		$this->RenderListOptionsExt();
 
 		// Call ListOptions_Rendered event
@@ -1867,127 +1587,6 @@ class cproducts_list extends cproducts {
 		$this->BasicSearch->Type = @$_GET[EW_TABLE_BASIC_SEARCH_TYPE];
 	}
 
-	// Load search values for validation
-	function LoadSearchValues() {
-		global $objForm;
-
-		// Load search values
-		// product_id
-
-		$this->product_id->AdvancedSearch->SearchValue = @$_GET["x_product_id"];
-		if ($this->product_id->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->product_id->AdvancedSearch->SearchOperator = @$_GET["z_product_id"];
-
-		// cat_id
-		$this->cat_id->AdvancedSearch->SearchValue = @$_GET["x_cat_id"];
-		if ($this->cat_id->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->cat_id->AdvancedSearch->SearchOperator = @$_GET["z_cat_id"];
-
-		// company_id
-		$this->company_id->AdvancedSearch->SearchValue = @$_GET["x_company_id"];
-		if ($this->company_id->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->company_id->AdvancedSearch->SearchOperator = @$_GET["z_company_id"];
-
-		// pro_name
-		$this->pro_name->AdvancedSearch->SearchValue = @$_GET["x_pro_name"];
-		if ($this->pro_name->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_name->AdvancedSearch->SearchOperator = @$_GET["z_pro_name"];
-
-		// pro_description
-		$this->pro_description->AdvancedSearch->SearchValue = @$_GET["x_pro_description"];
-		if ($this->pro_description->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_description->AdvancedSearch->SearchOperator = @$_GET["z_pro_description"];
-
-		// pro_condition
-		$this->pro_condition->AdvancedSearch->SearchValue = @$_GET["x_pro_condition"];
-		if ($this->pro_condition->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_condition->AdvancedSearch->SearchOperator = @$_GET["z_pro_condition"];
-
-		// pro_features
-		$this->pro_features->AdvancedSearch->SearchValue = @$_GET["x_pro_features"];
-		if ($this->pro_features->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_features->AdvancedSearch->SearchOperator = @$_GET["z_pro_features"];
-
-		// pro_model
-		$this->pro_model->AdvancedSearch->SearchValue = @$_GET["x_pro_model"];
-		if ($this->pro_model->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_model->AdvancedSearch->SearchOperator = @$_GET["z_pro_model"];
-
-		// post_date
-		$this->post_date->AdvancedSearch->SearchValue = @$_GET["x_post_date"];
-		if ($this->post_date->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->post_date->AdvancedSearch->SearchOperator = @$_GET["z_post_date"];
-
-		// ads_id
-		$this->ads_id->AdvancedSearch->SearchValue = @$_GET["x_ads_id"];
-		if ($this->ads_id->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->ads_id->AdvancedSearch->SearchOperator = @$_GET["z_ads_id"];
-
-		// pro_base_price
-		$this->pro_base_price->AdvancedSearch->SearchValue = @$_GET["x_pro_base_price"];
-		if ($this->pro_base_price->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_base_price->AdvancedSearch->SearchOperator = @$_GET["z_pro_base_price"];
-
-		// pro_sell_price
-		$this->pro_sell_price->AdvancedSearch->SearchValue = @$_GET["x_pro_sell_price"];
-		if ($this->pro_sell_price->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_sell_price->AdvancedSearch->SearchOperator = @$_GET["z_pro_sell_price"];
-
-		// featured_image
-		$this->featured_image->AdvancedSearch->SearchValue = @$_GET["x_featured_image"];
-		if ($this->featured_image->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->featured_image->AdvancedSearch->SearchOperator = @$_GET["z_featured_image"];
-
-		// folder_image
-		$this->folder_image->AdvancedSearch->SearchValue = @$_GET["x_folder_image"];
-		if ($this->folder_image->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->folder_image->AdvancedSearch->SearchOperator = @$_GET["z_folder_image"];
-		if (is_array($this->folder_image->AdvancedSearch->SearchValue)) $this->folder_image->AdvancedSearch->SearchValue = implode(",", $this->folder_image->AdvancedSearch->SearchValue);
-		if (is_array($this->folder_image->AdvancedSearch->SearchValue2)) $this->folder_image->AdvancedSearch->SearchValue2 = implode(",", $this->folder_image->AdvancedSearch->SearchValue2);
-
-		// img1
-		$this->img1->AdvancedSearch->SearchValue = @$_GET["x_img1"];
-		if ($this->img1->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->img1->AdvancedSearch->SearchOperator = @$_GET["z_img1"];
-
-		// img2
-		$this->img2->AdvancedSearch->SearchValue = @$_GET["x_img2"];
-		if ($this->img2->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->img2->AdvancedSearch->SearchOperator = @$_GET["z_img2"];
-
-		// img3
-		$this->img3->AdvancedSearch->SearchValue = @$_GET["x_img3"];
-		if ($this->img3->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->img3->AdvancedSearch->SearchOperator = @$_GET["z_img3"];
-
-		// img4
-		$this->img4->AdvancedSearch->SearchValue = @$_GET["x_img4"];
-		if ($this->img4->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->img4->AdvancedSearch->SearchOperator = @$_GET["z_img4"];
-
-		// img5
-		$this->img5->AdvancedSearch->SearchValue = @$_GET["x_img5"];
-		if ($this->img5->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->img5->AdvancedSearch->SearchOperator = @$_GET["z_img5"];
-
-		// pro_status
-		$this->pro_status->AdvancedSearch->SearchValue = @$_GET["x_pro_status"];
-		if ($this->pro_status->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->pro_status->AdvancedSearch->SearchOperator = @$_GET["z_pro_status"];
-		if (is_array($this->pro_status->AdvancedSearch->SearchValue)) $this->pro_status->AdvancedSearch->SearchValue = implode(",", $this->pro_status->AdvancedSearch->SearchValue);
-		if (is_array($this->pro_status->AdvancedSearch->SearchValue2)) $this->pro_status->AdvancedSearch->SearchValue2 = implode(",", $this->pro_status->AdvancedSearch->SearchValue2);
-
-		// branch_id
-		$this->branch_id->AdvancedSearch->SearchValue = @$_GET["x_branch_id"];
-		if ($this->branch_id->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->branch_id->AdvancedSearch->SearchOperator = @$_GET["z_branch_id"];
-
-		// lang
-		$this->lang->AdvancedSearch->SearchValue = @$_GET["x_lang"];
-		if ($this->lang->AdvancedSearch->SearchValue <> "" && $this->Command == "") $this->Command = "search";
-		$this->lang->AdvancedSearch->SearchOperator = @$_GET["z_lang"];
-	}
-
 	// Load recordset
 	function LoadRecordset($offset = -1, $rowcnt = -1) {
 
@@ -2060,11 +1659,16 @@ class cproducts_list extends cproducts {
 		} else {
 			$this->company_id->VirtualValue = ""; // Clear value
 		}
+		$this->pro_model->setDbValue($row['pro_model']);
+		if (array_key_exists('EV__pro_model', $rs->fields)) {
+			$this->pro_model->VirtualValue = $rs->fields('EV__pro_model'); // Set up virtual field value
+		} else {
+			$this->pro_model->VirtualValue = ""; // Clear value
+		}
 		$this->pro_name->setDbValue($row['pro_name']);
 		$this->pro_description->setDbValue($row['pro_description']);
 		$this->pro_condition->setDbValue($row['pro_condition']);
 		$this->pro_features->setDbValue($row['pro_features']);
-		$this->pro_model->setDbValue($row['pro_model']);
 		$this->post_date->setDbValue($row['post_date']);
 		$this->ads_id->setDbValue($row['ads_id']);
 		$this->pro_base_price->setDbValue($row['pro_base_price']);
@@ -2072,11 +1676,6 @@ class cproducts_list extends cproducts {
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
-		$this->img1->setDbValue($row['img1']);
-		$this->img2->setDbValue($row['img2']);
-		$this->img3->setDbValue($row['img3']);
-		$this->img4->setDbValue($row['img4']);
-		$this->img5->setDbValue($row['img5']);
 		$this->pro_status->setDbValue($row['pro_status']);
 		$this->branch_id->setDbValue($row['branch_id']);
 		$this->lang->setDbValue($row['lang']);
@@ -2088,22 +1687,17 @@ class cproducts_list extends cproducts {
 		$row['product_id'] = NULL;
 		$row['cat_id'] = NULL;
 		$row['company_id'] = NULL;
+		$row['pro_model'] = NULL;
 		$row['pro_name'] = NULL;
 		$row['pro_description'] = NULL;
 		$row['pro_condition'] = NULL;
 		$row['pro_features'] = NULL;
-		$row['pro_model'] = NULL;
 		$row['post_date'] = NULL;
 		$row['ads_id'] = NULL;
 		$row['pro_base_price'] = NULL;
 		$row['pro_sell_price'] = NULL;
 		$row['featured_image'] = NULL;
 		$row['folder_image'] = NULL;
-		$row['img1'] = NULL;
-		$row['img2'] = NULL;
-		$row['img3'] = NULL;
-		$row['img4'] = NULL;
-		$row['img5'] = NULL;
 		$row['pro_status'] = NULL;
 		$row['branch_id'] = NULL;
 		$row['lang'] = NULL;
@@ -2118,22 +1712,17 @@ class cproducts_list extends cproducts {
 		$this->product_id->DbValue = $row['product_id'];
 		$this->cat_id->DbValue = $row['cat_id'];
 		$this->company_id->DbValue = $row['company_id'];
+		$this->pro_model->DbValue = $row['pro_model'];
 		$this->pro_name->DbValue = $row['pro_name'];
 		$this->pro_description->DbValue = $row['pro_description'];
 		$this->pro_condition->DbValue = $row['pro_condition'];
 		$this->pro_features->DbValue = $row['pro_features'];
-		$this->pro_model->DbValue = $row['pro_model'];
 		$this->post_date->DbValue = $row['post_date'];
 		$this->ads_id->DbValue = $row['ads_id'];
 		$this->pro_base_price->DbValue = $row['pro_base_price'];
 		$this->pro_sell_price->DbValue = $row['pro_sell_price'];
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->folder_image->DbValue = $row['folder_image'];
-		$this->img1->DbValue = $row['img1'];
-		$this->img2->DbValue = $row['img2'];
-		$this->img3->DbValue = $row['img3'];
-		$this->img4->DbValue = $row['img4'];
-		$this->img5->DbValue = $row['img5'];
 		$this->pro_status->DbValue = $row['pro_status'];
 		$this->branch_id->DbValue = $row['branch_id'];
 		$this->lang->DbValue = $row['lang'];
@@ -2146,14 +1735,6 @@ class cproducts_list extends cproducts {
 		$bValidKey = TRUE;
 		if (strval($this->getKey("product_id")) <> "")
 			$this->product_id->CurrentValue = $this->getKey("product_id"); // product_id
-		else
-			$bValidKey = FALSE;
-		if (strval($this->getKey("cat_id")) <> "")
-			$this->cat_id->CurrentValue = $this->getKey("cat_id"); // cat_id
-		else
-			$bValidKey = FALSE;
-		if (strval($this->getKey("company_id")) <> "")
-			$this->company_id->CurrentValue = $this->getKey("company_id"); // company_id
 		else
 			$bValidKey = FALSE;
 
@@ -2196,22 +1777,17 @@ class cproducts_list extends cproducts {
 		// product_id
 		// cat_id
 		// company_id
+		// pro_model
 		// pro_name
 		// pro_description
 		// pro_condition
 		// pro_features
-		// pro_model
 		// post_date
 		// ads_id
 		// pro_base_price
 		// pro_sell_price
 		// featured_image
 		// folder_image
-		// img1
-		// img2
-		// img3
-		// img4
-		// img5
 		// pro_status
 		// branch_id
 		// lang
@@ -2278,6 +1854,33 @@ class cproducts_list extends cproducts {
 		}
 		$this->company_id->ViewCustomAttributes = "";
 
+		// pro_model
+		if ($this->pro_model->VirtualValue <> "") {
+			$this->pro_model->ViewValue = $this->pro_model->VirtualValue;
+		} else {
+		if (strval($this->pro_model->CurrentValue) <> "") {
+			$sFilterWrk = "`model_id`" . ew_SearchString("=", $this->pro_model->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `model_id`, `name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `model`";
+		$sWhereWrk = "";
+		$this->pro_model->LookupFilters = array("dx1" => '`name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->pro_model, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$this->pro_model->ViewValue = $this->pro_model->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
+			}
+		} else {
+			$this->pro_model->ViewValue = NULL;
+		}
+		}
+		$this->pro_model->ViewCustomAttributes = "";
+
 		// pro_name
 		$this->pro_name->ViewValue = $this->pro_name->CurrentValue;
 		$this->pro_name->ViewCustomAttributes = "";
@@ -2293,10 +1896,6 @@ class cproducts_list extends cproducts {
 		// pro_features
 		$this->pro_features->ViewValue = $this->pro_features->CurrentValue;
 		$this->pro_features->ViewCustomAttributes = "";
-
-		// pro_model
-		$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
-		$this->pro_model->ViewCustomAttributes = "";
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
@@ -2362,31 +1961,11 @@ class cproducts_list extends cproducts {
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
-		// img1
-		$this->img1->ViewValue = $this->img1->CurrentValue;
-		$this->img1->ViewCustomAttributes = "";
-
-		// img2
-		$this->img2->ViewValue = $this->img2->CurrentValue;
-		$this->img2->ViewCustomAttributes = "";
-
-		// img3
-		$this->img3->ViewValue = $this->img3->CurrentValue;
-		$this->img3->ViewCustomAttributes = "";
-
-		// img4
-		$this->img4->ViewValue = $this->img4->CurrentValue;
-		$this->img4->ViewCustomAttributes = "";
-
-		// img5
-		$this->img5->ViewValue = $this->img5->CurrentValue;
-		$this->img5->ViewCustomAttributes = "";
-
 		// pro_status
 		if (ew_ConvertToBool($this->pro_status->CurrentValue)) {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Y";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Yes";
 		} else {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "N";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "No";
 		}
 		$this->pro_status->ViewCustomAttributes = "";
 
@@ -2416,7 +1995,11 @@ class cproducts_list extends cproducts {
 		$this->branch_id->ViewCustomAttributes = "";
 
 		// lang
-		$this->lang->ViewValue = $this->lang->CurrentValue;
+		if (strval($this->lang->CurrentValue) <> "") {
+			$this->lang->ViewValue = $this->lang->OptionCaption($this->lang->CurrentValue);
+		} else {
+			$this->lang->ViewValue = NULL;
+		}
 		$this->lang->ViewCustomAttributes = "";
 
 			// product_id
@@ -2438,11 +2021,6 @@ class cproducts_list extends cproducts {
 			$this->pro_name->LinkCustomAttributes = "";
 			$this->pro_name->HrefValue = "";
 			$this->pro_name->TooltipValue = "";
-
-			// pro_condition
-			$this->pro_condition->LinkCustomAttributes = "";
-			$this->pro_condition->HrefValue = "";
-			$this->pro_condition->TooltipValue = "";
 
 			// ads_id
 			$this->ads_id->LinkCustomAttributes = "";
@@ -2478,144 +2056,15 @@ class cproducts_list extends cproducts {
 				ew_AppendClass($this->featured_image->LinkAttrs["class"], "ewLightbox");
 			}
 
-			// pro_status
-			$this->pro_status->LinkCustomAttributes = "";
-			$this->pro_status->HrefValue = "";
-			$this->pro_status->TooltipValue = "";
-
-			// branch_id
-			$this->branch_id->LinkCustomAttributes = "";
-			$this->branch_id->HrefValue = "";
-			$this->branch_id->TooltipValue = "";
-
 			// lang
 			$this->lang->LinkCustomAttributes = "";
 			$this->lang->HrefValue = "";
 			$this->lang->TooltipValue = "";
-		} elseif ($this->RowType == EW_ROWTYPE_SEARCH) { // Search row
-
-			// product_id
-			$this->product_id->EditAttrs["class"] = "form-control";
-			$this->product_id->EditCustomAttributes = "";
-			$this->product_id->EditValue = ew_HtmlEncode($this->product_id->AdvancedSearch->SearchValue);
-			$this->product_id->PlaceHolder = ew_RemoveHtml($this->product_id->FldCaption());
-
-			// cat_id
-			$this->cat_id->EditAttrs["class"] = "form-control";
-			$this->cat_id->EditCustomAttributes = "";
-			$this->cat_id->EditValue = ew_HtmlEncode($this->cat_id->AdvancedSearch->SearchValue);
-			$this->cat_id->PlaceHolder = ew_RemoveHtml($this->cat_id->FldCaption());
-
-			// company_id
-			$this->company_id->EditAttrs["class"] = "form-control";
-			$this->company_id->EditCustomAttributes = "";
-			$this->company_id->EditValue = ew_HtmlEncode($this->company_id->AdvancedSearch->SearchValue);
-			$this->company_id->PlaceHolder = ew_RemoveHtml($this->company_id->FldCaption());
-
-			// pro_name
-			$this->pro_name->EditAttrs["class"] = "form-control";
-			$this->pro_name->EditCustomAttributes = "";
-			$this->pro_name->EditValue = ew_HtmlEncode($this->pro_name->AdvancedSearch->SearchValue);
-			$this->pro_name->PlaceHolder = ew_RemoveHtml($this->pro_name->FldCaption());
-
-			// pro_condition
-			$this->pro_condition->EditAttrs["class"] = "form-control";
-			$this->pro_condition->EditCustomAttributes = "";
-			$this->pro_condition->EditValue = $this->pro_condition->Options(TRUE);
-
-			// ads_id
-			$this->ads_id->EditAttrs["class"] = "form-control";
-			$this->ads_id->EditCustomAttributes = "";
-			$this->ads_id->EditValue = ew_HtmlEncode($this->ads_id->AdvancedSearch->SearchValue);
-			$this->ads_id->PlaceHolder = ew_RemoveHtml($this->ads_id->FldCaption());
-
-			// pro_base_price
-			$this->pro_base_price->EditAttrs["class"] = "form-control";
-			$this->pro_base_price->EditCustomAttributes = "";
-			$this->pro_base_price->EditValue = ew_HtmlEncode($this->pro_base_price->AdvancedSearch->SearchValue);
-			$this->pro_base_price->PlaceHolder = ew_RemoveHtml($this->pro_base_price->FldCaption());
-
-			// pro_sell_price
-			$this->pro_sell_price->EditAttrs["class"] = "form-control";
-			$this->pro_sell_price->EditCustomAttributes = "";
-			$this->pro_sell_price->EditValue = ew_HtmlEncode($this->pro_sell_price->AdvancedSearch->SearchValue);
-			$this->pro_sell_price->PlaceHolder = ew_RemoveHtml($this->pro_sell_price->FldCaption());
-
-			// featured_image
-			$this->featured_image->EditAttrs["class"] = "form-control";
-			$this->featured_image->EditCustomAttributes = "";
-			$this->featured_image->EditValue = ew_HtmlEncode($this->featured_image->AdvancedSearch->SearchValue);
-			$this->featured_image->PlaceHolder = ew_RemoveHtml($this->featured_image->FldCaption());
-
-			// pro_status
-			$this->pro_status->EditCustomAttributes = "";
-			$this->pro_status->EditValue = $this->pro_status->Options(FALSE);
-
-			// branch_id
-			$this->branch_id->EditAttrs["class"] = "form-control";
-			$this->branch_id->EditCustomAttributes = "";
-
-			// lang
-			$this->lang->EditAttrs["class"] = "form-control";
-			$this->lang->EditCustomAttributes = "";
-			$this->lang->EditValue = ew_HtmlEncode($this->lang->AdvancedSearch->SearchValue);
-			$this->lang->PlaceHolder = ew_RemoveHtml($this->lang->FldCaption());
 		}
-		if ($this->RowType == EW_ROWTYPE_ADD || $this->RowType == EW_ROWTYPE_EDIT || $this->RowType == EW_ROWTYPE_SEARCH) // Add/Edit/Search row
-			$this->SetupFieldTitles();
 
 		// Call Row Rendered event
 		if ($this->RowType <> EW_ROWTYPE_AGGREGATEINIT)
 			$this->Row_Rendered();
-	}
-
-	// Validate search
-	function ValidateSearch() {
-		global $gsSearchError;
-
-		// Initialize
-		$gsSearchError = "";
-
-		// Check if validation required
-		if (!EW_SERVER_VALIDATE)
-			return TRUE;
-
-		// Return validate result
-		$ValidateSearch = ($gsSearchError == "");
-
-		// Call Form_CustomValidate event
-		$sFormCustomError = "";
-		$ValidateSearch = $ValidateSearch && $this->Form_CustomValidate($sFormCustomError);
-		if ($sFormCustomError <> "") {
-			ew_AddMessage($gsSearchError, $sFormCustomError);
-		}
-		return $ValidateSearch;
-	}
-
-	// Load advanced search
-	function LoadAdvancedSearch() {
-		$this->product_id->AdvancedSearch->Load();
-		$this->cat_id->AdvancedSearch->Load();
-		$this->company_id->AdvancedSearch->Load();
-		$this->pro_name->AdvancedSearch->Load();
-		$this->pro_description->AdvancedSearch->Load();
-		$this->pro_condition->AdvancedSearch->Load();
-		$this->pro_features->AdvancedSearch->Load();
-		$this->pro_model->AdvancedSearch->Load();
-		$this->post_date->AdvancedSearch->Load();
-		$this->ads_id->AdvancedSearch->Load();
-		$this->pro_base_price->AdvancedSearch->Load();
-		$this->pro_sell_price->AdvancedSearch->Load();
-		$this->featured_image->AdvancedSearch->Load();
-		$this->folder_image->AdvancedSearch->Load();
-		$this->img1->AdvancedSearch->Load();
-		$this->img2->AdvancedSearch->Load();
-		$this->img3->AdvancedSearch->Load();
-		$this->img4->AdvancedSearch->Load();
-		$this->img5->AdvancedSearch->Load();
-		$this->pro_status->AdvancedSearch->Load();
-		$this->branch_id->AdvancedSearch->Load();
-		$this->lang->AdvancedSearch->Load();
 	}
 
 	// Build export filter for selected records
@@ -2903,12 +2352,7 @@ class cproducts_list extends cproducts {
 	function SetupLookupFilters($fld, $pageId = null) {
 		global $gsLanguage;
 		$pageId = $pageId ?: $this->PageID;
-		if ($pageId == "list") {
-			switch ($fld->FldVar) {
-			}
-		} elseif ($pageId == "extbs") {
-			switch ($fld->FldVar) {
-			}
+		switch ($fld->FldVar) {
 		}
 	}
 
@@ -2916,12 +2360,7 @@ class cproducts_list extends cproducts {
 	function SetupAutoSuggestFilters($fld, $pageId = null) {
 		global $gsLanguage;
 		$pageId = $pageId ?: $this->PageID;
-		if ($pageId == "list") {
-			switch ($fld->FldVar) {
-			}
-		} elseif ($pageId == "extbs") {
-			switch ($fld->FldVar) {
-			}
+		switch ($fld->FldVar) {
 		}
 	}
 
@@ -3097,43 +2536,11 @@ fproductslist.Lists["x_cat_id"] = {"LinkField":"x_cat_id","Ajax":true,"AutoFill"
 fproductslist.Lists["x_cat_id"].Data = "<?php echo $products_list->cat_id->LookupFilterQuery(FALSE, "list") ?>";
 fproductslist.Lists["x_company_id"] = {"LinkField":"x_company_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_com_fname","x_com_lname","x_com_name",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"company"};
 fproductslist.Lists["x_company_id"].Data = "<?php echo $products_list->company_id->LookupFilterQuery(FALSE, "list") ?>";
-fproductslist.Lists["x_pro_condition"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
-fproductslist.Lists["x_pro_condition"].Options = <?php echo json_encode($products_list->pro_condition->Options()) ?>;
-fproductslist.Lists["x_pro_status[]"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
-fproductslist.Lists["x_pro_status[]"].Options = <?php echo json_encode($products_list->pro_status->Options()) ?>;
-fproductslist.Lists["x_branch_id"] = {"LinkField":"x_branch_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_branch_id","x_name","x_image",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"branch"};
-fproductslist.Lists["x_branch_id"].Data = "<?php echo $products_list->branch_id->LookupFilterQuery(FALSE, "list") ?>";
+fproductslist.Lists["x_lang"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fproductslist.Lists["x_lang"].Options = <?php echo json_encode($products_list->lang->Options()) ?>;
 
 // Form object for search
 var CurrentSearchForm = fproductslistsrch = new ew_Form("fproductslistsrch");
-
-// Validate function for search
-fproductslistsrch.Validate = function(fobj) {
-	if (!this.ValidateRequired)
-		return true; // Ignore validation
-	fobj = fobj || this.Form;
-	var infix = "";
-
-	// Fire Form_CustomValidate event
-	if (!this.Form_CustomValidate(fobj))
-		return false;
-	return true;
-}
-
-// Form_CustomValidate event
-fproductslistsrch.Form_CustomValidate = 
- function(fobj) { // DO NOT CHANGE THIS LINE!
-
- 	// Your custom validation code here, return false if invalid.
- 	return true;
- }
-
-// Use JavaScript validation or not
-fproductslistsrch.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
-
-// Dynamic selection lists
-fproductslistsrch.Lists["x_pro_status[]"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
-fproductslistsrch.Lists["x_pro_status[]"].Options = <?php echo json_encode($products_list->pro_status->Options()) ?>;
 </script>
 <script type="text/javascript">
 
@@ -3190,32 +2597,7 @@ $products_list->RenderOtherOptions();
 <input type="hidden" name="cmd" value="search">
 <input type="hidden" name="t" value="products">
 	<div class="ewBasicSearch">
-<?php
-if ($gsSearchError == "")
-	$products_list->LoadAdvancedSearch(); // Load advanced search
-
-// Render for search
-$products->RowType = EW_ROWTYPE_SEARCH;
-
-// Render row
-$products->ResetAttrs();
-$products_list->RenderRow();
-?>
 <div id="xsr_1" class="ewRow">
-<?php if ($products->pro_status->Visible) { // pro_status ?>
-	<div id="xsc_pro_status" class="ewCell form-group">
-		<label class="ewSearchCaption ewLabel"><?php echo $products->pro_status->FldCaption() ?></label>
-		<span class="ewSearchOperator"><?php echo $Language->Phrase("=") ?><input type="hidden" name="z_pro_status" id="z_pro_status" value="="></span>
-		<span class="ewSearchField">
-<?php
-$selwrk = (ew_ConvertToBool($products->pro_status->AdvancedSearch->SearchValue)) ? " checked" : "";
-?>
-<input type="checkbox" data-table="products" data-field="x_pro_status" name="x_pro_status[]" id="x_pro_status[]" value="1"<?php echo $selwrk ?><?php echo $products->pro_status->EditAttributes() ?>>
-</span>
-	</div>
-<?php } ?>
-</div>
-<div id="xsr_2" class="ewRow">
 	<div class="ewQuickSearch input-group">
 	<input type="text" name="<?php echo EW_TABLE_BASIC_SEARCH ?>" id="<?php echo EW_TABLE_BASIC_SEARCH ?>" class="form-control" value="<?php echo ew_HtmlEncode($products_list->BasicSearch->getKeyword()) ?>" placeholder="<?php echo ew_HtmlEncode($Language->Phrase("Search")) ?>">
 	<input type="hidden" name="<?php echo EW_TABLE_BASIC_SEARCH_TYPE ?>" id="<?php echo EW_TABLE_BASIC_SEARCH_TYPE ?>" value="<?php echo ew_HtmlEncode($products_list->BasicSearch->getType()) ?>">
@@ -3360,15 +2742,6 @@ $products_list->ListOptions->Render("header", "left");
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
-<?php if ($products->pro_condition->Visible) { // pro_condition ?>
-	<?php if ($products->SortUrl($products->pro_condition) == "") { ?>
-		<th data-name="pro_condition" class="<?php echo $products->pro_condition->HeaderCellClass() ?>"><div id="elh_products_pro_condition" class="products_pro_condition"><div class="ewTableHeaderCaption"><?php echo $products->pro_condition->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="pro_condition" class="<?php echo $products->pro_condition->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_condition) ?>',2);"><div id="elh_products_pro_condition" class="products_pro_condition">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_condition->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_condition->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_condition->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
 <?php if ($products->ads_id->Visible) { // ads_id ?>
 	<?php if ($products->SortUrl($products->ads_id) == "") { ?>
 		<th data-name="ads_id" class="<?php echo $products->ads_id->HeaderCellClass() ?>"><div id="elh_products_ads_id" class="products_ads_id"><div class="ewTableHeaderCaption"><?php echo $products->ads_id->FldCaption() ?></div></div></th>
@@ -3405,30 +2778,12 @@ $products_list->ListOptions->Render("header", "left");
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
-<?php if ($products->pro_status->Visible) { // pro_status ?>
-	<?php if ($products->SortUrl($products->pro_status) == "") { ?>
-		<th data-name="pro_status" class="<?php echo $products->pro_status->HeaderCellClass() ?>"><div id="elh_products_pro_status" class="products_pro_status"><div class="ewTableHeaderCaption"><?php echo $products->pro_status->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="pro_status" class="<?php echo $products->pro_status->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->pro_status) ?>',2);"><div id="elh_products_pro_status" class="products_pro_status">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->pro_status->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->pro_status->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->pro_status->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
-<?php if ($products->branch_id->Visible) { // branch_id ?>
-	<?php if ($products->SortUrl($products->branch_id) == "") { ?>
-		<th data-name="branch_id" class="<?php echo $products->branch_id->HeaderCellClass() ?>"><div id="elh_products_branch_id" class="products_branch_id"><div class="ewTableHeaderCaption"><?php echo $products->branch_id->FldCaption() ?></div></div></th>
-	<?php } else { ?>
-		<th data-name="branch_id" class="<?php echo $products->branch_id->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->branch_id) ?>',2);"><div id="elh_products_branch_id" class="products_branch_id">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->branch_id->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->branch_id->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->branch_id->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
-		</div></div></th>
-	<?php } ?>
-<?php } ?>
 <?php if ($products->lang->Visible) { // lang ?>
 	<?php if ($products->SortUrl($products->lang) == "") { ?>
 		<th data-name="lang" class="<?php echo $products->lang->HeaderCellClass() ?>"><div id="elh_products_lang" class="products_lang"><div class="ewTableHeaderCaption"><?php echo $products->lang->FldCaption() ?></div></div></th>
 	<?php } else { ?>
 		<th data-name="lang" class="<?php echo $products->lang->HeaderCellClass() ?>"><div class="ewPointer" onclick="ew_Sort(event,'<?php echo $products->SortUrl($products->lang) ?>',2);"><div id="elh_products_lang" class="products_lang">
-			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->lang->FldCaption() ?><?php echo $Language->Phrase("SrchLegend") ?></span><span class="ewTableHeaderSort"><?php if ($products->lang->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->lang->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
+			<div class="ewTableHeaderBtn"><span class="ewTableHeaderCaption"><?php echo $products->lang->FldCaption() ?></span><span class="ewTableHeaderSort"><?php if ($products->lang->getSort() == "ASC") { ?><span class="caret ewSortUp"></span><?php } elseif ($products->lang->getSort() == "DESC") { ?><span class="caret"></span><?php } ?></span></div>
 		</div></div></th>
 	<?php } ?>
 <?php } ?>
@@ -3529,14 +2884,6 @@ $products_list->ListOptions->Render("body", "left", $products_list->RowCnt);
 </span>
 </td>
 	<?php } ?>
-	<?php if ($products->pro_condition->Visible) { // pro_condition ?>
-		<td data-name="pro_condition"<?php echo $products->pro_condition->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_pro_condition" class="products_pro_condition">
-<span<?php echo $products->pro_condition->ViewAttributes() ?>>
-<?php echo $products->pro_condition->ListViewValue() ?></span>
-</span>
-</td>
-	<?php } ?>
 	<?php if ($products->ads_id->Visible) { // ads_id ?>
 		<td data-name="ads_id"<?php echo $products->ads_id->CellAttributes() ?>>
 <span id="el<?php echo $products_list->RowCnt ?>_products_ads_id" class="products_ads_id">
@@ -3567,27 +2914,6 @@ $products_list->ListOptions->Render("body", "left", $products_list->RowCnt);
 <span>
 <?php echo ew_GetFileViewTag($products->featured_image, $products->featured_image->ListViewValue()) ?>
 </span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->pro_status->Visible) { // pro_status ?>
-		<td data-name="pro_status"<?php echo $products->pro_status->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_pro_status" class="products_pro_status">
-<span<?php echo $products->pro_status->ViewAttributes() ?>>
-<?php if (ew_ConvertToBool($products->pro_status->CurrentValue)) { ?>
-<input type="checkbox" value="<?php echo $products->pro_status->ListViewValue() ?>" disabled checked>
-<?php } else { ?>
-<input type="checkbox" value="<?php echo $products->pro_status->ListViewValue() ?>" disabled>
-<?php } ?>
-</span>
-</span>
-</td>
-	<?php } ?>
-	<?php if ($products->branch_id->Visible) { // branch_id ?>
-		<td data-name="branch_id"<?php echo $products->branch_id->CellAttributes() ?>>
-<span id="el<?php echo $products_list->RowCnt ?>_products_branch_id" class="products_branch_id">
-<span<?php echo $products->branch_id->ViewAttributes() ?>>
-<?php echo $products->branch_id->ListViewValue() ?></span>
 </span>
 </td>
 	<?php } ?>

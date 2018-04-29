@@ -62,14 +62,18 @@ class cbranch extends cTable {
 		$this->fields['image'] = &$this->image;
 
 		// status
-		$this->status = new cField('branch', 'branch', 'x_status', 'status', '`status`', '`status`', 16, -1, FALSE, '`status`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->status = new cField('branch', 'branch', 'x_status', 'status', '`status`', '`status`', 16, -1, FALSE, '`status`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'RADIO');
 		$this->status->Sortable = TRUE; // Allow sort
+		$this->status->OptionCount = 2;
 		$this->status->FldDefaultErrMsg = $Language->Phrase("IncorrectInteger");
 		$this->fields['status'] = &$this->status;
 
 		// lang
-		$this->lang = new cField('branch', 'branch', 'x_lang', 'lang', '`lang`', '`lang`', 200, -1, FALSE, '`lang`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->lang = new cField('branch', 'branch', 'x_lang', 'lang', '`lang`', '`lang`', 200, -1, FALSE, '`lang`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'SELECT');
 		$this->lang->Sortable = TRUE; // Allow sort
+		$this->lang->UsePleaseSelect = TRUE; // Use PleaseSelect by default
+		$this->lang->PleaseSelectText = $Language->Phrase("PleaseSelect"); // PleaseSelect text
+		$this->lang->OptionCount = 2;
 		$this->fields['lang'] = &$this->lang;
 	}
 
@@ -643,11 +647,19 @@ class cbranch extends cTable {
 		$this->image->ViewCustomAttributes = "";
 
 		// status
-		$this->status->ViewValue = $this->status->CurrentValue;
+		if (strval($this->status->CurrentValue) <> "") {
+			$this->status->ViewValue = $this->status->OptionCaption($this->status->CurrentValue);
+		} else {
+			$this->status->ViewValue = NULL;
+		}
 		$this->status->ViewCustomAttributes = "";
 
 		// lang
-		$this->lang->ViewValue = $this->lang->CurrentValue;
+		if (strval($this->lang->CurrentValue) <> "") {
+			$this->lang->ViewValue = $this->lang->OptionCaption($this->lang->CurrentValue);
+		} else {
+			$this->lang->ViewValue = NULL;
+		}
 		$this->lang->ViewCustomAttributes = "";
 
 		// branch_id
@@ -708,16 +720,12 @@ class cbranch extends cTable {
 		$this->image->PlaceHolder = ew_RemoveHtml($this->image->FldCaption());
 
 		// status
-		$this->status->EditAttrs["class"] = "form-control";
 		$this->status->EditCustomAttributes = "";
-		$this->status->EditValue = $this->status->CurrentValue;
-		$this->status->PlaceHolder = ew_RemoveHtml($this->status->FldCaption());
+		$this->status->EditValue = $this->status->Options(FALSE);
 
 		// lang
-		$this->lang->EditAttrs["class"] = "form-control";
 		$this->lang->EditCustomAttributes = "";
-		$this->lang->EditValue = $this->lang->CurrentValue;
-		$this->lang->PlaceHolder = ew_RemoveHtml($this->lang->FldCaption());
+		$this->lang->EditValue = $this->lang->Options(TRUE);
 
 		// Call Row Rendered event
 		$this->Row_Rendered();

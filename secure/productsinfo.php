@@ -10,22 +10,17 @@ class cproducts extends cTable {
 	var $product_id;
 	var $cat_id;
 	var $company_id;
+	var $pro_model;
 	var $pro_name;
 	var $pro_description;
 	var $pro_condition;
 	var $pro_features;
-	var $pro_model;
 	var $post_date;
 	var $ads_id;
 	var $pro_base_price;
 	var $pro_sell_price;
 	var $featured_image;
 	var $folder_image;
-	var $img1;
-	var $img2;
-	var $img3;
-	var $img4;
-	var $img5;
 	var $pro_status;
 	var $branch_id;
 	var $lang;
@@ -84,6 +79,13 @@ class cproducts extends cTable {
 		$this->company_id->FldDefaultErrMsg = $Language->Phrase("IncorrectInteger");
 		$this->fields['company_id'] = &$this->company_id;
 
+		// pro_model
+		$this->pro_model = new cField('products', 'products', 'x_pro_model', 'pro_model', '`pro_model`', '`pro_model`', 3, -1, FALSE, '`EV__pro_model`', TRUE, TRUE, TRUE, 'FORMATTED TEXT', 'SELECT');
+		$this->pro_model->Sortable = TRUE; // Allow sort
+		$this->pro_model->UsePleaseSelect = TRUE; // Use PleaseSelect by default
+		$this->pro_model->PleaseSelectText = $Language->Phrase("PleaseSelect"); // PleaseSelect text
+		$this->fields['pro_model'] = &$this->pro_model;
+
 		// pro_name
 		$this->pro_name = new cField('products', 'products', 'x_pro_name', 'pro_name', '`pro_name`', '`pro_name`', 200, -1, FALSE, '`pro_name`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
 		$this->pro_name->Sortable = TRUE; // Allow sort
@@ -106,11 +108,6 @@ class cproducts extends cTable {
 		$this->pro_features = new cField('products', 'products', 'x_pro_features', 'pro_features', '`pro_features`', '`pro_features`', 200, -1, FALSE, '`pro_features`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
 		$this->pro_features->Sortable = TRUE; // Allow sort
 		$this->fields['pro_features'] = &$this->pro_features;
-
-		// pro_model
-		$this->pro_model = new cField('products', 'products', 'x_pro_model', 'pro_model', '`pro_model`', '`pro_model`', 200, -1, FALSE, '`pro_model`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
-		$this->pro_model->Sortable = TRUE; // Allow sort
-		$this->fields['pro_model'] = &$this->pro_model;
 
 		// post_date
 		$this->post_date = new cField('products', 'products', 'x_post_date', 'post_date', '`post_date`', ew_CastDateFieldForLike('`post_date`', 0, "DB"), 135, 0, FALSE, '`post_date`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
@@ -146,31 +143,6 @@ class cproducts extends cTable {
 		$this->folder_image->FldSelectMultiple = TRUE; // Multiple select
 		$this->fields['folder_image'] = &$this->folder_image;
 
-		// img1
-		$this->img1 = new cField('products', 'products', 'x_img1', 'img1', '`img1`', '`img1`', 200, -1, FALSE, '`img1`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
-		$this->img1->Sortable = TRUE; // Allow sort
-		$this->fields['img1'] = &$this->img1;
-
-		// img2
-		$this->img2 = new cField('products', 'products', 'x_img2', 'img2', '`img2`', '`img2`', 200, -1, FALSE, '`img2`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
-		$this->img2->Sortable = TRUE; // Allow sort
-		$this->fields['img2'] = &$this->img2;
-
-		// img3
-		$this->img3 = new cField('products', 'products', 'x_img3', 'img3', '`img3`', '`img3`', 200, -1, FALSE, '`img3`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
-		$this->img3->Sortable = TRUE; // Allow sort
-		$this->fields['img3'] = &$this->img3;
-
-		// img4
-		$this->img4 = new cField('products', 'products', 'x_img4', 'img4', '`img4`', '`img4`', 200, -1, FALSE, '`img4`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
-		$this->img4->Sortable = TRUE; // Allow sort
-		$this->fields['img4'] = &$this->img4;
-
-		// img5
-		$this->img5 = new cField('products', 'products', 'x_img5', 'img5', '`img5`', '`img5`', 200, -1, FALSE, '`img5`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
-		$this->img5->Sortable = TRUE; // Allow sort
-		$this->fields['img5'] = &$this->img5;
-
 		// pro_status
 		$this->pro_status = new cField('products', 'products', 'x_pro_status', 'pro_status', '`pro_status`', '`pro_status`', 202, -1, FALSE, '`pro_status`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'CHECKBOX');
 		$this->pro_status->Sortable = TRUE; // Allow sort
@@ -188,8 +160,11 @@ class cproducts extends cTable {
 		$this->fields['branch_id'] = &$this->branch_id;
 
 		// lang
-		$this->lang = new cField('products', 'products', 'x_lang', 'lang', '`lang`', '`lang`', 200, -1, FALSE, '`lang`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->lang = new cField('products', 'products', 'x_lang', 'lang', '`lang`', '`lang`', 200, -1, FALSE, '`lang`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'SELECT');
 		$this->lang->Sortable = TRUE; // Allow sort
+		$this->lang->UsePleaseSelect = TRUE; // Use PleaseSelect by default
+		$this->lang->PleaseSelectText = $Language->Phrase("PleaseSelect"); // PleaseSelect text
+		$this->lang->OptionCount = 2;
 		$this->fields['lang'] = &$this->lang;
 	}
 
@@ -295,7 +270,7 @@ class cproducts extends cTable {
 	function getSqlSelectList() { // Select for List page
 		$select = "";
 		$select = "SELECT * FROM (" .
-			"SELECT *, (SELECT `cat_name` FROM `categories` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`cat_id` = `products`.`cat_id` LIMIT 1) AS `EV__cat_id`, (SELECT DISTINCT CONCAT(COALESCE(`com_fname`, ''),'" . ew_ValueSeparator(1, $this->company_id) . "',COALESCE(`com_lname`,''),'" . ew_ValueSeparator(2, $this->company_id) . "',COALESCE(`com_name`,'')) FROM `company` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`company_id` = `products`.`company_id` LIMIT 1) AS `EV__company_id` FROM `products`" .
+			"SELECT *, (SELECT `cat_name` FROM `categories` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`cat_id` = `products`.`cat_id` LIMIT 1) AS `EV__cat_id`, (SELECT DISTINCT CONCAT(COALESCE(`com_fname`, ''),'" . ew_ValueSeparator(1, $this->company_id) . "',COALESCE(`com_lname`,''),'" . ew_ValueSeparator(2, $this->company_id) . "',COALESCE(`com_name`,'')) FROM `company` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`company_id` = `products`.`company_id` LIMIT 1) AS `EV__company_id`, (SELECT `name` FROM `model` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`model_id` = `products`.`pro_model` LIMIT 1) AS `EV__pro_model` FROM `products`" .
 			") `EW_TMP_TABLE`";
 		return ($this->_SqlSelectList <> "") ? $this->_SqlSelectList : $select;
 	}
@@ -455,6 +430,12 @@ class cproducts extends cTable {
 			return TRUE;
 		if (strpos($sOrderBy, " " . $this->company_id->FldVirtualExpression . " ") !== FALSE)
 			return TRUE;
+		if ($this->pro_model->AdvancedSearch->SearchValue <> "" ||
+			$this->pro_model->AdvancedSearch->SearchValue2 <> "" ||
+			strpos($sWhere, " " . $this->pro_model->FldVirtualExpression . " ") !== FALSE)
+			return TRUE;
+		if (strpos($sOrderBy, " " . $this->pro_model->FldVirtualExpression . " ") !== FALSE)
+			return TRUE;
 		return FALSE;
 	}
 
@@ -582,10 +563,6 @@ class cproducts extends cTable {
 		if ($rs) {
 			if (array_key_exists('product_id', $rs))
 				ew_AddFilter($where, ew_QuotedName('product_id', $this->DBID) . '=' . ew_QuotedValue($rs['product_id'], $this->product_id->FldDataType, $this->DBID));
-			if (array_key_exists('cat_id', $rs))
-				ew_AddFilter($where, ew_QuotedName('cat_id', $this->DBID) . '=' . ew_QuotedValue($rs['cat_id'], $this->cat_id->FldDataType, $this->DBID));
-			if (array_key_exists('company_id', $rs))
-				ew_AddFilter($where, ew_QuotedName('company_id', $this->DBID) . '=' . ew_QuotedValue($rs['company_id'], $this->company_id->FldDataType, $this->DBID));
 		}
 		$filter = ($curfilter) ? $this->CurrentFilter : "";
 		ew_AddFilter($filter, $where);
@@ -607,7 +584,7 @@ class cproducts extends cTable {
 
 	// Key filter WHERE clause
 	function SqlKeyFilter() {
-		return "`product_id` = @product_id@ AND `cat_id` = @cat_id@ AND `company_id` = @company_id@";
+		return "`product_id` = @product_id@";
 	}
 
 	// Key filter
@@ -619,18 +596,6 @@ class cproducts extends cTable {
 			return "0=1"; // Invalid key
 		else
 			$sKeyFilter = str_replace("@product_id@", ew_AdjustSql($this->product_id->CurrentValue, $this->DBID), $sKeyFilter); // Replace key value
-		if (!is_numeric($this->cat_id->CurrentValue))
-			return "0=1"; // Invalid key
-		if (is_null($this->cat_id->CurrentValue))
-			return "0=1"; // Invalid key
-		else
-			$sKeyFilter = str_replace("@cat_id@", ew_AdjustSql($this->cat_id->CurrentValue, $this->DBID), $sKeyFilter); // Replace key value
-		if (!is_numeric($this->company_id->CurrentValue))
-			return "0=1"; // Invalid key
-		if (is_null($this->company_id->CurrentValue))
-			return "0=1"; // Invalid key
-		else
-			$sKeyFilter = str_replace("@company_id@", ew_AdjustSql($this->company_id->CurrentValue, $this->DBID), $sKeyFilter); // Replace key value
 		return $sKeyFilter;
 	}
 
@@ -725,8 +690,6 @@ class cproducts extends cTable {
 	function KeyToJson() {
 		$json = "";
 		$json .= "product_id:" . ew_VarToJson($this->product_id->CurrentValue, "number", "'");
-		$json .= ",cat_id:" . ew_VarToJson($this->cat_id->CurrentValue, "number", "'");
-		$json .= ",company_id:" . ew_VarToJson($this->company_id->CurrentValue, "number", "'");
 		return "{" . $json . "}";
 	}
 
@@ -736,16 +699,6 @@ class cproducts extends cTable {
 		if ($parm <> "") $sUrl .= $parm . "&";
 		if (!is_null($this->product_id->CurrentValue)) {
 			$sUrl .= "product_id=" . urlencode($this->product_id->CurrentValue);
-		} else {
-			return "javascript:ew_Alert(ewLanguage.Phrase('InvalidRecord'));";
-		}
-		if (!is_null($this->cat_id->CurrentValue)) {
-			$sUrl .= "&cat_id=" . urlencode($this->cat_id->CurrentValue);
-		} else {
-			return "javascript:ew_Alert(ewLanguage.Phrase('InvalidRecord'));";
-		}
-		if (!is_null($this->company_id->CurrentValue)) {
-			$sUrl .= "&company_id=" . urlencode($this->company_id->CurrentValue);
 		} else {
 			return "javascript:ew_Alert(ewLanguage.Phrase('InvalidRecord'));";
 		}
@@ -773,34 +726,17 @@ class cproducts extends cTable {
 		if (isset($_POST["key_m"])) {
 			$arKeys = $_POST["key_m"];
 			$cnt = count($arKeys);
-			for ($i = 0; $i < $cnt; $i++)
-				$arKeys[$i] = explode($EW_COMPOSITE_KEY_SEPARATOR, $arKeys[$i]);
 		} elseif (isset($_GET["key_m"])) {
 			$arKeys = $_GET["key_m"];
 			$cnt = count($arKeys);
-			for ($i = 0; $i < $cnt; $i++)
-				$arKeys[$i] = explode($EW_COMPOSITE_KEY_SEPARATOR, $arKeys[$i]);
 		} elseif (!empty($_GET) || !empty($_POST)) {
 			$isPost = ew_IsPost();
 			if ($isPost && isset($_POST["product_id"]))
-				$arKey[] = $_POST["product_id"];
+				$arKeys[] = $_POST["product_id"];
 			elseif (isset($_GET["product_id"]))
-				$arKey[] = $_GET["product_id"];
+				$arKeys[] = $_GET["product_id"];
 			else
 				$arKeys = NULL; // Do not setup
-			if ($isPost && isset($_POST["cat_id"]))
-				$arKey[] = $_POST["cat_id"];
-			elseif (isset($_GET["cat_id"]))
-				$arKey[] = $_GET["cat_id"];
-			else
-				$arKeys = NULL; // Do not setup
-			if ($isPost && isset($_POST["company_id"]))
-				$arKey[] = $_POST["company_id"];
-			elseif (isset($_GET["company_id"]))
-				$arKey[] = $_GET["company_id"];
-			else
-				$arKeys = NULL; // Do not setup
-			if (is_array($arKeys)) $arKeys[] = $arKey;
 
 			//return $arKeys; // Do not return yet, so the values will also be checked by the following code
 		}
@@ -809,13 +745,7 @@ class cproducts extends cTable {
 		$ar = array();
 		if (is_array($arKeys)) {
 			foreach ($arKeys as $key) {
-				if (!is_array($key) || count($key) <> 3)
-					continue; // Just skip so other keys will still work
-				if (!is_numeric($key[0])) // product_id
-					continue;
-				if (!is_numeric($key[1])) // cat_id
-					continue;
-				if (!is_numeric($key[2])) // company_id
+				if (!is_numeric($key))
 					continue;
 				$ar[] = $key;
 			}
@@ -829,9 +759,7 @@ class cproducts extends cTable {
 		$sKeyFilter = "";
 		foreach ($arKeys as $key) {
 			if ($sKeyFilter <> "") $sKeyFilter .= " OR ";
-			$this->product_id->CurrentValue = $key[0];
-			$this->cat_id->CurrentValue = $key[1];
-			$this->company_id->CurrentValue = $key[2];
+			$this->product_id->CurrentValue = $key;
 			$sKeyFilter .= "(" . $this->KeyFilter() . ")";
 		}
 		return $sKeyFilter;
@@ -855,22 +783,17 @@ class cproducts extends cTable {
 		$this->product_id->setDbValue($rs->fields('product_id'));
 		$this->cat_id->setDbValue($rs->fields('cat_id'));
 		$this->company_id->setDbValue($rs->fields('company_id'));
+		$this->pro_model->setDbValue($rs->fields('pro_model'));
 		$this->pro_name->setDbValue($rs->fields('pro_name'));
 		$this->pro_description->setDbValue($rs->fields('pro_description'));
 		$this->pro_condition->setDbValue($rs->fields('pro_condition'));
 		$this->pro_features->setDbValue($rs->fields('pro_features'));
-		$this->pro_model->setDbValue($rs->fields('pro_model'));
 		$this->post_date->setDbValue($rs->fields('post_date'));
 		$this->ads_id->setDbValue($rs->fields('ads_id'));
 		$this->pro_base_price->setDbValue($rs->fields('pro_base_price'));
 		$this->pro_sell_price->setDbValue($rs->fields('pro_sell_price'));
 		$this->featured_image->Upload->DbValue = $rs->fields('featured_image');
 		$this->folder_image->setDbValue($rs->fields('folder_image'));
-		$this->img1->setDbValue($rs->fields('img1'));
-		$this->img2->setDbValue($rs->fields('img2'));
-		$this->img3->setDbValue($rs->fields('img3'));
-		$this->img4->setDbValue($rs->fields('img4'));
-		$this->img5->setDbValue($rs->fields('img5'));
 		$this->pro_status->setDbValue($rs->fields('pro_status'));
 		$this->branch_id->setDbValue($rs->fields('branch_id'));
 		$this->lang->setDbValue($rs->fields('lang'));
@@ -887,22 +810,17 @@ class cproducts extends cTable {
 		// product_id
 		// cat_id
 		// company_id
+		// pro_model
 		// pro_name
 		// pro_description
 		// pro_condition
 		// pro_features
-		// pro_model
 		// post_date
 		// ads_id
 		// pro_base_price
 		// pro_sell_price
 		// featured_image
 		// folder_image
-		// img1
-		// img2
-		// img3
-		// img4
-		// img5
 		// pro_status
 		// branch_id
 		// lang
@@ -967,6 +885,33 @@ class cproducts extends cTable {
 		}
 		$this->company_id->ViewCustomAttributes = "";
 
+		// pro_model
+		if ($this->pro_model->VirtualValue <> "") {
+			$this->pro_model->ViewValue = $this->pro_model->VirtualValue;
+		} else {
+		if (strval($this->pro_model->CurrentValue) <> "") {
+			$sFilterWrk = "`model_id`" . ew_SearchString("=", $this->pro_model->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `model_id`, `name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `model`";
+		$sWhereWrk = "";
+		$this->pro_model->LookupFilters = array("dx1" => '`name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->pro_model, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$this->pro_model->ViewValue = $this->pro_model->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
+			}
+		} else {
+			$this->pro_model->ViewValue = NULL;
+		}
+		}
+		$this->pro_model->ViewCustomAttributes = "";
+
 		// pro_name
 		$this->pro_name->ViewValue = $this->pro_name->CurrentValue;
 		$this->pro_name->ViewCustomAttributes = "";
@@ -986,10 +931,6 @@ class cproducts extends cTable {
 		// pro_features
 		$this->pro_features->ViewValue = $this->pro_features->CurrentValue;
 		$this->pro_features->ViewCustomAttributes = "";
-
-		// pro_model
-		$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
-		$this->pro_model->ViewCustomAttributes = "";
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
@@ -1055,31 +996,11 @@ class cproducts extends cTable {
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
-		// img1
-		$this->img1->ViewValue = $this->img1->CurrentValue;
-		$this->img1->ViewCustomAttributes = "";
-
-		// img2
-		$this->img2->ViewValue = $this->img2->CurrentValue;
-		$this->img2->ViewCustomAttributes = "";
-
-		// img3
-		$this->img3->ViewValue = $this->img3->CurrentValue;
-		$this->img3->ViewCustomAttributes = "";
-
-		// img4
-		$this->img4->ViewValue = $this->img4->CurrentValue;
-		$this->img4->ViewCustomAttributes = "";
-
-		// img5
-		$this->img5->ViewValue = $this->img5->CurrentValue;
-		$this->img5->ViewCustomAttributes = "";
-
 		// pro_status
 		if (ew_ConvertToBool($this->pro_status->CurrentValue)) {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Y";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Yes";
 		} else {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "N";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "No";
 		}
 		$this->pro_status->ViewCustomAttributes = "";
 
@@ -1109,7 +1030,11 @@ class cproducts extends cTable {
 		$this->branch_id->ViewCustomAttributes = "";
 
 		// lang
-		$this->lang->ViewValue = $this->lang->CurrentValue;
+		if (strval($this->lang->CurrentValue) <> "") {
+			$this->lang->ViewValue = $this->lang->OptionCaption($this->lang->CurrentValue);
+		} else {
+			$this->lang->ViewValue = NULL;
+		}
 		$this->lang->ViewCustomAttributes = "";
 
 		// product_id
@@ -1126,6 +1051,11 @@ class cproducts extends cTable {
 		$this->company_id->LinkCustomAttributes = "";
 		$this->company_id->HrefValue = "";
 		$this->company_id->TooltipValue = "";
+
+		// pro_model
+		$this->pro_model->LinkCustomAttributes = "";
+		$this->pro_model->HrefValue = "";
+		$this->pro_model->TooltipValue = "";
 
 		// pro_name
 		$this->pro_name->LinkCustomAttributes = "";
@@ -1146,11 +1076,6 @@ class cproducts extends cTable {
 		$this->pro_features->LinkCustomAttributes = "";
 		$this->pro_features->HrefValue = "";
 		$this->pro_features->TooltipValue = "";
-
-		// pro_model
-		$this->pro_model->LinkCustomAttributes = "";
-		$this->pro_model->HrefValue = "";
-		$this->pro_model->TooltipValue = "";
 
 		// post_date
 		$this->post_date->LinkCustomAttributes = "";
@@ -1196,31 +1121,6 @@ class cproducts extends cTable {
 		$this->folder_image->HrefValue = "";
 		$this->folder_image->TooltipValue = "";
 
-		// img1
-		$this->img1->LinkCustomAttributes = "";
-		$this->img1->HrefValue = "";
-		$this->img1->TooltipValue = "";
-
-		// img2
-		$this->img2->LinkCustomAttributes = "";
-		$this->img2->HrefValue = "";
-		$this->img2->TooltipValue = "";
-
-		// img3
-		$this->img3->LinkCustomAttributes = "";
-		$this->img3->HrefValue = "";
-		$this->img3->TooltipValue = "";
-
-		// img4
-		$this->img4->LinkCustomAttributes = "";
-		$this->img4->HrefValue = "";
-		$this->img4->TooltipValue = "";
-
-		// img5
-		$this->img5->LinkCustomAttributes = "";
-		$this->img5->HrefValue = "";
-		$this->img5->TooltipValue = "";
-
 		// pro_status
 		$this->pro_status->LinkCustomAttributes = "";
 		$this->pro_status->HrefValue = "";
@@ -1259,62 +1159,14 @@ class cproducts extends cTable {
 		// cat_id
 		$this->cat_id->EditAttrs["class"] = "form-control";
 		$this->cat_id->EditCustomAttributes = "";
-		if ($this->cat_id->VirtualValue <> "") {
-			$this->cat_id->EditValue = $this->cat_id->VirtualValue;
-		} else {
-		if (strval($this->cat_id->CurrentValue) <> "") {
-			$sFilterWrk = "`cat_id`" . ew_SearchString("=", $this->cat_id->CurrentValue, EW_DATATYPE_NUMBER, "");
-		$sSqlWrk = "SELECT `cat_id`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `categories`";
-		$sWhereWrk = "";
-		$this->cat_id->LookupFilters = array("dx1" => '`cat_name`');
-		ew_AddFilter($sWhereWrk, $sFilterWrk);
-		$this->Lookup_Selecting($this->cat_id, $sWhereWrk); // Call Lookup Selecting
-		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
-			$rswrk = Conn()->Execute($sSqlWrk);
-			if ($rswrk && !$rswrk->EOF) { // Lookup values found
-				$arwrk = array();
-				$arwrk[1] = $rswrk->fields('DispFld');
-				$this->cat_id->EditValue = $this->cat_id->DisplayValue($arwrk);
-				$rswrk->Close();
-			} else {
-				$this->cat_id->EditValue = $this->cat_id->CurrentValue;
-			}
-		} else {
-			$this->cat_id->EditValue = NULL;
-		}
-		}
-		$this->cat_id->ViewCustomAttributes = "";
 
 		// company_id
 		$this->company_id->EditAttrs["class"] = "form-control";
 		$this->company_id->EditCustomAttributes = "";
-		if ($this->company_id->VirtualValue <> "") {
-			$this->company_id->EditValue = $this->company_id->VirtualValue;
-		} else {
-		if (strval($this->company_id->CurrentValue) <> "") {
-			$sFilterWrk = "`company_id`" . ew_SearchString("=", $this->company_id->CurrentValue, EW_DATATYPE_NUMBER, "");
-		$sSqlWrk = "SELECT DISTINCT `company_id`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `company`";
-		$sWhereWrk = "";
-		$this->company_id->LookupFilters = array("dx1" => '`com_fname`', "dx2" => '`com_lname`', "dx3" => '`com_name`');
-		ew_AddFilter($sWhereWrk, $sFilterWrk);
-		$this->Lookup_Selecting($this->company_id, $sWhereWrk); // Call Lookup Selecting
-		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
-			$rswrk = Conn()->Execute($sSqlWrk);
-			if ($rswrk && !$rswrk->EOF) { // Lookup values found
-				$arwrk = array();
-				$arwrk[1] = $rswrk->fields('DispFld');
-				$arwrk[2] = $rswrk->fields('Disp2Fld');
-				$arwrk[3] = $rswrk->fields('Disp3Fld');
-				$this->company_id->EditValue = $this->company_id->DisplayValue($arwrk);
-				$rswrk->Close();
-			} else {
-				$this->company_id->EditValue = $this->company_id->CurrentValue;
-			}
-		} else {
-			$this->company_id->EditValue = NULL;
-		}
-		}
-		$this->company_id->ViewCustomAttributes = "";
+
+		// pro_model
+		$this->pro_model->EditAttrs["class"] = "form-control";
+		$this->pro_model->EditCustomAttributes = "";
 
 		// pro_name
 		$this->pro_name->EditAttrs["class"] = "form-control";
@@ -1338,12 +1190,6 @@ class cproducts extends cTable {
 		$this->pro_features->EditCustomAttributes = "";
 		$this->pro_features->EditValue = $this->pro_features->CurrentValue;
 		$this->pro_features->PlaceHolder = ew_RemoveHtml($this->pro_features->FldCaption());
-
-		// pro_model
-		$this->pro_model->EditAttrs["class"] = "form-control";
-		$this->pro_model->EditCustomAttributes = "";
-		$this->pro_model->EditValue = $this->pro_model->CurrentValue;
-		$this->pro_model->PlaceHolder = ew_RemoveHtml($this->pro_model->FldCaption());
 
 		// post_date
 		$this->post_date->EditAttrs["class"] = "form-control";
@@ -1390,36 +1236,6 @@ class cproducts extends cTable {
 		$this->folder_image->EditAttrs["class"] = "form-control";
 		$this->folder_image->EditCustomAttributes = "";
 
-		// img1
-		$this->img1->EditAttrs["class"] = "form-control";
-		$this->img1->EditCustomAttributes = "";
-		$this->img1->EditValue = $this->img1->CurrentValue;
-		$this->img1->PlaceHolder = ew_RemoveHtml($this->img1->FldCaption());
-
-		// img2
-		$this->img2->EditAttrs["class"] = "form-control";
-		$this->img2->EditCustomAttributes = "";
-		$this->img2->EditValue = $this->img2->CurrentValue;
-		$this->img2->PlaceHolder = ew_RemoveHtml($this->img2->FldCaption());
-
-		// img3
-		$this->img3->EditAttrs["class"] = "form-control";
-		$this->img3->EditCustomAttributes = "";
-		$this->img3->EditValue = $this->img3->CurrentValue;
-		$this->img3->PlaceHolder = ew_RemoveHtml($this->img3->FldCaption());
-
-		// img4
-		$this->img4->EditAttrs["class"] = "form-control";
-		$this->img4->EditCustomAttributes = "";
-		$this->img4->EditValue = $this->img4->CurrentValue;
-		$this->img4->PlaceHolder = ew_RemoveHtml($this->img4->FldCaption());
-
-		// img5
-		$this->img5->EditAttrs["class"] = "form-control";
-		$this->img5->EditCustomAttributes = "";
-		$this->img5->EditValue = $this->img5->CurrentValue;
-		$this->img5->PlaceHolder = ew_RemoveHtml($this->img5->FldCaption());
-
 		// pro_status
 		$this->pro_status->EditCustomAttributes = "";
 		$this->pro_status->EditValue = $this->pro_status->Options(FALSE);
@@ -1429,10 +1245,8 @@ class cproducts extends cTable {
 		$this->branch_id->EditCustomAttributes = "";
 
 		// lang
-		$this->lang->EditAttrs["class"] = "form-control";
 		$this->lang->EditCustomAttributes = "";
-		$this->lang->EditValue = $this->lang->CurrentValue;
-		$this->lang->PlaceHolder = ew_RemoveHtml($this->lang->FldCaption());
+		$this->lang->EditValue = $this->lang->Options(TRUE);
 
 		// Call Row Rendered event
 		$this->Row_Rendered();
@@ -1464,22 +1278,17 @@ class cproducts extends cTable {
 					if ($this->product_id->Exportable) $Doc->ExportCaption($this->product_id);
 					if ($this->cat_id->Exportable) $Doc->ExportCaption($this->cat_id);
 					if ($this->company_id->Exportable) $Doc->ExportCaption($this->company_id);
+					if ($this->pro_model->Exportable) $Doc->ExportCaption($this->pro_model);
 					if ($this->pro_name->Exportable) $Doc->ExportCaption($this->pro_name);
 					if ($this->pro_description->Exportable) $Doc->ExportCaption($this->pro_description);
 					if ($this->pro_condition->Exportable) $Doc->ExportCaption($this->pro_condition);
 					if ($this->pro_features->Exportable) $Doc->ExportCaption($this->pro_features);
-					if ($this->pro_model->Exportable) $Doc->ExportCaption($this->pro_model);
 					if ($this->post_date->Exportable) $Doc->ExportCaption($this->post_date);
 					if ($this->ads_id->Exportable) $Doc->ExportCaption($this->ads_id);
 					if ($this->pro_base_price->Exportable) $Doc->ExportCaption($this->pro_base_price);
 					if ($this->pro_sell_price->Exportable) $Doc->ExportCaption($this->pro_sell_price);
 					if ($this->featured_image->Exportable) $Doc->ExportCaption($this->featured_image);
 					if ($this->folder_image->Exportable) $Doc->ExportCaption($this->folder_image);
-					if ($this->img1->Exportable) $Doc->ExportCaption($this->img1);
-					if ($this->img2->Exportable) $Doc->ExportCaption($this->img2);
-					if ($this->img3->Exportable) $Doc->ExportCaption($this->img3);
-					if ($this->img4->Exportable) $Doc->ExportCaption($this->img4);
-					if ($this->img5->Exportable) $Doc->ExportCaption($this->img5);
 					if ($this->pro_status->Exportable) $Doc->ExportCaption($this->pro_status);
 					if ($this->branch_id->Exportable) $Doc->ExportCaption($this->branch_id);
 					if ($this->lang->Exportable) $Doc->ExportCaption($this->lang);
@@ -1487,21 +1296,16 @@ class cproducts extends cTable {
 					if ($this->product_id->Exportable) $Doc->ExportCaption($this->product_id);
 					if ($this->cat_id->Exportable) $Doc->ExportCaption($this->cat_id);
 					if ($this->company_id->Exportable) $Doc->ExportCaption($this->company_id);
+					if ($this->pro_model->Exportable) $Doc->ExportCaption($this->pro_model);
 					if ($this->pro_name->Exportable) $Doc->ExportCaption($this->pro_name);
 					if ($this->pro_condition->Exportable) $Doc->ExportCaption($this->pro_condition);
 					if ($this->pro_features->Exportable) $Doc->ExportCaption($this->pro_features);
-					if ($this->pro_model->Exportable) $Doc->ExportCaption($this->pro_model);
 					if ($this->post_date->Exportable) $Doc->ExportCaption($this->post_date);
 					if ($this->ads_id->Exportable) $Doc->ExportCaption($this->ads_id);
 					if ($this->pro_base_price->Exportable) $Doc->ExportCaption($this->pro_base_price);
 					if ($this->pro_sell_price->Exportable) $Doc->ExportCaption($this->pro_sell_price);
 					if ($this->featured_image->Exportable) $Doc->ExportCaption($this->featured_image);
 					if ($this->folder_image->Exportable) $Doc->ExportCaption($this->folder_image);
-					if ($this->img1->Exportable) $Doc->ExportCaption($this->img1);
-					if ($this->img2->Exportable) $Doc->ExportCaption($this->img2);
-					if ($this->img3->Exportable) $Doc->ExportCaption($this->img3);
-					if ($this->img4->Exportable) $Doc->ExportCaption($this->img4);
-					if ($this->img5->Exportable) $Doc->ExportCaption($this->img5);
 					if ($this->pro_status->Exportable) $Doc->ExportCaption($this->pro_status);
 					if ($this->branch_id->Exportable) $Doc->ExportCaption($this->branch_id);
 					if ($this->lang->Exportable) $Doc->ExportCaption($this->lang);
@@ -1539,22 +1343,17 @@ class cproducts extends cTable {
 						if ($this->product_id->Exportable) $Doc->ExportField($this->product_id);
 						if ($this->cat_id->Exportable) $Doc->ExportField($this->cat_id);
 						if ($this->company_id->Exportable) $Doc->ExportField($this->company_id);
+						if ($this->pro_model->Exportable) $Doc->ExportField($this->pro_model);
 						if ($this->pro_name->Exportable) $Doc->ExportField($this->pro_name);
 						if ($this->pro_description->Exportable) $Doc->ExportField($this->pro_description);
 						if ($this->pro_condition->Exportable) $Doc->ExportField($this->pro_condition);
 						if ($this->pro_features->Exportable) $Doc->ExportField($this->pro_features);
-						if ($this->pro_model->Exportable) $Doc->ExportField($this->pro_model);
 						if ($this->post_date->Exportable) $Doc->ExportField($this->post_date);
 						if ($this->ads_id->Exportable) $Doc->ExportField($this->ads_id);
 						if ($this->pro_base_price->Exportable) $Doc->ExportField($this->pro_base_price);
 						if ($this->pro_sell_price->Exportable) $Doc->ExportField($this->pro_sell_price);
 						if ($this->featured_image->Exportable) $Doc->ExportField($this->featured_image);
 						if ($this->folder_image->Exportable) $Doc->ExportField($this->folder_image);
-						if ($this->img1->Exportable) $Doc->ExportField($this->img1);
-						if ($this->img2->Exportable) $Doc->ExportField($this->img2);
-						if ($this->img3->Exportable) $Doc->ExportField($this->img3);
-						if ($this->img4->Exportable) $Doc->ExportField($this->img4);
-						if ($this->img5->Exportable) $Doc->ExportField($this->img5);
 						if ($this->pro_status->Exportable) $Doc->ExportField($this->pro_status);
 						if ($this->branch_id->Exportable) $Doc->ExportField($this->branch_id);
 						if ($this->lang->Exportable) $Doc->ExportField($this->lang);
@@ -1562,21 +1361,16 @@ class cproducts extends cTable {
 						if ($this->product_id->Exportable) $Doc->ExportField($this->product_id);
 						if ($this->cat_id->Exportable) $Doc->ExportField($this->cat_id);
 						if ($this->company_id->Exportable) $Doc->ExportField($this->company_id);
+						if ($this->pro_model->Exportable) $Doc->ExportField($this->pro_model);
 						if ($this->pro_name->Exportable) $Doc->ExportField($this->pro_name);
 						if ($this->pro_condition->Exportable) $Doc->ExportField($this->pro_condition);
 						if ($this->pro_features->Exportable) $Doc->ExportField($this->pro_features);
-						if ($this->pro_model->Exportable) $Doc->ExportField($this->pro_model);
 						if ($this->post_date->Exportable) $Doc->ExportField($this->post_date);
 						if ($this->ads_id->Exportable) $Doc->ExportField($this->ads_id);
 						if ($this->pro_base_price->Exportable) $Doc->ExportField($this->pro_base_price);
 						if ($this->pro_sell_price->Exportable) $Doc->ExportField($this->pro_sell_price);
 						if ($this->featured_image->Exportable) $Doc->ExportField($this->featured_image);
 						if ($this->folder_image->Exportable) $Doc->ExportField($this->folder_image);
-						if ($this->img1->Exportable) $Doc->ExportField($this->img1);
-						if ($this->img2->Exportable) $Doc->ExportField($this->img2);
-						if ($this->img3->Exportable) $Doc->ExportField($this->img3);
-						if ($this->img4->Exportable) $Doc->ExportField($this->img4);
-						if ($this->img5->Exportable) $Doc->ExportField($this->img5);
 						if ($this->pro_status->Exportable) $Doc->ExportField($this->pro_status);
 						if ($this->branch_id->Exportable) $Doc->ExportField($this->branch_id);
 						if ($this->lang->Exportable) $Doc->ExportField($this->lang);

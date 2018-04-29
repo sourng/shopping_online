@@ -562,11 +562,19 @@ class cbranch_delete extends cbranch {
 		$this->image->ViewCustomAttributes = "";
 
 		// status
-		$this->status->ViewValue = $this->status->CurrentValue;
+		if (strval($this->status->CurrentValue) <> "") {
+			$this->status->ViewValue = $this->status->OptionCaption($this->status->CurrentValue);
+		} else {
+			$this->status->ViewValue = NULL;
+		}
 		$this->status->ViewCustomAttributes = "";
 
 		// lang
-		$this->lang->ViewValue = $this->lang->CurrentValue;
+		if (strval($this->lang->CurrentValue) <> "") {
+			$this->lang->ViewValue = $this->lang->OptionCaption($this->lang->CurrentValue);
+		} else {
+			$this->lang->ViewValue = NULL;
+		}
 		$this->lang->ViewCustomAttributes = "";
 
 			// branch_id
@@ -807,8 +815,12 @@ fbranchdelete.Form_CustomValidate =
 fbranchdelete.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 
 // Dynamic selection lists
-// Form object for search
+fbranchdelete.Lists["x_status"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fbranchdelete.Lists["x_status"].Options = <?php echo json_encode($branch_delete->status->Options()) ?>;
+fbranchdelete.Lists["x_lang"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fbranchdelete.Lists["x_lang"].Options = <?php echo json_encode($branch_delete->lang->Options()) ?>;
 
+// Form object for search
 </script>
 <script type="text/javascript">
 

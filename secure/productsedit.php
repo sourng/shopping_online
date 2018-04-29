@@ -325,22 +325,17 @@ class cproducts_edit extends cproducts {
 			$this->product_id->Visible = FALSE;
 		$this->cat_id->SetVisibility();
 		$this->company_id->SetVisibility();
+		$this->pro_model->SetVisibility();
 		$this->pro_name->SetVisibility();
 		$this->pro_description->SetVisibility();
 		$this->pro_condition->SetVisibility();
 		$this->pro_features->SetVisibility();
-		$this->pro_model->SetVisibility();
 		$this->post_date->SetVisibility();
 		$this->ads_id->SetVisibility();
 		$this->pro_base_price->SetVisibility();
 		$this->pro_sell_price->SetVisibility();
 		$this->featured_image->SetVisibility();
 		$this->folder_image->SetVisibility();
-		$this->img1->SetVisibility();
-		$this->img2->SetVisibility();
-		$this->img3->SetVisibility();
-		$this->img4->SetVisibility();
-		$this->img5->SetVisibility();
 		$this->pro_status->SetVisibility();
 		$this->branch_id->SetVisibility();
 		$this->lang->SetVisibility();
@@ -479,12 +474,6 @@ class cproducts_edit extends cproducts {
 			if ($objForm->HasValue("x_product_id")) {
 				$this->product_id->setFormValue($objForm->GetValue("x_product_id"));
 			}
-			if ($objForm->HasValue("x_cat_id")) {
-				$this->cat_id->setFormValue($objForm->GetValue("x_cat_id"));
-			}
-			if ($objForm->HasValue("x_company_id")) {
-				$this->company_id->setFormValue($objForm->GetValue("x_company_id"));
-			}
 		} else {
 			$this->CurrentAction = "I"; // Default action is display
 
@@ -495,18 +484,6 @@ class cproducts_edit extends cproducts {
 				$loadByQuery = TRUE;
 			} else {
 				$this->product_id->CurrentValue = NULL;
-			}
-			if (isset($_GET["cat_id"])) {
-				$this->cat_id->setQueryStringValue($_GET["cat_id"]);
-				$loadByQuery = TRUE;
-			} else {
-				$this->cat_id->CurrentValue = NULL;
-			}
-			if (isset($_GET["company_id"])) {
-				$this->company_id->setQueryStringValue($_GET["company_id"]);
-				$loadByQuery = TRUE;
-			} else {
-				$this->company_id->CurrentValue = NULL;
 			}
 			if (!$loadByQuery)
 				$loadByPosition = TRUE;
@@ -529,9 +506,9 @@ class cproducts_edit extends cproducts {
 				$loaded = TRUE;
 			}
 		} else { // Match key values
-			if (!is_null($this->product_id->CurrentValue) && !is_null($this->cat_id->CurrentValue) && !is_null($this->company_id->CurrentValue)) {
+			if (!is_null($this->product_id->CurrentValue)) {
 				while (!$this->Recordset->EOF) {
-					if (strval($this->product_id->CurrentValue) == strval($this->Recordset->fields('product_id')) && strval($this->cat_id->CurrentValue) == strval($this->Recordset->fields('cat_id')) && strval($this->company_id->CurrentValue) == strval($this->Recordset->fields('company_id'))) {
+					if (strval($this->product_id->CurrentValue) == strval($this->Recordset->fields('product_id'))) {
 						$this->setStartRecordNumber($this->StartRec); // Save record position
 						$loaded = TRUE;
 						break;
@@ -658,6 +635,9 @@ class cproducts_edit extends cproducts {
 		if (!$this->company_id->FldIsDetailKey) {
 			$this->company_id->setFormValue($objForm->GetValue("x_company_id"));
 		}
+		if (!$this->pro_model->FldIsDetailKey) {
+			$this->pro_model->setFormValue($objForm->GetValue("x_pro_model"));
+		}
 		if (!$this->pro_name->FldIsDetailKey) {
 			$this->pro_name->setFormValue($objForm->GetValue("x_pro_name"));
 		}
@@ -669,9 +649,6 @@ class cproducts_edit extends cproducts {
 		}
 		if (!$this->pro_features->FldIsDetailKey) {
 			$this->pro_features->setFormValue($objForm->GetValue("x_pro_features"));
-		}
-		if (!$this->pro_model->FldIsDetailKey) {
-			$this->pro_model->setFormValue($objForm->GetValue("x_pro_model"));
 		}
 		if (!$this->post_date->FldIsDetailKey) {
 			$this->post_date->setFormValue($objForm->GetValue("x_post_date"));
@@ -688,21 +665,6 @@ class cproducts_edit extends cproducts {
 		}
 		if (!$this->folder_image->FldIsDetailKey) {
 			$this->folder_image->setFormValue($objForm->GetValue("x_folder_image"));
-		}
-		if (!$this->img1->FldIsDetailKey) {
-			$this->img1->setFormValue($objForm->GetValue("x_img1"));
-		}
-		if (!$this->img2->FldIsDetailKey) {
-			$this->img2->setFormValue($objForm->GetValue("x_img2"));
-		}
-		if (!$this->img3->FldIsDetailKey) {
-			$this->img3->setFormValue($objForm->GetValue("x_img3"));
-		}
-		if (!$this->img4->FldIsDetailKey) {
-			$this->img4->setFormValue($objForm->GetValue("x_img4"));
-		}
-		if (!$this->img5->FldIsDetailKey) {
-			$this->img5->setFormValue($objForm->GetValue("x_img5"));
 		}
 		if (!$this->pro_status->FldIsDetailKey) {
 			$this->pro_status->setFormValue($objForm->GetValue("x_pro_status"));
@@ -721,22 +683,17 @@ class cproducts_edit extends cproducts {
 		$this->product_id->CurrentValue = $this->product_id->FormValue;
 		$this->cat_id->CurrentValue = $this->cat_id->FormValue;
 		$this->company_id->CurrentValue = $this->company_id->FormValue;
+		$this->pro_model->CurrentValue = $this->pro_model->FormValue;
 		$this->pro_name->CurrentValue = $this->pro_name->FormValue;
 		$this->pro_description->CurrentValue = $this->pro_description->FormValue;
 		$this->pro_condition->CurrentValue = $this->pro_condition->FormValue;
 		$this->pro_features->CurrentValue = $this->pro_features->FormValue;
-		$this->pro_model->CurrentValue = $this->pro_model->FormValue;
 		$this->post_date->CurrentValue = $this->post_date->FormValue;
 		$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 0);
 		$this->ads_id->CurrentValue = $this->ads_id->FormValue;
 		$this->pro_base_price->CurrentValue = $this->pro_base_price->FormValue;
 		$this->pro_sell_price->CurrentValue = $this->pro_sell_price->FormValue;
 		$this->folder_image->CurrentValue = $this->folder_image->FormValue;
-		$this->img1->CurrentValue = $this->img1->FormValue;
-		$this->img2->CurrentValue = $this->img2->FormValue;
-		$this->img3->CurrentValue = $this->img3->FormValue;
-		$this->img4->CurrentValue = $this->img4->FormValue;
-		$this->img5->CurrentValue = $this->img5->FormValue;
 		$this->pro_status->CurrentValue = $this->pro_status->FormValue;
 		$this->branch_id->CurrentValue = $this->branch_id->FormValue;
 		$this->lang->CurrentValue = $this->lang->FormValue;
@@ -814,11 +771,16 @@ class cproducts_edit extends cproducts {
 		} else {
 			$this->company_id->VirtualValue = ""; // Clear value
 		}
+		$this->pro_model->setDbValue($row['pro_model']);
+		if (array_key_exists('EV__pro_model', $rs->fields)) {
+			$this->pro_model->VirtualValue = $rs->fields('EV__pro_model'); // Set up virtual field value
+		} else {
+			$this->pro_model->VirtualValue = ""; // Clear value
+		}
 		$this->pro_name->setDbValue($row['pro_name']);
 		$this->pro_description->setDbValue($row['pro_description']);
 		$this->pro_condition->setDbValue($row['pro_condition']);
 		$this->pro_features->setDbValue($row['pro_features']);
-		$this->pro_model->setDbValue($row['pro_model']);
 		$this->post_date->setDbValue($row['post_date']);
 		$this->ads_id->setDbValue($row['ads_id']);
 		$this->pro_base_price->setDbValue($row['pro_base_price']);
@@ -826,11 +788,6 @@ class cproducts_edit extends cproducts {
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
-		$this->img1->setDbValue($row['img1']);
-		$this->img2->setDbValue($row['img2']);
-		$this->img3->setDbValue($row['img3']);
-		$this->img4->setDbValue($row['img4']);
-		$this->img5->setDbValue($row['img5']);
 		$this->pro_status->setDbValue($row['pro_status']);
 		$this->branch_id->setDbValue($row['branch_id']);
 		$this->lang->setDbValue($row['lang']);
@@ -842,22 +799,17 @@ class cproducts_edit extends cproducts {
 		$row['product_id'] = NULL;
 		$row['cat_id'] = NULL;
 		$row['company_id'] = NULL;
+		$row['pro_model'] = NULL;
 		$row['pro_name'] = NULL;
 		$row['pro_description'] = NULL;
 		$row['pro_condition'] = NULL;
 		$row['pro_features'] = NULL;
-		$row['pro_model'] = NULL;
 		$row['post_date'] = NULL;
 		$row['ads_id'] = NULL;
 		$row['pro_base_price'] = NULL;
 		$row['pro_sell_price'] = NULL;
 		$row['featured_image'] = NULL;
 		$row['folder_image'] = NULL;
-		$row['img1'] = NULL;
-		$row['img2'] = NULL;
-		$row['img3'] = NULL;
-		$row['img4'] = NULL;
-		$row['img5'] = NULL;
 		$row['pro_status'] = NULL;
 		$row['branch_id'] = NULL;
 		$row['lang'] = NULL;
@@ -872,22 +824,17 @@ class cproducts_edit extends cproducts {
 		$this->product_id->DbValue = $row['product_id'];
 		$this->cat_id->DbValue = $row['cat_id'];
 		$this->company_id->DbValue = $row['company_id'];
+		$this->pro_model->DbValue = $row['pro_model'];
 		$this->pro_name->DbValue = $row['pro_name'];
 		$this->pro_description->DbValue = $row['pro_description'];
 		$this->pro_condition->DbValue = $row['pro_condition'];
 		$this->pro_features->DbValue = $row['pro_features'];
-		$this->pro_model->DbValue = $row['pro_model'];
 		$this->post_date->DbValue = $row['post_date'];
 		$this->ads_id->DbValue = $row['ads_id'];
 		$this->pro_base_price->DbValue = $row['pro_base_price'];
 		$this->pro_sell_price->DbValue = $row['pro_sell_price'];
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->folder_image->DbValue = $row['folder_image'];
-		$this->img1->DbValue = $row['img1'];
-		$this->img2->DbValue = $row['img2'];
-		$this->img3->DbValue = $row['img3'];
-		$this->img4->DbValue = $row['img4'];
-		$this->img5->DbValue = $row['img5'];
 		$this->pro_status->DbValue = $row['pro_status'];
 		$this->branch_id->DbValue = $row['branch_id'];
 		$this->lang->DbValue = $row['lang'];
@@ -900,14 +847,6 @@ class cproducts_edit extends cproducts {
 		$bValidKey = TRUE;
 		if (strval($this->getKey("product_id")) <> "")
 			$this->product_id->CurrentValue = $this->getKey("product_id"); // product_id
-		else
-			$bValidKey = FALSE;
-		if (strval($this->getKey("cat_id")) <> "")
-			$this->cat_id->CurrentValue = $this->getKey("cat_id"); // cat_id
-		else
-			$bValidKey = FALSE;
-		if (strval($this->getKey("company_id")) <> "")
-			$this->company_id->CurrentValue = $this->getKey("company_id"); // company_id
 		else
 			$bValidKey = FALSE;
 
@@ -944,22 +883,17 @@ class cproducts_edit extends cproducts {
 		// product_id
 		// cat_id
 		// company_id
+		// pro_model
 		// pro_name
 		// pro_description
 		// pro_condition
 		// pro_features
-		// pro_model
 		// post_date
 		// ads_id
 		// pro_base_price
 		// pro_sell_price
 		// featured_image
 		// folder_image
-		// img1
-		// img2
-		// img3
-		// img4
-		// img5
 		// pro_status
 		// branch_id
 		// lang
@@ -1026,6 +960,33 @@ class cproducts_edit extends cproducts {
 		}
 		$this->company_id->ViewCustomAttributes = "";
 
+		// pro_model
+		if ($this->pro_model->VirtualValue <> "") {
+			$this->pro_model->ViewValue = $this->pro_model->VirtualValue;
+		} else {
+		if (strval($this->pro_model->CurrentValue) <> "") {
+			$sFilterWrk = "`model_id`" . ew_SearchString("=", $this->pro_model->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `model_id`, `name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `model`";
+		$sWhereWrk = "";
+		$this->pro_model->LookupFilters = array("dx1" => '`name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->pro_model, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$this->pro_model->ViewValue = $this->pro_model->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
+			}
+		} else {
+			$this->pro_model->ViewValue = NULL;
+		}
+		}
+		$this->pro_model->ViewCustomAttributes = "";
+
 		// pro_name
 		$this->pro_name->ViewValue = $this->pro_name->CurrentValue;
 		$this->pro_name->ViewCustomAttributes = "";
@@ -1045,10 +1006,6 @@ class cproducts_edit extends cproducts {
 		// pro_features
 		$this->pro_features->ViewValue = $this->pro_features->CurrentValue;
 		$this->pro_features->ViewCustomAttributes = "";
-
-		// pro_model
-		$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
-		$this->pro_model->ViewCustomAttributes = "";
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
@@ -1114,31 +1071,11 @@ class cproducts_edit extends cproducts {
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
-		// img1
-		$this->img1->ViewValue = $this->img1->CurrentValue;
-		$this->img1->ViewCustomAttributes = "";
-
-		// img2
-		$this->img2->ViewValue = $this->img2->CurrentValue;
-		$this->img2->ViewCustomAttributes = "";
-
-		// img3
-		$this->img3->ViewValue = $this->img3->CurrentValue;
-		$this->img3->ViewCustomAttributes = "";
-
-		// img4
-		$this->img4->ViewValue = $this->img4->CurrentValue;
-		$this->img4->ViewCustomAttributes = "";
-
-		// img5
-		$this->img5->ViewValue = $this->img5->CurrentValue;
-		$this->img5->ViewCustomAttributes = "";
-
 		// pro_status
 		if (ew_ConvertToBool($this->pro_status->CurrentValue)) {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Y";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Yes";
 		} else {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "N";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "No";
 		}
 		$this->pro_status->ViewCustomAttributes = "";
 
@@ -1168,7 +1105,11 @@ class cproducts_edit extends cproducts {
 		$this->branch_id->ViewCustomAttributes = "";
 
 		// lang
-		$this->lang->ViewValue = $this->lang->CurrentValue;
+		if (strval($this->lang->CurrentValue) <> "") {
+			$this->lang->ViewValue = $this->lang->OptionCaption($this->lang->CurrentValue);
+		} else {
+			$this->lang->ViewValue = NULL;
+		}
 		$this->lang->ViewCustomAttributes = "";
 
 			// product_id
@@ -1185,6 +1126,11 @@ class cproducts_edit extends cproducts {
 			$this->company_id->LinkCustomAttributes = "";
 			$this->company_id->HrefValue = "";
 			$this->company_id->TooltipValue = "";
+
+			// pro_model
+			$this->pro_model->LinkCustomAttributes = "";
+			$this->pro_model->HrefValue = "";
+			$this->pro_model->TooltipValue = "";
 
 			// pro_name
 			$this->pro_name->LinkCustomAttributes = "";
@@ -1205,11 +1151,6 @@ class cproducts_edit extends cproducts {
 			$this->pro_features->LinkCustomAttributes = "";
 			$this->pro_features->HrefValue = "";
 			$this->pro_features->TooltipValue = "";
-
-			// pro_model
-			$this->pro_model->LinkCustomAttributes = "";
-			$this->pro_model->HrefValue = "";
-			$this->pro_model->TooltipValue = "";
 
 			// post_date
 			$this->post_date->LinkCustomAttributes = "";
@@ -1255,31 +1196,6 @@ class cproducts_edit extends cproducts {
 			$this->folder_image->HrefValue = "";
 			$this->folder_image->TooltipValue = "";
 
-			// img1
-			$this->img1->LinkCustomAttributes = "";
-			$this->img1->HrefValue = "";
-			$this->img1->TooltipValue = "";
-
-			// img2
-			$this->img2->LinkCustomAttributes = "";
-			$this->img2->HrefValue = "";
-			$this->img2->TooltipValue = "";
-
-			// img3
-			$this->img3->LinkCustomAttributes = "";
-			$this->img3->HrefValue = "";
-			$this->img3->TooltipValue = "";
-
-			// img4
-			$this->img4->LinkCustomAttributes = "";
-			$this->img4->HrefValue = "";
-			$this->img4->TooltipValue = "";
-
-			// img5
-			$this->img5->LinkCustomAttributes = "";
-			$this->img5->HrefValue = "";
-			$this->img5->TooltipValue = "";
-
 			// pro_status
 			$this->pro_status->LinkCustomAttributes = "";
 			$this->pro_status->HrefValue = "";
@@ -1303,64 +1219,81 @@ class cproducts_edit extends cproducts {
 			$this->product_id->ViewCustomAttributes = "";
 
 			// cat_id
-			$this->cat_id->EditAttrs["class"] = "form-control";
 			$this->cat_id->EditCustomAttributes = "";
-			if ($this->cat_id->VirtualValue <> "") {
-				$this->cat_id->EditValue = $this->cat_id->VirtualValue;
+			if (trim(strval($this->cat_id->CurrentValue)) == "") {
+				$sFilterWrk = "0=1";
 			} else {
-			if (strval($this->cat_id->CurrentValue) <> "") {
 				$sFilterWrk = "`cat_id`" . ew_SearchString("=", $this->cat_id->CurrentValue, EW_DATATYPE_NUMBER, "");
-			$sSqlWrk = "SELECT `cat_id`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `categories`";
+			}
+			$sSqlWrk = "SELECT `cat_id`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `categories`";
 			$sWhereWrk = "";
 			$this->cat_id->LookupFilters = array("dx1" => '`cat_name`');
 			ew_AddFilter($sWhereWrk, $sFilterWrk);
 			$this->Lookup_Selecting($this->cat_id, $sWhereWrk); // Call Lookup Selecting
 			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
-				$rswrk = Conn()->Execute($sSqlWrk);
-				if ($rswrk && !$rswrk->EOF) { // Lookup values found
-					$arwrk = array();
-					$arwrk[1] = $rswrk->fields('DispFld');
-					$this->cat_id->EditValue = $this->cat_id->DisplayValue($arwrk);
-					$rswrk->Close();
-				} else {
-					$this->cat_id->EditValue = $this->cat_id->CurrentValue;
-				}
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = ew_HtmlEncode($rswrk->fields('DispFld'));
+				$this->cat_id->ViewValue = $this->cat_id->DisplayValue($arwrk);
 			} else {
-				$this->cat_id->EditValue = NULL;
+				$this->cat_id->ViewValue = $Language->Phrase("PleaseSelect");
 			}
-			}
-			$this->cat_id->ViewCustomAttributes = "";
+			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
+			if ($rswrk) $rswrk->Close();
+			$this->cat_id->EditValue = $arwrk;
 
 			// company_id
-			$this->company_id->EditAttrs["class"] = "form-control";
 			$this->company_id->EditCustomAttributes = "";
-			if ($this->company_id->VirtualValue <> "") {
-				$this->company_id->EditValue = $this->company_id->VirtualValue;
+			if (trim(strval($this->company_id->CurrentValue)) == "") {
+				$sFilterWrk = "0=1";
 			} else {
-			if (strval($this->company_id->CurrentValue) <> "") {
 				$sFilterWrk = "`company_id`" . ew_SearchString("=", $this->company_id->CurrentValue, EW_DATATYPE_NUMBER, "");
-			$sSqlWrk = "SELECT DISTINCT `company_id`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `company`";
+			}
+			$sSqlWrk = "SELECT DISTINCT `company_id`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `company`";
 			$sWhereWrk = "";
 			$this->company_id->LookupFilters = array("dx1" => '`com_fname`', "dx2" => '`com_lname`', "dx3" => '`com_name`');
 			ew_AddFilter($sWhereWrk, $sFilterWrk);
 			$this->Lookup_Selecting($this->company_id, $sWhereWrk); // Call Lookup Selecting
 			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
-				$rswrk = Conn()->Execute($sSqlWrk);
-				if ($rswrk && !$rswrk->EOF) { // Lookup values found
-					$arwrk = array();
-					$arwrk[1] = $rswrk->fields('DispFld');
-					$arwrk[2] = $rswrk->fields('Disp2Fld');
-					$arwrk[3] = $rswrk->fields('Disp3Fld');
-					$this->company_id->EditValue = $this->company_id->DisplayValue($arwrk);
-					$rswrk->Close();
-				} else {
-					$this->company_id->EditValue = $this->company_id->CurrentValue;
-				}
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = ew_HtmlEncode($rswrk->fields('DispFld'));
+				$arwrk[2] = ew_HtmlEncode($rswrk->fields('Disp2Fld'));
+				$arwrk[3] = ew_HtmlEncode($rswrk->fields('Disp3Fld'));
+				$this->company_id->ViewValue = $this->company_id->DisplayValue($arwrk);
 			} else {
-				$this->company_id->EditValue = NULL;
+				$this->company_id->ViewValue = $Language->Phrase("PleaseSelect");
 			}
+			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
+			if ($rswrk) $rswrk->Close();
+			$this->company_id->EditValue = $arwrk;
+
+			// pro_model
+			$this->pro_model->EditCustomAttributes = "";
+			if (trim(strval($this->pro_model->CurrentValue)) == "") {
+				$sFilterWrk = "0=1";
+			} else {
+				$sFilterWrk = "`model_id`" . ew_SearchString("=", $this->pro_model->CurrentValue, EW_DATATYPE_NUMBER, "");
 			}
-			$this->company_id->ViewCustomAttributes = "";
+			$sSqlWrk = "SELECT `model_id`, `name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `model`";
+			$sWhereWrk = "";
+			$this->pro_model->LookupFilters = array("dx1" => '`name`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->pro_model, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = ew_HtmlEncode($rswrk->fields('DispFld'));
+				$this->pro_model->ViewValue = $this->pro_model->DisplayValue($arwrk);
+			} else {
+				$this->pro_model->ViewValue = $Language->Phrase("PleaseSelect");
+			}
+			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
+			if ($rswrk) $rswrk->Close();
+			$this->pro_model->EditValue = $arwrk;
 
 			// pro_name
 			$this->pro_name->EditAttrs["class"] = "form-control";
@@ -1384,12 +1317,6 @@ class cproducts_edit extends cproducts {
 			$this->pro_features->EditCustomAttributes = "";
 			$this->pro_features->EditValue = ew_HtmlEncode($this->pro_features->CurrentValue);
 			$this->pro_features->PlaceHolder = ew_RemoveHtml($this->pro_features->FldCaption());
-
-			// pro_model
-			$this->pro_model->EditAttrs["class"] = "form-control";
-			$this->pro_model->EditCustomAttributes = "";
-			$this->pro_model->EditValue = ew_HtmlEncode($this->pro_model->CurrentValue);
-			$this->pro_model->PlaceHolder = ew_RemoveHtml($this->pro_model->FldCaption());
 
 			// post_date
 			$this->post_date->EditAttrs["class"] = "form-control";
@@ -1471,36 +1398,6 @@ class cproducts_edit extends cproducts {
 			if ($rswrk) $rswrk->Close();
 			$this->folder_image->EditValue = $arwrk;
 
-			// img1
-			$this->img1->EditAttrs["class"] = "form-control";
-			$this->img1->EditCustomAttributes = "";
-			$this->img1->EditValue = ew_HtmlEncode($this->img1->CurrentValue);
-			$this->img1->PlaceHolder = ew_RemoveHtml($this->img1->FldCaption());
-
-			// img2
-			$this->img2->EditAttrs["class"] = "form-control";
-			$this->img2->EditCustomAttributes = "";
-			$this->img2->EditValue = ew_HtmlEncode($this->img2->CurrentValue);
-			$this->img2->PlaceHolder = ew_RemoveHtml($this->img2->FldCaption());
-
-			// img3
-			$this->img3->EditAttrs["class"] = "form-control";
-			$this->img3->EditCustomAttributes = "";
-			$this->img3->EditValue = ew_HtmlEncode($this->img3->CurrentValue);
-			$this->img3->PlaceHolder = ew_RemoveHtml($this->img3->FldCaption());
-
-			// img4
-			$this->img4->EditAttrs["class"] = "form-control";
-			$this->img4->EditCustomAttributes = "";
-			$this->img4->EditValue = ew_HtmlEncode($this->img4->CurrentValue);
-			$this->img4->PlaceHolder = ew_RemoveHtml($this->img4->FldCaption());
-
-			// img5
-			$this->img5->EditAttrs["class"] = "form-control";
-			$this->img5->EditCustomAttributes = "";
-			$this->img5->EditValue = ew_HtmlEncode($this->img5->CurrentValue);
-			$this->img5->PlaceHolder = ew_RemoveHtml($this->img5->FldCaption());
-
 			// pro_status
 			$this->pro_status->EditCustomAttributes = "";
 			$this->pro_status->EditValue = $this->pro_status->Options(FALSE);
@@ -1533,10 +1430,8 @@ class cproducts_edit extends cproducts {
 			$this->branch_id->EditValue = $arwrk;
 
 			// lang
-			$this->lang->EditAttrs["class"] = "form-control";
 			$this->lang->EditCustomAttributes = "";
-			$this->lang->EditValue = ew_HtmlEncode($this->lang->CurrentValue);
-			$this->lang->PlaceHolder = ew_RemoveHtml($this->lang->FldCaption());
+			$this->lang->EditValue = $this->lang->Options(TRUE);
 
 			// Edit refer script
 			// product_id
@@ -1551,6 +1446,10 @@ class cproducts_edit extends cproducts {
 			// company_id
 			$this->company_id->LinkCustomAttributes = "";
 			$this->company_id->HrefValue = "";
+
+			// pro_model
+			$this->pro_model->LinkCustomAttributes = "";
+			$this->pro_model->HrefValue = "";
 
 			// pro_name
 			$this->pro_name->LinkCustomAttributes = "";
@@ -1567,10 +1466,6 @@ class cproducts_edit extends cproducts {
 			// pro_features
 			$this->pro_features->LinkCustomAttributes = "";
 			$this->pro_features->HrefValue = "";
-
-			// pro_model
-			$this->pro_model->LinkCustomAttributes = "";
-			$this->pro_model->HrefValue = "";
 
 			// post_date
 			$this->post_date->LinkCustomAttributes = "";
@@ -1603,26 +1498,6 @@ class cproducts_edit extends cproducts {
 			// folder_image
 			$this->folder_image->LinkCustomAttributes = "";
 			$this->folder_image->HrefValue = "";
-
-			// img1
-			$this->img1->LinkCustomAttributes = "";
-			$this->img1->HrefValue = "";
-
-			// img2
-			$this->img2->LinkCustomAttributes = "";
-			$this->img2->HrefValue = "";
-
-			// img3
-			$this->img3->LinkCustomAttributes = "";
-			$this->img3->HrefValue = "";
-
-			// img4
-			$this->img4->LinkCustomAttributes = "";
-			$this->img4->HrefValue = "";
-
-			// img5
-			$this->img5->LinkCustomAttributes = "";
-			$this->img5->HrefValue = "";
 
 			// pro_status
 			$this->pro_status->LinkCustomAttributes = "";
@@ -1675,21 +1550,6 @@ class cproducts_edit extends cproducts {
 		if ($this->folder_image->FormValue == "") {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->folder_image->FldCaption(), $this->folder_image->ReqErrMsg));
 		}
-		if (!$this->img1->FldIsDetailKey && !is_null($this->img1->FormValue) && $this->img1->FormValue == "") {
-			ew_AddMessage($gsFormError, str_replace("%s", $this->img1->FldCaption(), $this->img1->ReqErrMsg));
-		}
-		if (!$this->img2->FldIsDetailKey && !is_null($this->img2->FormValue) && $this->img2->FormValue == "") {
-			ew_AddMessage($gsFormError, str_replace("%s", $this->img2->FldCaption(), $this->img2->ReqErrMsg));
-		}
-		if (!$this->img3->FldIsDetailKey && !is_null($this->img3->FormValue) && $this->img3->FormValue == "") {
-			ew_AddMessage($gsFormError, str_replace("%s", $this->img3->FldCaption(), $this->img3->ReqErrMsg));
-		}
-		if (!$this->img4->FldIsDetailKey && !is_null($this->img4->FormValue) && $this->img4->FormValue == "") {
-			ew_AddMessage($gsFormError, str_replace("%s", $this->img4->FldCaption(), $this->img4->ReqErrMsg));
-		}
-		if (!$this->img5->FldIsDetailKey && !is_null($this->img5->FormValue) && $this->img5->FormValue == "") {
-			ew_AddMessage($gsFormError, str_replace("%s", $this->img5->FldCaption(), $this->img5->ReqErrMsg));
-		}
 
 		// Return validate result
 		$ValidateForm = ($gsFormError == "");
@@ -1729,9 +1589,15 @@ class cproducts_edit extends cproducts {
 			$rsnew = array();
 
 			// cat_id
-			// company_id
-			// pro_name
+			$this->cat_id->SetDbValueDef($rsnew, $this->cat_id->CurrentValue, 0, $this->cat_id->ReadOnly);
 
+			// company_id
+			$this->company_id->SetDbValueDef($rsnew, $this->company_id->CurrentValue, 0, $this->company_id->ReadOnly);
+
+			// pro_model
+			$this->pro_model->SetDbValueDef($rsnew, $this->pro_model->CurrentValue, NULL, $this->pro_model->ReadOnly);
+
+			// pro_name
 			$this->pro_name->SetDbValueDef($rsnew, $this->pro_name->CurrentValue, NULL, $this->pro_name->ReadOnly);
 
 			// pro_description
@@ -1742,9 +1608,6 @@ class cproducts_edit extends cproducts {
 
 			// pro_features
 			$this->pro_features->SetDbValueDef($rsnew, $this->pro_features->CurrentValue, NULL, $this->pro_features->ReadOnly);
-
-			// pro_model
-			$this->pro_model->SetDbValueDef($rsnew, $this->pro_model->CurrentValue, NULL, $this->pro_model->ReadOnly);
 
 			// post_date
 			$this->post_date->SetDbValueDef($rsnew, ew_UnFormatDateTime($this->post_date->CurrentValue, 0), NULL, $this->post_date->ReadOnly);
@@ -1772,21 +1635,6 @@ class cproducts_edit extends cproducts {
 
 			// folder_image
 			$this->folder_image->SetDbValueDef($rsnew, $this->folder_image->CurrentValue, "", $this->folder_image->ReadOnly);
-
-			// img1
-			$this->img1->SetDbValueDef($rsnew, $this->img1->CurrentValue, "", $this->img1->ReadOnly);
-
-			// img2
-			$this->img2->SetDbValueDef($rsnew, $this->img2->CurrentValue, "", $this->img2->ReadOnly);
-
-			// img3
-			$this->img3->SetDbValueDef($rsnew, $this->img3->CurrentValue, "", $this->img3->ReadOnly);
-
-			// img4
-			$this->img4->SetDbValueDef($rsnew, $this->img4->CurrentValue, "", $this->img4->ReadOnly);
-
-			// img5
-			$this->img5->SetDbValueDef($rsnew, $this->img5->CurrentValue, "", $this->img5->ReadOnly);
 
 			// pro_status
 			$tmpBool = $this->pro_status->CurrentValue;
@@ -1917,6 +1765,42 @@ class cproducts_edit extends cproducts {
 		global $gsLanguage;
 		$pageId = $pageId ?: $this->PageID;
 		switch ($fld->FldVar) {
+		case "x_cat_id":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT `cat_id` AS `LinkFld`, `cat_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `categories`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`cat_name`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`cat_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->cat_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
+		case "x_company_id":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT DISTINCT `company_id` AS `LinkFld`, `com_fname` AS `DispFld`, `com_lname` AS `Disp2Fld`, `com_name` AS `Disp3Fld`, '' AS `Disp4Fld` FROM `company`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`com_fname`', "dx2" => '`com_lname`', "dx3" => '`com_name`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`company_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->company_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
+		case "x_pro_model":
+			$sSqlWrk = "";
+			$sSqlWrk = "SELECT `model_id` AS `LinkFld`, `name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `model`";
+			$sWhereWrk = "{filter}";
+			$fld->LookupFilters = array("dx1" => '`name`');
+			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`model_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
+			$sSqlWrk = "";
+			$this->Lookup_Selecting($this->pro_model, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			if ($sSqlWrk <> "")
+				$fld->LookupFilters["s"] .= $sSqlWrk;
+			break;
 		case "x_folder_image":
 			$sSqlWrk = "";
 			$sSqlWrk = "SELECT `pro_gallery_id` AS `LinkFld`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
@@ -2082,21 +1966,6 @@ fproductsedit.Validate = function() {
 			elm = this.GetElements("x" + infix + "_folder_image[]");
 			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
 				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->folder_image->FldCaption(), $products->folder_image->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_img1");
-			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
-				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->img1->FldCaption(), $products->img1->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_img2");
-			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
-				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->img2->FldCaption(), $products->img2->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_img3");
-			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
-				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->img3->FldCaption(), $products->img3->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_img4");
-			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
-				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->img4->FldCaption(), $products->img4->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_img5");
-			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
-				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->img5->FldCaption(), $products->img5->ReqErrMsg)) ?>");
 
 			// Fire Form_CustomValidate event
 			if (!this.Form_CustomValidate(fobj))
@@ -2130,6 +1999,8 @@ fproductsedit.Lists["x_cat_id"] = {"LinkField":"x_cat_id","Ajax":true,"AutoFill"
 fproductsedit.Lists["x_cat_id"].Data = "<?php echo $products_edit->cat_id->LookupFilterQuery(FALSE, "edit") ?>";
 fproductsedit.Lists["x_company_id"] = {"LinkField":"x_company_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_com_fname","x_com_lname","x_com_name",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"company"};
 fproductsedit.Lists["x_company_id"].Data = "<?php echo $products_edit->company_id->LookupFilterQuery(FALSE, "edit") ?>";
+fproductsedit.Lists["x_pro_model"] = {"LinkField":"x_model_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_name","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"model"};
+fproductsedit.Lists["x_pro_model"].Data = "<?php echo $products_edit->pro_model->LookupFilterQuery(FALSE, "edit") ?>";
 fproductsedit.Lists["x_pro_condition"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
 fproductsedit.Lists["x_pro_condition"].Options = <?php echo json_encode($products_edit->pro_condition->Options()) ?>;
 fproductsedit.Lists["x_folder_image[]"] = {"LinkField":"x_pro_gallery_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_image","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"product_gallery"};
@@ -2138,6 +2009,8 @@ fproductsedit.Lists["x_pro_status[]"] = {"LinkField":"","Ajax":null,"AutoFill":f
 fproductsedit.Lists["x_pro_status[]"].Options = <?php echo json_encode($products_edit->pro_status->Options()) ?>;
 fproductsedit.Lists["x_branch_id"] = {"LinkField":"x_branch_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_branch_id","x_name","x_image",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"branch"};
 fproductsedit.Lists["x_branch_id"].Data = "<?php echo $products_edit->branch_id->LookupFilterQuery(FALSE, "edit") ?>";
+fproductsedit.Lists["x_lang"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fproductsedit.Lists["x_lang"].Options = <?php echo json_encode($products_edit->lang->Options()) ?>;
 
 // Form object for search
 </script>
@@ -2219,10 +2092,13 @@ $products_edit->ShowMessage();
 		<label id="elh_products_cat_id" for="x_cat_id" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->cat_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->cat_id->CellAttributes() ?>>
 <span id="el_products_cat_id">
-<span<?php echo $products->cat_id->ViewAttributes() ?>>
-<p class="form-control-static"><?php echo $products->cat_id->EditValue ?></p></span>
+<span class="ewLookupList">
+	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_cat_id"><?php echo (strval($products->cat_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->cat_id->ViewValue); ?></span>
 </span>
-<input type="hidden" data-table="products" data-field="x_cat_id" name="x_cat_id" id="x_cat_id" value="<?php echo ew_HtmlEncode($products->cat_id->CurrentValue) ?>">
+<button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->cat_id->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_cat_id',m:0,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->cat_id->ReadOnly || $products->cat_id->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
+<input type="hidden" data-table="products" data-field="x_cat_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->cat_id->DisplayValueSeparatorAttribute() ?>" name="x_cat_id" id="x_cat_id" value="<?php echo $products->cat_id->CurrentValue ?>"<?php echo $products->cat_id->EditAttributes() ?>>
+<button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->cat_id->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_cat_id',url:'categoriesaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_cat_id"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->cat_id->FldCaption() ?></span></button>
+</span>
 <?php echo $products->cat_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2231,11 +2107,29 @@ $products_edit->ShowMessage();
 		<label id="elh_products_company_id" for="x_company_id" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->company_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->company_id->CellAttributes() ?>>
 <span id="el_products_company_id">
-<span<?php echo $products->company_id->ViewAttributes() ?>>
-<p class="form-control-static"><?php echo $products->company_id->EditValue ?></p></span>
+<span class="ewLookupList">
+	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_company_id"><?php echo (strval($products->company_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->company_id->ViewValue); ?></span>
 </span>
-<input type="hidden" data-table="products" data-field="x_company_id" name="x_company_id" id="x_company_id" value="<?php echo ew_HtmlEncode($products->company_id->CurrentValue) ?>">
+<button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->company_id->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_company_id',m:0,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->company_id->ReadOnly || $products->company_id->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
+<input type="hidden" data-table="products" data-field="x_company_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->company_id->DisplayValueSeparatorAttribute() ?>" name="x_company_id" id="x_company_id" value="<?php echo $products->company_id->CurrentValue ?>"<?php echo $products->company_id->EditAttributes() ?>>
+<button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->company_id->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_company_id',url:'companyaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_company_id"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->company_id->FldCaption() ?></span></button>
+</span>
 <?php echo $products->company_id->CustomMsg ?></div></div>
+	</div>
+<?php } ?>
+<?php if ($products->pro_model->Visible) { // pro_model ?>
+	<div id="r_pro_model" class="form-group">
+		<label id="elh_products_pro_model" for="x_pro_model" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->pro_model->FldCaption() ?></label>
+		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->pro_model->CellAttributes() ?>>
+<span id="el_products_pro_model">
+<span class="ewLookupList">
+	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_pro_model"><?php echo (strval($products->pro_model->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->pro_model->ViewValue); ?></span>
+</span>
+<button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->pro_model->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_pro_model',m:0,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->pro_model->ReadOnly || $products->pro_model->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
+<input type="hidden" data-table="products" data-field="x_pro_model" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->pro_model->DisplayValueSeparatorAttribute() ?>" name="x_pro_model" id="x_pro_model" value="<?php echo $products->pro_model->CurrentValue ?>"<?php echo $products->pro_model->EditAttributes() ?>>
+<button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->pro_model->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_pro_model',url:'modeladdopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_pro_model"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->pro_model->FldCaption() ?></span></button>
+</span>
+<?php echo $products->pro_model->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 <?php if ($products->pro_name->Visible) { // pro_name ?>
@@ -2250,10 +2144,14 @@ $products_edit->ShowMessage();
 <?php } ?>
 <?php if ($products->pro_description->Visible) { // pro_description ?>
 	<div id="r_pro_description" class="form-group">
-		<label id="elh_products_pro_description" for="x_pro_description" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->pro_description->FldCaption() ?></label>
+		<label id="elh_products_pro_description" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->pro_description->FldCaption() ?></label>
 		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->pro_description->CellAttributes() ?>>
 <span id="el_products_pro_description">
-<textarea data-table="products" data-field="x_pro_description" name="x_pro_description" id="x_pro_description" cols="35" rows="4" placeholder="<?php echo ew_HtmlEncode($products->pro_description->getPlaceHolder()) ?>"<?php echo $products->pro_description->EditAttributes() ?>><?php echo $products->pro_description->EditValue ?></textarea>
+<?php ew_AppendClass($products->pro_description->EditAttrs["class"], "editor"); ?>
+<textarea data-table="products" data-field="x_pro_description" name="x_pro_description" id="x_pro_description" cols="45" rows="4" placeholder="<?php echo ew_HtmlEncode($products->pro_description->getPlaceHolder()) ?>"<?php echo $products->pro_description->EditAttributes() ?>><?php echo $products->pro_description->EditValue ?></textarea>
+<script type="text/javascript">
+ew_CreateEditor("fproductsedit", "x_pro_description", 45, 4, <?php echo ($products->pro_description->ReadOnly || FALSE) ? "true" : "false" ?>);
+</script>
 </span>
 <?php echo $products->pro_description->CustomMsg ?></div></div>
 	</div>
@@ -2278,16 +2176,6 @@ $products_edit->ShowMessage();
 <input type="text" data-table="products" data-field="x_pro_features" name="x_pro_features" id="x_pro_features" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->pro_features->getPlaceHolder()) ?>" value="<?php echo $products->pro_features->EditValue ?>"<?php echo $products->pro_features->EditAttributes() ?>>
 </span>
 <?php echo $products->pro_features->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
-<?php if ($products->pro_model->Visible) { // pro_model ?>
-	<div id="r_pro_model" class="form-group">
-		<label id="elh_products_pro_model" for="x_pro_model" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->pro_model->FldCaption() ?></label>
-		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->pro_model->CellAttributes() ?>>
-<span id="el_products_pro_model">
-<input type="text" data-table="products" data-field="x_pro_model" name="x_pro_model" id="x_pro_model" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->pro_model->getPlaceHolder()) ?>" value="<?php echo $products->pro_model->EditValue ?>"<?php echo $products->pro_model->EditAttributes() ?>>
-</span>
-<?php echo $products->pro_model->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 <?php if ($products->post_date->Visible) { // post_date ?>
@@ -2369,56 +2257,6 @@ $products_edit->ShowMessage();
 <?php echo $products->folder_image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
-<?php if ($products->img1->Visible) { // img1 ?>
-	<div id="r_img1" class="form-group">
-		<label id="elh_products_img1" for="x_img1" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->img1->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
-		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->img1->CellAttributes() ?>>
-<span id="el_products_img1">
-<input type="text" data-table="products" data-field="x_img1" name="x_img1" id="x_img1" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->img1->getPlaceHolder()) ?>" value="<?php echo $products->img1->EditValue ?>"<?php echo $products->img1->EditAttributes() ?>>
-</span>
-<?php echo $products->img1->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
-<?php if ($products->img2->Visible) { // img2 ?>
-	<div id="r_img2" class="form-group">
-		<label id="elh_products_img2" for="x_img2" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->img2->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
-		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->img2->CellAttributes() ?>>
-<span id="el_products_img2">
-<input type="text" data-table="products" data-field="x_img2" name="x_img2" id="x_img2" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->img2->getPlaceHolder()) ?>" value="<?php echo $products->img2->EditValue ?>"<?php echo $products->img2->EditAttributes() ?>>
-</span>
-<?php echo $products->img2->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
-<?php if ($products->img3->Visible) { // img3 ?>
-	<div id="r_img3" class="form-group">
-		<label id="elh_products_img3" for="x_img3" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->img3->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
-		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->img3->CellAttributes() ?>>
-<span id="el_products_img3">
-<input type="text" data-table="products" data-field="x_img3" name="x_img3" id="x_img3" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->img3->getPlaceHolder()) ?>" value="<?php echo $products->img3->EditValue ?>"<?php echo $products->img3->EditAttributes() ?>>
-</span>
-<?php echo $products->img3->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
-<?php if ($products->img4->Visible) { // img4 ?>
-	<div id="r_img4" class="form-group">
-		<label id="elh_products_img4" for="x_img4" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->img4->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
-		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->img4->CellAttributes() ?>>
-<span id="el_products_img4">
-<input type="text" data-table="products" data-field="x_img4" name="x_img4" id="x_img4" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->img4->getPlaceHolder()) ?>" value="<?php echo $products->img4->EditValue ?>"<?php echo $products->img4->EditAttributes() ?>>
-</span>
-<?php echo $products->img4->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
-<?php if ($products->img5->Visible) { // img5 ?>
-	<div id="r_img5" class="form-group">
-		<label id="elh_products_img5" for="x_img5" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->img5->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
-		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->img5->CellAttributes() ?>>
-<span id="el_products_img5">
-<input type="text" data-table="products" data-field="x_img5" name="x_img5" id="x_img5" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->img5->getPlaceHolder()) ?>" value="<?php echo $products->img5->EditValue ?>"<?php echo $products->img5->EditAttributes() ?>>
-</span>
-<?php echo $products->img5->CustomMsg ?></div></div>
-	</div>
-<?php } ?>
 <?php if ($products->pro_status->Visible) { // pro_status ?>
 	<div id="r_pro_status" class="form-group">
 		<label id="elh_products_pro_status" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->pro_status->FldCaption() ?></label>
@@ -2451,7 +2289,21 @@ $selwrk = (ew_ConvertToBool($products->pro_status->CurrentValue)) ? " checked" :
 		<label id="elh_products_lang" for="x_lang" class="<?php echo $products_edit->LeftColumnClass ?>"><?php echo $products->lang->FldCaption() ?></label>
 		<div class="<?php echo $products_edit->RightColumnClass ?>"><div<?php echo $products->lang->CellAttributes() ?>>
 <span id="el_products_lang">
-<input type="text" data-table="products" data-field="x_lang" name="x_lang" id="x_lang" size="30" maxlength="50" placeholder="<?php echo ew_HtmlEncode($products->lang->getPlaceHolder()) ?>" value="<?php echo $products->lang->EditValue ?>"<?php echo $products->lang->EditAttributes() ?>>
+<div class="ewDropdownList has-feedback">
+	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($products->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
+		<?php echo $products->lang->ViewValue ?>
+	</span>
+	<?php if (!$products->lang->ReadOnly) { ?>
+	<span class="glyphicon glyphicon-remove form-control-feedback ewDropdownListClear"></span>
+	<span class="form-control-feedback"><span class="caret"></span></span>
+	<?php } ?>
+	<div id="dsl_x_lang" data-repeatcolumn="1" class="dropdown-menu">
+		<div class="ewItems" style="position: relative; overflow-x: hidden;">
+<?php echo $products->lang->RadioButtonListHtml(TRUE, "x_lang") ?>
+		</div>
+	</div>
+	<div id="tp_x_lang" class="ewTemplate"><input type="radio" data-table="products" data-field="x_lang" data-value-separator="<?php echo $products->lang->DisplayValueSeparatorAttribute() ?>" name="x_lang" id="x_lang" value="{value}"<?php echo $products->lang->EditAttributes() ?>></div>
+</div>
 </span>
 <?php echo $products->lang->CustomMsg ?></div></div>
 	</div>

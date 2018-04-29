@@ -681,11 +681,19 @@ class cbranch_add extends cbranch {
 		$this->image->ViewCustomAttributes = "";
 
 		// status
-		$this->status->ViewValue = $this->status->CurrentValue;
+		if (strval($this->status->CurrentValue) <> "") {
+			$this->status->ViewValue = $this->status->OptionCaption($this->status->CurrentValue);
+		} else {
+			$this->status->ViewValue = NULL;
+		}
 		$this->status->ViewCustomAttributes = "";
 
 		// lang
-		$this->lang->ViewValue = $this->lang->CurrentValue;
+		if (strval($this->lang->CurrentValue) <> "") {
+			$this->lang->ViewValue = $this->lang->OptionCaption($this->lang->CurrentValue);
+		} else {
+			$this->lang->ViewValue = NULL;
+		}
 		$this->lang->ViewCustomAttributes = "";
 
 			// name
@@ -722,16 +730,12 @@ class cbranch_add extends cbranch {
 			$this->image->PlaceHolder = ew_RemoveHtml($this->image->FldCaption());
 
 			// status
-			$this->status->EditAttrs["class"] = "form-control";
 			$this->status->EditCustomAttributes = "";
-			$this->status->EditValue = ew_HtmlEncode($this->status->CurrentValue);
-			$this->status->PlaceHolder = ew_RemoveHtml($this->status->FldCaption());
+			$this->status->EditValue = $this->status->Options(FALSE);
 
 			// lang
-			$this->lang->EditAttrs["class"] = "form-control";
 			$this->lang->EditCustomAttributes = "";
-			$this->lang->EditValue = ew_HtmlEncode($this->lang->CurrentValue);
-			$this->lang->PlaceHolder = ew_RemoveHtml($this->lang->FldCaption());
+			$this->lang->EditValue = $this->lang->Options(TRUE);
 
 			// Add refer script
 			// name
@@ -769,9 +773,6 @@ class cbranch_add extends cbranch {
 		// Check if validation required
 		if (!EW_SERVER_VALIDATE)
 			return ($gsFormError == "");
-		if (!ew_CheckInteger($this->status->FormValue)) {
-			ew_AddMessage($gsFormError, $this->status->FldErrMsg());
-		}
 
 		// Return validate result
 		$ValidateForm = ($gsFormError == "");
@@ -972,9 +973,6 @@ fbranchadd.Validate = function() {
 	for (var i = startcnt; i <= rowcnt; i++) {
 		var infix = ($k[0]) ? String(i) : "";
 		$fobj.data("rowindex", infix);
-			elm = this.GetElements("x" + infix + "_status");
-			if (elm && !ew_CheckInteger(elm.value))
-				return this.OnError(elm, "<?php echo ew_JsEncode2($branch->status->FldErrMsg()) ?>");
 
 			// Fire Form_CustomValidate event
 			if (!this.Form_CustomValidate(fobj))
@@ -1004,8 +1002,12 @@ fbranchadd.Form_CustomValidate =
 fbranchadd.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 
 // Dynamic selection lists
-// Form object for search
+fbranchadd.Lists["x_status"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fbranchadd.Lists["x_status"].Options = <?php echo json_encode($branch_add->status->Options()) ?>;
+fbranchadd.Lists["x_lang"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fbranchadd.Lists["x_lang"].Options = <?php echo json_encode($branch_add->lang->Options()) ?>;
 
+// Form object for search
 </script>
 <script type="text/javascript">
 
@@ -1045,10 +1047,13 @@ $branch_add->ShowMessage();
 <?php } ?>
 <?php if ($branch->status->Visible) { // status ?>
 	<div id="r_status" class="form-group">
-		<label id="elh_branch_status" for="x_status" class="<?php echo $branch_add->LeftColumnClass ?>"><?php echo $branch->status->FldCaption() ?></label>
+		<label id="elh_branch_status" class="<?php echo $branch_add->LeftColumnClass ?>"><?php echo $branch->status->FldCaption() ?></label>
 		<div class="<?php echo $branch_add->RightColumnClass ?>"><div<?php echo $branch->status->CellAttributes() ?>>
 <span id="el_branch_status">
-<input type="text" data-table="branch" data-field="x_status" name="x_status" id="x_status" size="30" placeholder="<?php echo ew_HtmlEncode($branch->status->getPlaceHolder()) ?>" value="<?php echo $branch->status->EditValue ?>"<?php echo $branch->status->EditAttributes() ?>>
+<div id="tp_x_status" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_status" data-value-separator="<?php echo $branch->status->DisplayValueSeparatorAttribute() ?>" name="x_status" id="x_status" value="{value}"<?php echo $branch->status->EditAttributes() ?>></div>
+<div id="dsl_x_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
+<?php echo $branch->status->RadioButtonListHtml(FALSE, "x_status") ?>
+</div></div>
 </span>
 <?php echo $branch->status->CustomMsg ?></div></div>
 	</div>
@@ -1058,7 +1063,21 @@ $branch_add->ShowMessage();
 		<label id="elh_branch_lang" for="x_lang" class="<?php echo $branch_add->LeftColumnClass ?>"><?php echo $branch->lang->FldCaption() ?></label>
 		<div class="<?php echo $branch_add->RightColumnClass ?>"><div<?php echo $branch->lang->CellAttributes() ?>>
 <span id="el_branch_lang">
-<input type="text" data-table="branch" data-field="x_lang" name="x_lang" id="x_lang" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->lang->getPlaceHolder()) ?>" value="<?php echo $branch->lang->EditValue ?>"<?php echo $branch->lang->EditAttributes() ?>>
+<div class="ewDropdownList has-feedback">
+	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($branch->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
+		<?php echo $branch->lang->ViewValue ?>
+	</span>
+	<?php if (!$branch->lang->ReadOnly) { ?>
+	<span class="glyphicon glyphicon-remove form-control-feedback ewDropdownListClear"></span>
+	<span class="form-control-feedback"><span class="caret"></span></span>
+	<?php } ?>
+	<div id="dsl_x_lang" data-repeatcolumn="1" class="dropdown-menu">
+		<div class="ewItems" style="position: relative; overflow-x: hidden;">
+<?php echo $branch->lang->RadioButtonListHtml(TRUE, "x_lang") ?>
+		</div>
+	</div>
+	<div id="tp_x_lang" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_lang" data-value-separator="<?php echo $branch->lang->DisplayValueSeparatorAttribute() ?>" name="x_lang" id="x_lang" value="{value}"<?php echo $branch->lang->EditAttributes() ?>></div>
+</div>
 </span>
 <?php echo $branch->lang->CustomMsg ?></div></div>
 	</div>

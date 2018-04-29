@@ -224,10 +224,10 @@
 								<div class="item-info col-sm-8">
 									<!-- ad-info -->
 									<div class="ad-info">
-										<h3 class="item-price">$250.00 <span>(Negotiable)</span></h3>
+										<h3 class="item-price">$<?php echo $rows['pro_sell_price']; ?><span>(Negotiable)</span></h3>
 										<h4 class="item-title"><a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><?php echo $rows['pro_name']; ?></a></h4>
 										<div class="item-cat">
-											<span><a href="#">Home Appliances</a></span> /
+											<span><a href="#"><?php echo $rows['pro_sell_price']; ?></a></span> /
 											<span><a href="#">Sofa</a></span>
 										</div>										
 									</div><!-- ad-info -->

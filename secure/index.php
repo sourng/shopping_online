@@ -302,24 +302,26 @@ class cdefault {
 		if (@$_GET["expired"] == "1")
 			$this->setFailureMessage($Language->Phrase("SessionExpired"));
 		if (!$Security->IsLoggedIn()) $Security->AutoLogin();
+		if ($Security->AllowList(CurrentProjectID() . 'products'))
+		$this->Page_Terminate("productslist.php"); // Exit and go to default page
+		if ($Security->AllowList(CurrentProjectID() . 'product_gallery'))
+			$this->Page_Terminate("product_gallerylist.php");
+		if ($Security->AllowList(CurrentProjectID() . 'branch'))
+			$this->Page_Terminate("branchlist.php");
+		if ($Security->AllowList(CurrentProjectID() . 'model'))
+			$this->Page_Terminate("modellist.php");
 		if ($Security->AllowList(CurrentProjectID() . 'categories'))
-		$this->Page_Terminate("categorieslist.php"); // Exit and go to default page
+			$this->Page_Terminate("categorieslist.php");
 		if ($Security->AllowList(CurrentProjectID() . 'company'))
 			$this->Page_Terminate("companylist.php");
 		if ($Security->AllowList(CurrentProjectID() . 'country'))
 			$this->Page_Terminate("countrylist.php");
-		if ($Security->AllowList(CurrentProjectID() . 'products'))
-			$this->Page_Terminate("productslist.php");
 		if ($Security->AllowList(CurrentProjectID() . 'province'))
 			$this->Page_Terminate("provincelist.php");
 		if ($Security->AllowList(CurrentProjectID() . 'tbl_pages'))
 			$this->Page_Terminate("tbl_pageslist.php");
-		if ($Security->AllowList(CurrentProjectID() . 'branch'))
-			$this->Page_Terminate("branchlist.php");
 		if ($Security->AllowList(CurrentProjectID() . 'langs'))
 			$this->Page_Terminate("langslist.php");
-		if ($Security->AllowList(CurrentProjectID() . 'product_gallery'))
-			$this->Page_Terminate("product_gallerylist.php");
 		if ($Security->IsLoggedIn()) {
 			$this->setFailureMessage(ew_DeniedMsg() . "<br><br><a href=\"logout.php\">" . $Language->Phrase("BackToLogin") . "</a>");
 		} else {

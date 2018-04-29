@@ -120,6 +120,8 @@ $.views.settings.debugMode(EW_DEBUG_ENABLED);
 ?>
 var ewVar = <?php echo json_encode($EW_CLIENT_VAR); ?>;
 </script>
+<script type="text/javascript" src="<?php echo $EW_RELATIVE_PATH ?>ckeditor/ckeditor.js"></script>
+<script type="text/javascript" src="<?php echo $EW_RELATIVE_PATH ?>phpjs/eweditor.js"></script>
 <script type="text/javascript" src="<?php echo $EW_RELATIVE_PATH ?>phpjs/userfn14.js"></script>
 <script type="text/javascript">
 

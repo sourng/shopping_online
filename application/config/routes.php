@@ -17,6 +17,7 @@ $route['categories.html'] = 'front/categories';
 
 // Detail Details
 $route['categories.html'] = 'front/categories';
+$route['categories.html/(:any)'] = 'front/categories/find/$1';
 $route['categories/details/(:any)'] = 'front/categories/details/$1';
 $route['home/details/(:any)'] = 'front/home/details/$1';
 //categories/details/1

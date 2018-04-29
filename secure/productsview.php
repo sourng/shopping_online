@@ -292,14 +292,6 @@ class cproducts_view extends cproducts {
 			$this->RecKey["product_id"] = $_GET["product_id"];
 			$KeyUrl .= "&amp;product_id=" . urlencode($this->RecKey["product_id"]);
 		}
-		if (@$_GET["cat_id"] <> "") {
-			$this->RecKey["cat_id"] = $_GET["cat_id"];
-			$KeyUrl .= "&amp;cat_id=" . urlencode($this->RecKey["cat_id"]);
-		}
-		if (@$_GET["company_id"] <> "") {
-			$this->RecKey["company_id"] = $_GET["company_id"];
-			$KeyUrl .= "&amp;company_id=" . urlencode($this->RecKey["company_id"]);
-		}
 		$this->ExportPrintUrl = $this->PageUrl() . "export=print" . $KeyUrl;
 		$this->ExportHtmlUrl = $this->PageUrl() . "export=html" . $KeyUrl;
 		$this->ExportExcelUrl = $this->PageUrl() . "export=excel" . $KeyUrl;
@@ -388,22 +380,17 @@ class cproducts_view extends cproducts {
 			$this->product_id->Visible = FALSE;
 		$this->cat_id->SetVisibility();
 		$this->company_id->SetVisibility();
+		$this->pro_model->SetVisibility();
 		$this->pro_name->SetVisibility();
 		$this->pro_description->SetVisibility();
 		$this->pro_condition->SetVisibility();
 		$this->pro_features->SetVisibility();
-		$this->pro_model->SetVisibility();
 		$this->post_date->SetVisibility();
 		$this->ads_id->SetVisibility();
 		$this->pro_base_price->SetVisibility();
 		$this->pro_sell_price->SetVisibility();
 		$this->featured_image->SetVisibility();
 		$this->folder_image->SetVisibility();
-		$this->img1->SetVisibility();
-		$this->img2->SetVisibility();
-		$this->img3->SetVisibility();
-		$this->img4->SetVisibility();
-		$this->img5->SetVisibility();
 		$this->pro_status->SetVisibility();
 		$this->branch_id->SetVisibility();
 		$this->lang->SetVisibility();
@@ -525,24 +512,6 @@ class cproducts_view extends cproducts {
 			} else {
 				$bLoadCurrentRecord = TRUE;
 			}
-			if (@$_GET["cat_id"] <> "") {
-				$this->cat_id->setQueryStringValue($_GET["cat_id"]);
-				$this->RecKey["cat_id"] = $this->cat_id->QueryStringValue;
-			} elseif (@$_POST["cat_id"] <> "") {
-				$this->cat_id->setFormValue($_POST["cat_id"]);
-				$this->RecKey["cat_id"] = $this->cat_id->FormValue;
-			} else {
-				$bLoadCurrentRecord = TRUE;
-			}
-			if (@$_GET["company_id"] <> "") {
-				$this->company_id->setQueryStringValue($_GET["company_id"]);
-				$this->RecKey["company_id"] = $this->company_id->QueryStringValue;
-			} elseif (@$_POST["company_id"] <> "") {
-				$this->company_id->setFormValue($_POST["company_id"]);
-				$this->RecKey["company_id"] = $this->company_id->FormValue;
-			} else {
-				$bLoadCurrentRecord = TRUE;
-			}
 
 			// Get action
 			$this->CurrentAction = "I"; // Display form
@@ -565,7 +534,7 @@ class cproducts_view extends cproducts {
 						}
 					} else { // Match key values
 						while (!$this->Recordset->EOF) {
-							if (strval($this->product_id->CurrentValue) == strval($this->Recordset->fields('product_id')) && strval($this->cat_id->CurrentValue) == strval($this->Recordset->fields('cat_id')) && strval($this->company_id->CurrentValue) == strval($this->Recordset->fields('company_id'))) {
+							if (strval($this->product_id->CurrentValue) == strval($this->Recordset->fields('product_id'))) {
 								$this->setStartRecordNumber($this->StartRec); // Save record position
 								$bMatchRecord = TRUE;
 								break;
@@ -759,11 +728,16 @@ class cproducts_view extends cproducts {
 		} else {
 			$this->company_id->VirtualValue = ""; // Clear value
 		}
+		$this->pro_model->setDbValue($row['pro_model']);
+		if (array_key_exists('EV__pro_model', $rs->fields)) {
+			$this->pro_model->VirtualValue = $rs->fields('EV__pro_model'); // Set up virtual field value
+		} else {
+			$this->pro_model->VirtualValue = ""; // Clear value
+		}
 		$this->pro_name->setDbValue($row['pro_name']);
 		$this->pro_description->setDbValue($row['pro_description']);
 		$this->pro_condition->setDbValue($row['pro_condition']);
 		$this->pro_features->setDbValue($row['pro_features']);
-		$this->pro_model->setDbValue($row['pro_model']);
 		$this->post_date->setDbValue($row['post_date']);
 		$this->ads_id->setDbValue($row['ads_id']);
 		$this->pro_base_price->setDbValue($row['pro_base_price']);
@@ -771,11 +745,6 @@ class cproducts_view extends cproducts {
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
-		$this->img1->setDbValue($row['img1']);
-		$this->img2->setDbValue($row['img2']);
-		$this->img3->setDbValue($row['img3']);
-		$this->img4->setDbValue($row['img4']);
-		$this->img5->setDbValue($row['img5']);
 		$this->pro_status->setDbValue($row['pro_status']);
 		$this->branch_id->setDbValue($row['branch_id']);
 		$this->lang->setDbValue($row['lang']);
@@ -787,22 +756,17 @@ class cproducts_view extends cproducts {
 		$row['product_id'] = NULL;
 		$row['cat_id'] = NULL;
 		$row['company_id'] = NULL;
+		$row['pro_model'] = NULL;
 		$row['pro_name'] = NULL;
 		$row['pro_description'] = NULL;
 		$row['pro_condition'] = NULL;
 		$row['pro_features'] = NULL;
-		$row['pro_model'] = NULL;
 		$row['post_date'] = NULL;
 		$row['ads_id'] = NULL;
 		$row['pro_base_price'] = NULL;
 		$row['pro_sell_price'] = NULL;
 		$row['featured_image'] = NULL;
 		$row['folder_image'] = NULL;
-		$row['img1'] = NULL;
-		$row['img2'] = NULL;
-		$row['img3'] = NULL;
-		$row['img4'] = NULL;
-		$row['img5'] = NULL;
 		$row['pro_status'] = NULL;
 		$row['branch_id'] = NULL;
 		$row['lang'] = NULL;
@@ -817,22 +781,17 @@ class cproducts_view extends cproducts {
 		$this->product_id->DbValue = $row['product_id'];
 		$this->cat_id->DbValue = $row['cat_id'];
 		$this->company_id->DbValue = $row['company_id'];
+		$this->pro_model->DbValue = $row['pro_model'];
 		$this->pro_name->DbValue = $row['pro_name'];
 		$this->pro_description->DbValue = $row['pro_description'];
 		$this->pro_condition->DbValue = $row['pro_condition'];
 		$this->pro_features->DbValue = $row['pro_features'];
-		$this->pro_model->DbValue = $row['pro_model'];
 		$this->post_date->DbValue = $row['post_date'];
 		$this->ads_id->DbValue = $row['ads_id'];
 		$this->pro_base_price->DbValue = $row['pro_base_price'];
 		$this->pro_sell_price->DbValue = $row['pro_sell_price'];
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->folder_image->DbValue = $row['folder_image'];
-		$this->img1->DbValue = $row['img1'];
-		$this->img2->DbValue = $row['img2'];
-		$this->img3->DbValue = $row['img3'];
-		$this->img4->DbValue = $row['img4'];
-		$this->img5->DbValue = $row['img5'];
 		$this->pro_status->DbValue = $row['pro_status'];
 		$this->branch_id->DbValue = $row['branch_id'];
 		$this->lang->DbValue = $row['lang'];
@@ -865,22 +824,17 @@ class cproducts_view extends cproducts {
 		// product_id
 		// cat_id
 		// company_id
+		// pro_model
 		// pro_name
 		// pro_description
 		// pro_condition
 		// pro_features
-		// pro_model
 		// post_date
 		// ads_id
 		// pro_base_price
 		// pro_sell_price
 		// featured_image
 		// folder_image
-		// img1
-		// img2
-		// img3
-		// img4
-		// img5
 		// pro_status
 		// branch_id
 		// lang
@@ -947,6 +901,33 @@ class cproducts_view extends cproducts {
 		}
 		$this->company_id->ViewCustomAttributes = "";
 
+		// pro_model
+		if ($this->pro_model->VirtualValue <> "") {
+			$this->pro_model->ViewValue = $this->pro_model->VirtualValue;
+		} else {
+		if (strval($this->pro_model->CurrentValue) <> "") {
+			$sFilterWrk = "`model_id`" . ew_SearchString("=", $this->pro_model->CurrentValue, EW_DATATYPE_NUMBER, "");
+		$sSqlWrk = "SELECT `model_id`, `name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `model`";
+		$sWhereWrk = "";
+		$this->pro_model->LookupFilters = array("dx1" => '`name`');
+		ew_AddFilter($sWhereWrk, $sFilterWrk);
+		$this->Lookup_Selecting($this->pro_model, $sWhereWrk); // Call Lookup Selecting
+		if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+			$rswrk = Conn()->Execute($sSqlWrk);
+			if ($rswrk && !$rswrk->EOF) { // Lookup values found
+				$arwrk = array();
+				$arwrk[1] = $rswrk->fields('DispFld');
+				$this->pro_model->ViewValue = $this->pro_model->DisplayValue($arwrk);
+				$rswrk->Close();
+			} else {
+				$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
+			}
+		} else {
+			$this->pro_model->ViewValue = NULL;
+		}
+		}
+		$this->pro_model->ViewCustomAttributes = "";
+
 		// pro_name
 		$this->pro_name->ViewValue = $this->pro_name->CurrentValue;
 		$this->pro_name->ViewCustomAttributes = "";
@@ -966,10 +947,6 @@ class cproducts_view extends cproducts {
 		// pro_features
 		$this->pro_features->ViewValue = $this->pro_features->CurrentValue;
 		$this->pro_features->ViewCustomAttributes = "";
-
-		// pro_model
-		$this->pro_model->ViewValue = $this->pro_model->CurrentValue;
-		$this->pro_model->ViewCustomAttributes = "";
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
@@ -1035,31 +1012,11 @@ class cproducts_view extends cproducts {
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
-		// img1
-		$this->img1->ViewValue = $this->img1->CurrentValue;
-		$this->img1->ViewCustomAttributes = "";
-
-		// img2
-		$this->img2->ViewValue = $this->img2->CurrentValue;
-		$this->img2->ViewCustomAttributes = "";
-
-		// img3
-		$this->img3->ViewValue = $this->img3->CurrentValue;
-		$this->img3->ViewCustomAttributes = "";
-
-		// img4
-		$this->img4->ViewValue = $this->img4->CurrentValue;
-		$this->img4->ViewCustomAttributes = "";
-
-		// img5
-		$this->img5->ViewValue = $this->img5->CurrentValue;
-		$this->img5->ViewCustomAttributes = "";
-
 		// pro_status
 		if (ew_ConvertToBool($this->pro_status->CurrentValue)) {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Y";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(1) <> "" ? $this->pro_status->FldTagCaption(1) : "Yes";
 		} else {
-			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "N";
+			$this->pro_status->ViewValue = $this->pro_status->FldTagCaption(2) <> "" ? $this->pro_status->FldTagCaption(2) : "No";
 		}
 		$this->pro_status->ViewCustomAttributes = "";
 
@@ -1089,7 +1046,11 @@ class cproducts_view extends cproducts {
 		$this->branch_id->ViewCustomAttributes = "";
 
 		// lang
-		$this->lang->ViewValue = $this->lang->CurrentValue;
+		if (strval($this->lang->CurrentValue) <> "") {
+			$this->lang->ViewValue = $this->lang->OptionCaption($this->lang->CurrentValue);
+		} else {
+			$this->lang->ViewValue = NULL;
+		}
 		$this->lang->ViewCustomAttributes = "";
 
 			// product_id
@@ -1106,6 +1067,11 @@ class cproducts_view extends cproducts {
 			$this->company_id->LinkCustomAttributes = "";
 			$this->company_id->HrefValue = "";
 			$this->company_id->TooltipValue = "";
+
+			// pro_model
+			$this->pro_model->LinkCustomAttributes = "";
+			$this->pro_model->HrefValue = "";
+			$this->pro_model->TooltipValue = "";
 
 			// pro_name
 			$this->pro_name->LinkCustomAttributes = "";
@@ -1126,11 +1092,6 @@ class cproducts_view extends cproducts {
 			$this->pro_features->LinkCustomAttributes = "";
 			$this->pro_features->HrefValue = "";
 			$this->pro_features->TooltipValue = "";
-
-			// pro_model
-			$this->pro_model->LinkCustomAttributes = "";
-			$this->pro_model->HrefValue = "";
-			$this->pro_model->TooltipValue = "";
 
 			// post_date
 			$this->post_date->LinkCustomAttributes = "";
@@ -1175,31 +1136,6 @@ class cproducts_view extends cproducts {
 			$this->folder_image->LinkCustomAttributes = "";
 			$this->folder_image->HrefValue = "";
 			$this->folder_image->TooltipValue = "";
-
-			// img1
-			$this->img1->LinkCustomAttributes = "";
-			$this->img1->HrefValue = "";
-			$this->img1->TooltipValue = "";
-
-			// img2
-			$this->img2->LinkCustomAttributes = "";
-			$this->img2->HrefValue = "";
-			$this->img2->TooltipValue = "";
-
-			// img3
-			$this->img3->LinkCustomAttributes = "";
-			$this->img3->HrefValue = "";
-			$this->img3->TooltipValue = "";
-
-			// img4
-			$this->img4->LinkCustomAttributes = "";
-			$this->img4->HrefValue = "";
-			$this->img4->TooltipValue = "";
-
-			// img5
-			$this->img5->LinkCustomAttributes = "";
-			$this->img5->HrefValue = "";
-			$this->img5->TooltipValue = "";
 
 			// pro_status
 			$this->pro_status->LinkCustomAttributes = "";
@@ -1376,6 +1312,8 @@ fproductsview.Lists["x_cat_id"] = {"LinkField":"x_cat_id","Ajax":true,"AutoFill"
 fproductsview.Lists["x_cat_id"].Data = "<?php echo $products_view->cat_id->LookupFilterQuery(FALSE, "view") ?>";
 fproductsview.Lists["x_company_id"] = {"LinkField":"x_company_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_com_fname","x_com_lname","x_com_name",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"company"};
 fproductsview.Lists["x_company_id"].Data = "<?php echo $products_view->company_id->LookupFilterQuery(FALSE, "view") ?>";
+fproductsview.Lists["x_pro_model"] = {"LinkField":"x_model_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_name","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"model"};
+fproductsview.Lists["x_pro_model"].Data = "<?php echo $products_view->pro_model->LookupFilterQuery(FALSE, "view") ?>";
 fproductsview.Lists["x_pro_condition"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
 fproductsview.Lists["x_pro_condition"].Options = <?php echo json_encode($products_view->pro_condition->Options()) ?>;
 fproductsview.Lists["x_folder_image[]"] = {"LinkField":"x_pro_gallery_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_image","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"product_gallery"};
@@ -1384,6 +1322,8 @@ fproductsview.Lists["x_pro_status[]"] = {"LinkField":"","Ajax":null,"AutoFill":f
 fproductsview.Lists["x_pro_status[]"].Options = <?php echo json_encode($products_view->pro_status->Options()) ?>;
 fproductsview.Lists["x_branch_id"] = {"LinkField":"x_branch_id","Ajax":true,"AutoFill":false,"DisplayFields":["x_branch_id","x_name","x_image",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":"","LinkTable":"branch"};
 fproductsview.Lists["x_branch_id"].Data = "<?php echo $products_view->branch_id->LookupFilterQuery(FALSE, "view") ?>";
+fproductsview.Lists["x_lang"] = {"LinkField":"","Ajax":null,"AutoFill":false,"DisplayFields":["","","",""],"ParentFields":[],"ChildFields":[],"FilterFields":[],"Options":[],"Template":""};
+fproductsview.Lists["x_lang"].Options = <?php echo json_encode($products_view->lang->Options()) ?>;
 
 // Form object for search
 </script>
@@ -1488,6 +1428,17 @@ $products_view->ShowMessage();
 </td>
 	</tr>
 <?php } ?>
+<?php if ($products->pro_model->Visible) { // pro_model ?>
+	<tr id="r_pro_model">
+		<td class="col-sm-2"><span id="elh_products_pro_model"><?php echo $products->pro_model->FldCaption() ?></span></td>
+		<td data-name="pro_model"<?php echo $products->pro_model->CellAttributes() ?>>
+<span id="el_products_pro_model">
+<span<?php echo $products->pro_model->ViewAttributes() ?>>
+<?php echo $products->pro_model->ViewValue ?></span>
+</span>
+</td>
+	</tr>
+<?php } ?>
 <?php if ($products->pro_name->Visible) { // pro_name ?>
 	<tr id="r_pro_name">
 		<td class="col-sm-2"><span id="elh_products_pro_name"><?php echo $products->pro_name->FldCaption() ?></span></td>
@@ -1528,17 +1479,6 @@ $products_view->ShowMessage();
 <span id="el_products_pro_features">
 <span<?php echo $products->pro_features->ViewAttributes() ?>>
 <?php echo $products->pro_features->ViewValue ?></span>
-</span>
-</td>
-	</tr>
-<?php } ?>
-<?php if ($products->pro_model->Visible) { // pro_model ?>
-	<tr id="r_pro_model">
-		<td class="col-sm-2"><span id="elh_products_pro_model"><?php echo $products->pro_model->FldCaption() ?></span></td>
-		<td data-name="pro_model"<?php echo $products->pro_model->CellAttributes() ?>>
-<span id="el_products_pro_model">
-<span<?php echo $products->pro_model->ViewAttributes() ?>>
-<?php echo $products->pro_model->ViewValue ?></span>
 </span>
 </td>
 	</tr>
@@ -1606,61 +1546,6 @@ $products_view->ShowMessage();
 <span id="el_products_folder_image">
 <span<?php echo $products->folder_image->ViewAttributes() ?>>
 <?php echo $products->folder_image->ViewValue ?></span>
-</span>
-</td>
-	</tr>
-<?php } ?>
-<?php if ($products->img1->Visible) { // img1 ?>
-	<tr id="r_img1">
-		<td class="col-sm-2"><span id="elh_products_img1"><?php echo $products->img1->FldCaption() ?></span></td>
-		<td data-name="img1"<?php echo $products->img1->CellAttributes() ?>>
-<span id="el_products_img1">
-<span<?php echo $products->img1->ViewAttributes() ?>>
-<?php echo $products->img1->ViewValue ?></span>
-</span>
-</td>
-	</tr>
-<?php } ?>
-<?php if ($products->img2->Visible) { // img2 ?>
-	<tr id="r_img2">
-		<td class="col-sm-2"><span id="elh_products_img2"><?php echo $products->img2->FldCaption() ?></span></td>
-		<td data-name="img2"<?php echo $products->img2->CellAttributes() ?>>
-<span id="el_products_img2">
-<span<?php echo $products->img2->ViewAttributes() ?>>
-<?php echo $products->img2->ViewValue ?></span>
-</span>
-</td>
-	</tr>
-<?php } ?>
-<?php if ($products->img3->Visible) { // img3 ?>
-	<tr id="r_img3">
-		<td class="col-sm-2"><span id="elh_products_img3"><?php echo $products->img3->FldCaption() ?></span></td>
-		<td data-name="img3"<?php echo $products->img3->CellAttributes() ?>>
-<span id="el_products_img3">
-<span<?php echo $products->img3->ViewAttributes() ?>>
-<?php echo $products->img3->ViewValue ?></span>
-</span>
-</td>
-	</tr>
-<?php } ?>
-<?php if ($products->img4->Visible) { // img4 ?>
-	<tr id="r_img4">
-		<td class="col-sm-2"><span id="elh_products_img4"><?php echo $products->img4->FldCaption() ?></span></td>
-		<td data-name="img4"<?php echo $products->img4->CellAttributes() ?>>
-<span id="el_products_img4">
-<span<?php echo $products->img4->ViewAttributes() ?>>
-<?php echo $products->img4->ViewValue ?></span>
-</span>
-</td>
-	</tr>
-<?php } ?>
-<?php if ($products->img5->Visible) { // img5 ?>
-	<tr id="r_img5">
-		<td class="col-sm-2"><span id="elh_products_img5"><?php echo $products->img5->FldCaption() ?></span></td>
-		<td data-name="img5"<?php echo $products->img5->CellAttributes() ?>>
-<span id="el_products_img5">
-<span<?php echo $products->img5->ViewAttributes() ?>>
-<?php echo $products->img5->ViewValue ?></span>
 </span>
 </td>
 	</tr>
