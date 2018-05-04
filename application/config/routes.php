@@ -4,9 +4,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $route['default_controller'] = 'home';
 
 /*pages */
-$route['about.html']='home/pages/about';
-$route['services.html']='home/pages/services';
-$route['contact.html']='home/pages/contact';
+$route['about.html']='front/home/pages/about';
+$route['services.html']='front/home/pages/services';
+$route['contact.html']='front/home/pages/contact';
 /*End pages */
 $route['default_controller'] = 'front/home';
 $route['404_override'] = '';
@@ -17,9 +17,13 @@ $route['categories.html'] = 'front/categories';
 
 // Detail Details
 $route['categories.html'] = 'front/categories';
+$route['categories.html/(:any)'] = 'front/categories/find/$1';
 $route['categories/details/(:any)'] = 'front/categories/details/$1';
 $route['home/details/(:any)'] = 'front/home/details/$1';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1481168c00d7dc7776933ea657ebd6f1f406d027
 //categories/details/1
 //$route['admin/manage-users.html/(:any)/(:any)'] = 'admin/users/users/manage_users/$1/$2';
 

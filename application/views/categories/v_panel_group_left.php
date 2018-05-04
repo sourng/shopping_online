@@ -12,7 +12,7 @@
 									<div id="accordion-one" class="panel-collapse collapse in">
 										<!-- panel-body -->
 										<div class="panel-body">
-											<h5><a href="categories-main.html"><i class="fa fa-caret-down"></i> All Categories</a></h5>
+											<h5><a href="<?php echo site_url(); ?>categories-main.html"><i class="fa fa-caret-down"></i> All Categories</a></h5>
 											
 										<ul>
 										<!--
@@ -32,9 +32,9 @@
 											-->
 											
 											<?php 
-												foreach($categories as $cat){												
+												foreach($getCat_Left as $cat){												
 												?>
-												<li><a href="#"><i class="<?php echo $cat['cat_ico_class']; ?>"></i><?php echo $cat['cat_name']; ?><span>(1029)</span></a></li>
+												<li><a href="<?php echo site_url(); ?>"><i class="<?php echo $cat['cat_ico_class']; ?>"></i><?php echo $cat['cat_name']; ?><span>(<?php echo $cat['number']; ?>)</span></a></li>
 												<?php	
 												}											
 											?>

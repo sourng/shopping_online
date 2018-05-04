@@ -292,77 +292,9 @@
 								</div><!-- item-info -->
 							</div><!-- ad-item -->
 
-							<!-- ad-item -->
-							<div class="ad-item row">
-								<div class="item-image-box col-sm-4">
-									<!-- item-image -->
-									<div class="item-image">
-										<a href="<?php echo site_url(); ?>categories/details"><img src="<?php echo base_url(); ?>public/images/trending/2.jpg" alt="Image" class="img-responsive"></a>
-									</div><!-- item-image -->
-								</div><!-- item-image-box -->
-								
-								
-								<div class="item-info col-sm-8">
-									<!-- ad-info -->
-									<div class="ad-info">
-										<h3 class="item-price">$250.00 <span>(Negotiable)</span></h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details">Bark Furniture, Handmade Bespoke Furniture</a></h4>
-										<div class="item-cat">
-											<span><a href="#">Home Appliances</a></span> /
-											<span><a href="#">Sofa</a></span>
-										</div>										
-									</div><!-- ad-info -->
-									
-									<!-- ad-meta -->
-									<div class="ad-meta">
-										<div class="meta-content">
-											<span class="dated"><a href="#">7 Jan, 16  10:10 pm </a></span>
-											<a href="#" class="tag"><i class="fa fa-tags"></i> Used</a>
-										</div>									
-										<!-- item-info-right -->
-										<div class="user-option pull-right">
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Los Angeles, USA"><i class="fa fa-map-marker"></i> </a>
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Individual"><i class="fa fa-user"></i> </a>
-										</div><!-- item-info-right -->
-									</div><!-- ad-meta -->
-								</div><!-- item-info -->
-							</div><!-- ad-item -->
 							
-							<!-- ad-item -->
-							<div class="ad-item row">
-								<div class="item-image-box col-sm-4">
-									<!-- item-image -->
-									<div class="item-image">
-										<a href="<?php echo site_url(); ?>categories/details"><img src="<?php echo base_url(); ?>public/images/trending/3.jpg" alt="Image" class="img-responsive"></a>
-									</div><!-- item-image -->
-								</div><!-- item-image-box -->
-								
-								
-								<div class="item-info col-sm-8">
-									<!-- ad-info -->
-									<div class="ad-info">
-										<h3 class="item-price">$890.00 <span>(Negotiable)</span></h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details">Samsung Galaxy S6 Edge</a></h4>
-										<div class="item-cat">
-											<span><a href="#">Electronics & Gedgets</a></span> /
-											<span><a href="#">Mobile Phone</a></span>
-										</div>										
-									</div><!-- ad-info -->									
-																	
-									<!-- ad-meta -->
-									<div class="ad-meta">
-										<div class="meta-content">
-											<span class="dated"><a href="#">7 Jan, 16  10:10 pm </a></span>
-											<a href="#" class="tag"><i class="fa fa-tags"></i> Used</a>
-										</div>									
-										<!-- item-info-right -->
-										<div class="user-option pull-right">
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Los Angeles, USA"><i class="fa fa-map-marker"></i> </a>
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Dealer"><i class="fa fa-suitcase"></i> </a>
-										</div><!-- item-info-right -->
-									</div><!-- ad-meta -->
-								</div><!-- item-info -->
-							</div><!-- ad-item -->	
+							
+							
 							
 							<!-- ad-item -->
 							<div class="ad-item row">
