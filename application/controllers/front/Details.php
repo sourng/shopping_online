@@ -8,17 +8,24 @@ class Details extends CI_Controller {
         $this->load->database();   
         $this->load->helper('url');
         $this->load->model('M_Categories','m_cat');
+        $this->load->model('Crud_model','m_crud');
        
     }
-	public function index($pro_id='')
+	public function index($cat_id='',$pro_id='')
 	{		
 		$data=array();
+		$data['lang']=$this->session->userdata('site_lang');
 		$sql="SELECT * FROM categories";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
 		
 		$sql_product="SELECT * FROM products WHERE product_id=".$pro_id;
 		$data['getItem']=$this->m_cat->get_by_sql($sql_product,FALSE);
-		
+
+		// Recommended Ads for You
+
+		$sql_productRecommended="SELECT * FROM products WHERE product_id<>".$pro_id;
+		$data['getRecommendedAds']=$this->m_cat->get_by_sql($sql_productRecommended,FALSE);
+
 		
 		$data['title']="Trade Title";
 
@@ -26,7 +33,12 @@ class Details extends CI_Controller {
 		$data['footer']="footer/v_footer_home";
 
         $data['body']='fronts/home/v_detail';
-		$this->load->view('v_detail', $data);
+
+        //Language file
+        include_once 'langs.php';
+        
+
+		$this->load->view('v_template', $data);
 		
 	}
 	
