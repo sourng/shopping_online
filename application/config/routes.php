@@ -20,12 +20,19 @@ $route['categories.html'] = 'front/categories';
 $route['categories.html/(:any)'] = 'front/categories/find/$1';
 $route['categories/details/(:any)'] = 'front/categories/details/$1';
 $route['home/details/(:any)'] = 'front/home/details/$1';
+<<<<<<< HEAD
 
 $route['ads/(:any)/(:any)'] = 'front/details/index/$1/$2';
 // category_id/product_id
 $route['(:any)/(:any)'] = 'front/details/index/$1/$2';
 
 
+=======
+<<<<<<< HEAD
+
+=======
+>>>>>>> 1481168c00d7dc7776933ea657ebd6f1f406d027
+>>>>>>> eed5611812fcbe5afea1213e44fee23e4427146a
 //categories/details/1
 //$route['admin/manage-users.html/(:any)/(:any)'] = 'admin/users/users/manage_users/$1/$2';
 
