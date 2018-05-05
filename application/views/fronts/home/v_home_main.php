@@ -51,102 +51,25 @@
 					<div class="col-md-8">
 						<!-- categorys -->
 						<div class="section category-ad text-center">
-							<ul class="category-list">	
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/1.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Cars & Vehicles</span>
-										<span class="category-quantity">(1298)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/2.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Electrics & Gedgets</span>
-										<span class="category-quantity">(76212)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/3.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Real Estate</span>
-										<span class="category-quantity">(212)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/4.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Sports & Games</span>
-										<span class="category-quantity">(972)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/5.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Fshion & Beauty</span>
-										<span class="category-quantity">(1298)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/6.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Pets & Animals</span>
-										<span class="category-quantity">(76212)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/9.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Home Appliances</span>
-										<span class="category-quantity">(1298)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/10.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Matrimony Services</span>
-										<span class="category-quantity">(76212)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/11.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Music & Arts</span>
-										<span class="category-quantity">(212)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/12.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Miscellaneous </span>
-										<span class="category-quantity">(1298)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/7.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Job Openings </span>
-										<span class="category-quantity">(124)</span>
-									</a>
-								</li><!-- category-item -->
-								
-								<li class="category-item">
-									<a href="categories.html">
-										<div class="category-icon"><img src="<?php echo base_url(); ?>public/images/icon/8.png" alt="images" class="img-responsive"></div>
-										<span class="category-title">Books & Magazines</span>
-										<span class="category-quantity">(972)</span>
-									</a>
-								</li><!-- category-item -->					
+							<ul class="category-list">
+
+								<?php 
+									foreach($categories as $cat){												
+									?>
+									
+									<li class="category-item">
+											<a href="<?php echo base_url();?>categories/find.html/<?php echo $cat['cat_id']; ?>">
+												<div class="category-icon"><img src="<?php echo base_url(); ?>uploads/category/icons/<?php echo $cat['cat_ico_image']; ?>" alt="images" class="img-responsive"></div>
+												<span class="category-title"><?php echo $cat['cat_name']; ?></span>
+												<span class="category-quantity">(<?php echo $cat['number']; ?>)</span>
+											</a>
+										</li><!-- category-item -->
+
+									<?php	
+									}											
+								?>
+
+				
 							</ul>				
 						</div><!-- category-ad -->	
 						

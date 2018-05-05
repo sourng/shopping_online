@@ -504,7 +504,8 @@ class ccategories_delete extends ccategories {
 		$this->cat_id->setDbValue($row['cat_id']);
 		$this->cat_name->setDbValue($row['cat_name']);
 		$this->cat_ico_class->setDbValue($row['cat_ico_class']);
-		$this->cat_ico_image->setDbValue($row['cat_ico_image']);
+		$this->cat_ico_image->Upload->DbValue = $row['cat_ico_image'];
+		$this->cat_ico_image->setDbValue($this->cat_ico_image->Upload->DbValue);
 		$this->cat_home->setDbValue($row['cat_home']);
 	}
 
@@ -527,7 +528,7 @@ class ccategories_delete extends ccategories {
 		$this->cat_id->DbValue = $row['cat_id'];
 		$this->cat_name->DbValue = $row['cat_name'];
 		$this->cat_ico_class->DbValue = $row['cat_ico_class'];
-		$this->cat_ico_image->DbValue = $row['cat_ico_image'];
+		$this->cat_ico_image->Upload->DbValue = $row['cat_ico_image'];
 		$this->cat_home->DbValue = $row['cat_home'];
 	}
 
@@ -562,7 +563,13 @@ class ccategories_delete extends ccategories {
 		$this->cat_ico_class->ViewCustomAttributes = "";
 
 		// cat_ico_image
-		$this->cat_ico_image->ViewValue = $this->cat_ico_image->CurrentValue;
+		$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+		if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+			$this->cat_ico_image->ImageAlt = $this->cat_ico_image->FldAlt();
+			$this->cat_ico_image->ViewValue = $this->cat_ico_image->Upload->DbValue;
+		} else {
+			$this->cat_ico_image->ViewValue = "";
+		}
 		$this->cat_ico_image->ViewCustomAttributes = "";
 
 		// cat_home
@@ -590,8 +597,22 @@ class ccategories_delete extends ccategories {
 
 			// cat_ico_image
 			$this->cat_ico_image->LinkCustomAttributes = "";
-			$this->cat_ico_image->HrefValue = "";
+			$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+			if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+				$this->cat_ico_image->HrefValue = ew_GetFileUploadUrl($this->cat_ico_image, $this->cat_ico_image->Upload->DbValue); // Add prefix/suffix
+				$this->cat_ico_image->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->cat_ico_image->HrefValue = ew_FullUrl($this->cat_ico_image->HrefValue, "href");
+			} else {
+				$this->cat_ico_image->HrefValue = "";
+			}
+			$this->cat_ico_image->HrefValue2 = $this->cat_ico_image->UploadPath . $this->cat_ico_image->Upload->DbValue;
 			$this->cat_ico_image->TooltipValue = "";
+			if ($this->cat_ico_image->UseColorbox) {
+				if (ew_Empty($this->cat_ico_image->TooltipValue))
+					$this->cat_ico_image->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+				$this->cat_ico_image->LinkAttrs["data-rel"] = "categories_x_cat_ico_image";
+				ew_AppendClass($this->cat_ico_image->LinkAttrs["class"], "ewLightbox");
+			}
 
 			// cat_home
 			$this->cat_home->LinkCustomAttributes = "";
@@ -650,6 +671,13 @@ class ccategories_delete extends ccategories {
 
 				// Delete old files
 				$this->LoadDbValues($row);
+				$this->cat_ico_image->OldUploadPath = "../uploads/category/icons";
+				$OldFiles = ew_Empty($row['cat_ico_image']) ? array() : array($row['cat_ico_image']);
+				$OldFileCount = count($OldFiles);
+				for ($i = 0; $i < $OldFileCount; $i++) {
+					if (file_exists($this->cat_ico_image->OldPhysicalUploadPath() . $OldFiles[$i]))
+						@unlink($this->cat_ico_image->OldPhysicalUploadPath() . $OldFiles[$i]);
+				}
 				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 				$DeleteRows = $this->Delete($row); // Delete
 				$conn->raiseErrorFn = '';
@@ -902,8 +930,9 @@ while (!$categories_delete->Recordset->EOF) {
 <?php if ($categories->cat_ico_image->Visible) { // cat_ico_image ?>
 		<td<?php echo $categories->cat_ico_image->CellAttributes() ?>>
 <span id="el<?php echo $categories_delete->RowCnt ?>_categories_cat_ico_image" class="categories_cat_ico_image">
-<span<?php echo $categories->cat_ico_image->ViewAttributes() ?>>
-<?php echo $categories->cat_ico_image->ListViewValue() ?></span>
+<span>
+<?php echo ew_GetFileViewTag($categories->cat_ico_image, $categories->cat_ico_image->ListViewValue()) ?>
+</span>
 </span>
 </td>
 <?php } ?>

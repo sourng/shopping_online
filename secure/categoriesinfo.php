@@ -62,7 +62,7 @@ class ccategories extends cTable {
 		$this->fields['cat_ico_class'] = &$this->cat_ico_class;
 
 		// cat_ico_image
-		$this->cat_ico_image = new cField('categories', 'categories', 'x_cat_ico_image', 'cat_ico_image', '`cat_ico_image`', '`cat_ico_image`', 200, -1, FALSE, '`cat_ico_image`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->cat_ico_image = new cField('categories', 'categories', 'x_cat_ico_image', 'cat_ico_image', '`cat_ico_image`', '`cat_ico_image`', 200, -1, TRUE, '`cat_ico_image`', FALSE, FALSE, FALSE, 'IMAGE', 'FILE');
 		$this->cat_ico_image->Sortable = TRUE; // Allow sort
 		$this->fields['cat_ico_image'] = &$this->cat_ico_image;
 
@@ -615,7 +615,7 @@ class ccategories extends cTable {
 		$this->cat_id->setDbValue($rs->fields('cat_id'));
 		$this->cat_name->setDbValue($rs->fields('cat_name'));
 		$this->cat_ico_class->setDbValue($rs->fields('cat_ico_class'));
-		$this->cat_ico_image->setDbValue($rs->fields('cat_ico_image'));
+		$this->cat_ico_image->Upload->DbValue = $rs->fields('cat_ico_image');
 		$this->cat_home->setDbValue($rs->fields('cat_home'));
 	}
 
@@ -646,7 +646,13 @@ class ccategories extends cTable {
 		$this->cat_ico_class->ViewCustomAttributes = "";
 
 		// cat_ico_image
-		$this->cat_ico_image->ViewValue = $this->cat_ico_image->CurrentValue;
+		$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+		if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+			$this->cat_ico_image->ImageAlt = $this->cat_ico_image->FldAlt();
+			$this->cat_ico_image->ViewValue = $this->cat_ico_image->Upload->DbValue;
+		} else {
+			$this->cat_ico_image->ViewValue = "";
+		}
 		$this->cat_ico_image->ViewCustomAttributes = "";
 
 		// cat_home
@@ -674,8 +680,22 @@ class ccategories extends cTable {
 
 		// cat_ico_image
 		$this->cat_ico_image->LinkCustomAttributes = "";
-		$this->cat_ico_image->HrefValue = "";
+		$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+		if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+			$this->cat_ico_image->HrefValue = ew_GetFileUploadUrl($this->cat_ico_image, $this->cat_ico_image->Upload->DbValue); // Add prefix/suffix
+			$this->cat_ico_image->LinkAttrs["target"] = ""; // Add target
+			if ($this->Export <> "") $this->cat_ico_image->HrefValue = ew_FullUrl($this->cat_ico_image->HrefValue, "href");
+		} else {
+			$this->cat_ico_image->HrefValue = "";
+		}
+		$this->cat_ico_image->HrefValue2 = $this->cat_ico_image->UploadPath . $this->cat_ico_image->Upload->DbValue;
 		$this->cat_ico_image->TooltipValue = "";
+		if ($this->cat_ico_image->UseColorbox) {
+			if (ew_Empty($this->cat_ico_image->TooltipValue))
+				$this->cat_ico_image->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+			$this->cat_ico_image->LinkAttrs["data-rel"] = "categories_x_cat_ico_image";
+			ew_AppendClass($this->cat_ico_image->LinkAttrs["class"], "ewLightbox");
+		}
 
 		// cat_home
 		$this->cat_home->LinkCustomAttributes = "";
@@ -717,8 +737,15 @@ class ccategories extends cTable {
 		// cat_ico_image
 		$this->cat_ico_image->EditAttrs["class"] = "form-control";
 		$this->cat_ico_image->EditCustomAttributes = "";
-		$this->cat_ico_image->EditValue = $this->cat_ico_image->CurrentValue;
-		$this->cat_ico_image->PlaceHolder = ew_RemoveHtml($this->cat_ico_image->FldCaption());
+		$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+		if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+			$this->cat_ico_image->ImageAlt = $this->cat_ico_image->FldAlt();
+			$this->cat_ico_image->EditValue = $this->cat_ico_image->Upload->DbValue;
+		} else {
+			$this->cat_ico_image->EditValue = "";
+		}
+		if (!ew_Empty($this->cat_ico_image->CurrentValue))
+				$this->cat_ico_image->Upload->FileName = $this->cat_ico_image->CurrentValue;
 
 		// cat_home
 		$this->cat_home->EditCustomAttributes = "";

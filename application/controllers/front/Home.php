@@ -15,7 +15,7 @@ class Home extends CI_Controller {
 	{		
 		$data=array();
 
-		$sql="SELECT cat.cat_id,cat.cat_name,cat.cat_ico_class,
+		$sql="SELECT cat.cat_id,cat.cat_name,cat.cat_ico_class,cat_ico_image,
 		count(cat.cat_name) as number from categories as cat inner join products as 
 		p ON cat.cat_id=p.cat_id group by cat.cat_id";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);

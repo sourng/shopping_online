@@ -1191,7 +1191,7 @@ class ccategories_list extends ccategories {
 			return FALSE;
 		if ($objForm->HasValue("x_cat_ico_class") && $objForm->HasValue("o_cat_ico_class") && $this->cat_ico_class->CurrentValue <> $this->cat_ico_class->OldValue)
 			return FALSE;
-		if ($objForm->HasValue("x_cat_ico_image") && $objForm->HasValue("o_cat_ico_image") && $this->cat_ico_image->CurrentValue <> $this->cat_ico_image->OldValue)
+		if (!ew_Empty($this->cat_ico_image->Upload->Value))
 			return FALSE;
 		if ($objForm->HasValue("x_cat_home") && $objForm->HasValue("o_cat_home") && ew_ConvertToBool($this->cat_home->CurrentValue) <> ew_ConvertToBool($this->cat_home->OldValue))
 			return FALSE;
@@ -2217,6 +2217,16 @@ class ccategories_list extends ccategories {
 		}
 	}
 
+	// Get upload files
+	function GetUploadFiles() {
+		global $objForm, $Language;
+
+		// Get upload data
+		$this->cat_ico_image->Upload->Index = $objForm->Index;
+		$this->cat_ico_image->Upload->UploadFile();
+		$this->cat_ico_image->CurrentValue = $this->cat_ico_image->Upload->FileName;
+	}
+
 	// Load default values
 	function LoadDefaultValues() {
 		$this->cat_id->CurrentValue = NULL;
@@ -2225,8 +2235,8 @@ class ccategories_list extends ccategories {
 		$this->cat_name->OldValue = $this->cat_name->CurrentValue;
 		$this->cat_ico_class->CurrentValue = NULL;
 		$this->cat_ico_class->OldValue = $this->cat_ico_class->CurrentValue;
-		$this->cat_ico_image->CurrentValue = NULL;
-		$this->cat_ico_image->OldValue = $this->cat_ico_image->CurrentValue;
+		$this->cat_ico_image->Upload->DbValue = NULL;
+		$this->cat_ico_image->OldValue = $this->cat_ico_image->Upload->DbValue;
 		$this->cat_home->CurrentValue = NULL;
 		$this->cat_home->OldValue = $this->cat_home->CurrentValue;
 	}
@@ -2277,6 +2287,7 @@ class ccategories_list extends ccategories {
 
 		// Load from form
 		global $objForm;
+		$this->GetUploadFiles(); // Get upload files
 		if (!$this->cat_id->FldIsDetailKey && $this->CurrentAction <> "gridadd" && $this->CurrentAction <> "add")
 			$this->cat_id->setFormValue($objForm->GetValue("x_cat_id"));
 		if (!$this->cat_name->FldIsDetailKey) {
@@ -2287,10 +2298,6 @@ class ccategories_list extends ccategories {
 			$this->cat_ico_class->setFormValue($objForm->GetValue("x_cat_ico_class"));
 		}
 		$this->cat_ico_class->setOldValue($objForm->GetValue("o_cat_ico_class"));
-		if (!$this->cat_ico_image->FldIsDetailKey) {
-			$this->cat_ico_image->setFormValue($objForm->GetValue("x_cat_ico_image"));
-		}
-		$this->cat_ico_image->setOldValue($objForm->GetValue("o_cat_ico_image"));
 		if (!$this->cat_home->FldIsDetailKey) {
 			$this->cat_home->setFormValue($objForm->GetValue("x_cat_home"));
 		}
@@ -2306,7 +2313,6 @@ class ccategories_list extends ccategories {
 			$this->cat_id->CurrentValue = $this->cat_id->FormValue;
 		$this->cat_name->CurrentValue = $this->cat_name->FormValue;
 		$this->cat_ico_class->CurrentValue = $this->cat_ico_class->FormValue;
-		$this->cat_ico_image->CurrentValue = $this->cat_ico_image->FormValue;
 		$this->cat_home->CurrentValue = $this->cat_home->FormValue;
 		if ($this->CurrentAction <> "overwrite")
 			$this->HashValue = $objForm->GetValue("k_hash");
@@ -2376,7 +2382,8 @@ class ccategories_list extends ccategories {
 		$this->cat_id->setDbValue($row['cat_id']);
 		$this->cat_name->setDbValue($row['cat_name']);
 		$this->cat_ico_class->setDbValue($row['cat_ico_class']);
-		$this->cat_ico_image->setDbValue($row['cat_ico_image']);
+		$this->cat_ico_image->Upload->DbValue = $row['cat_ico_image'];
+		$this->cat_ico_image->setDbValue($this->cat_ico_image->Upload->DbValue);
 		$this->cat_home->setDbValue($row['cat_home']);
 	}
 
@@ -2387,7 +2394,7 @@ class ccategories_list extends ccategories {
 		$row['cat_id'] = $this->cat_id->CurrentValue;
 		$row['cat_name'] = $this->cat_name->CurrentValue;
 		$row['cat_ico_class'] = $this->cat_ico_class->CurrentValue;
-		$row['cat_ico_image'] = $this->cat_ico_image->CurrentValue;
+		$row['cat_ico_image'] = $this->cat_ico_image->Upload->DbValue;
 		$row['cat_home'] = $this->cat_home->CurrentValue;
 		return $row;
 	}
@@ -2400,7 +2407,7 @@ class ccategories_list extends ccategories {
 		$this->cat_id->DbValue = $row['cat_id'];
 		$this->cat_name->DbValue = $row['cat_name'];
 		$this->cat_ico_class->DbValue = $row['cat_ico_class'];
-		$this->cat_ico_image->DbValue = $row['cat_ico_image'];
+		$this->cat_ico_image->Upload->DbValue = $row['cat_ico_image'];
 		$this->cat_home->DbValue = $row['cat_home'];
 	}
 
@@ -2463,7 +2470,13 @@ class ccategories_list extends ccategories {
 		$this->cat_ico_class->ViewCustomAttributes = "";
 
 		// cat_ico_image
-		$this->cat_ico_image->ViewValue = $this->cat_ico_image->CurrentValue;
+		$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+		if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+			$this->cat_ico_image->ImageAlt = $this->cat_ico_image->FldAlt();
+			$this->cat_ico_image->ViewValue = $this->cat_ico_image->Upload->DbValue;
+		} else {
+			$this->cat_ico_image->ViewValue = "";
+		}
 		$this->cat_ico_image->ViewCustomAttributes = "";
 
 		// cat_home
@@ -2495,10 +2508,22 @@ class ccategories_list extends ccategories {
 
 			// cat_ico_image
 			$this->cat_ico_image->LinkCustomAttributes = "";
-			$this->cat_ico_image->HrefValue = "";
+			$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+			if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+				$this->cat_ico_image->HrefValue = ew_GetFileUploadUrl($this->cat_ico_image, $this->cat_ico_image->Upload->DbValue); // Add prefix/suffix
+				$this->cat_ico_image->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->cat_ico_image->HrefValue = ew_FullUrl($this->cat_ico_image->HrefValue, "href");
+			} else {
+				$this->cat_ico_image->HrefValue = "";
+			}
+			$this->cat_ico_image->HrefValue2 = $this->cat_ico_image->UploadPath . $this->cat_ico_image->Upload->DbValue;
 			$this->cat_ico_image->TooltipValue = "";
-			if ($this->Export == "")
-				$this->cat_ico_image->ViewValue = $this->HighlightValue($this->cat_ico_image);
+			if ($this->cat_ico_image->UseColorbox) {
+				if (ew_Empty($this->cat_ico_image->TooltipValue))
+					$this->cat_ico_image->LinkAttrs["title"] = $Language->Phrase("ViewImageGallery");
+				$this->cat_ico_image->LinkAttrs["data-rel"] = "categories_x" . $this->RowCnt . "_cat_ico_image";
+				ew_AppendClass($this->cat_ico_image->LinkAttrs["class"], "ewLightbox");
+			}
 
 			// cat_home
 			$this->cat_home->LinkCustomAttributes = "";
@@ -2523,8 +2548,19 @@ class ccategories_list extends ccategories {
 			// cat_ico_image
 			$this->cat_ico_image->EditAttrs["class"] = "form-control";
 			$this->cat_ico_image->EditCustomAttributes = "";
-			$this->cat_ico_image->EditValue = ew_HtmlEncode($this->cat_ico_image->CurrentValue);
-			$this->cat_ico_image->PlaceHolder = ew_RemoveHtml($this->cat_ico_image->FldCaption());
+			$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+			if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+				$this->cat_ico_image->ImageAlt = $this->cat_ico_image->FldAlt();
+				$this->cat_ico_image->EditValue = $this->cat_ico_image->Upload->DbValue;
+			} else {
+				$this->cat_ico_image->EditValue = "";
+			}
+			if (!ew_Empty($this->cat_ico_image->CurrentValue))
+					if ($this->RowIndex == '$rowindex$')
+						$this->cat_ico_image->Upload->FileName = "";
+					else
+						$this->cat_ico_image->Upload->FileName = $this->cat_ico_image->CurrentValue;
+			if (is_numeric($this->RowIndex) && !$this->EventCancelled) ew_RenderUploadField($this->cat_ico_image, $this->RowIndex);
 
 			// cat_home
 			$this->cat_home->EditCustomAttributes = "";
@@ -2546,7 +2582,15 @@ class ccategories_list extends ccategories {
 
 			// cat_ico_image
 			$this->cat_ico_image->LinkCustomAttributes = "";
-			$this->cat_ico_image->HrefValue = "";
+			$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+			if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+				$this->cat_ico_image->HrefValue = ew_GetFileUploadUrl($this->cat_ico_image, $this->cat_ico_image->Upload->DbValue); // Add prefix/suffix
+				$this->cat_ico_image->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->cat_ico_image->HrefValue = ew_FullUrl($this->cat_ico_image->HrefValue, "href");
+			} else {
+				$this->cat_ico_image->HrefValue = "";
+			}
+			$this->cat_ico_image->HrefValue2 = $this->cat_ico_image->UploadPath . $this->cat_ico_image->Upload->DbValue;
 
 			// cat_home
 			$this->cat_home->LinkCustomAttributes = "";
@@ -2574,8 +2618,19 @@ class ccategories_list extends ccategories {
 			// cat_ico_image
 			$this->cat_ico_image->EditAttrs["class"] = "form-control";
 			$this->cat_ico_image->EditCustomAttributes = "";
-			$this->cat_ico_image->EditValue = ew_HtmlEncode($this->cat_ico_image->CurrentValue);
-			$this->cat_ico_image->PlaceHolder = ew_RemoveHtml($this->cat_ico_image->FldCaption());
+			$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+			if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+				$this->cat_ico_image->ImageAlt = $this->cat_ico_image->FldAlt();
+				$this->cat_ico_image->EditValue = $this->cat_ico_image->Upload->DbValue;
+			} else {
+				$this->cat_ico_image->EditValue = "";
+			}
+			if (!ew_Empty($this->cat_ico_image->CurrentValue))
+					if ($this->RowIndex == '$rowindex$')
+						$this->cat_ico_image->Upload->FileName = "";
+					else
+						$this->cat_ico_image->Upload->FileName = $this->cat_ico_image->CurrentValue;
+			if (is_numeric($this->RowIndex) && !$this->EventCancelled) ew_RenderUploadField($this->cat_ico_image, $this->RowIndex);
 
 			// cat_home
 			$this->cat_home->EditCustomAttributes = "";
@@ -2597,7 +2652,15 @@ class ccategories_list extends ccategories {
 
 			// cat_ico_image
 			$this->cat_ico_image->LinkCustomAttributes = "";
-			$this->cat_ico_image->HrefValue = "";
+			$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+			if (!ew_Empty($this->cat_ico_image->Upload->DbValue)) {
+				$this->cat_ico_image->HrefValue = ew_GetFileUploadUrl($this->cat_ico_image, $this->cat_ico_image->Upload->DbValue); // Add prefix/suffix
+				$this->cat_ico_image->LinkAttrs["target"] = ""; // Add target
+				if ($this->Export <> "") $this->cat_ico_image->HrefValue = ew_FullUrl($this->cat_ico_image->HrefValue, "href");
+			} else {
+				$this->cat_ico_image->HrefValue = "";
+			}
+			$this->cat_ico_image->HrefValue2 = $this->cat_ico_image->UploadPath . $this->cat_ico_image->Upload->DbValue;
 
 			// cat_home
 			$this->cat_home->LinkCustomAttributes = "";
@@ -2731,6 +2794,13 @@ class ccategories_list extends ccategories {
 
 				// Delete old files
 				$this->LoadDbValues($row);
+				$this->cat_ico_image->OldUploadPath = "../uploads/category/icons";
+				$OldFiles = ew_Empty($row['cat_ico_image']) ? array() : array($row['cat_ico_image']);
+				$OldFileCount = count($OldFiles);
+				for ($i = 0; $i < $OldFileCount; $i++) {
+					if (file_exists($this->cat_ico_image->OldPhysicalUploadPath() . $OldFiles[$i]))
+						@unlink($this->cat_ico_image->OldPhysicalUploadPath() . $OldFiles[$i]);
+				}
 				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
 				$DeleteRows = $this->Delete($row); // Delete
 				$conn->raiseErrorFn = '';
@@ -2787,6 +2857,8 @@ class ccategories_list extends ccategories {
 			// Save old values
 			$rsold = &$rs->fields;
 			$this->LoadDbValues($rsold);
+			$this->cat_ico_image->OldUploadPath = "../uploads/category/icons";
+			$this->cat_ico_image->UploadPath = $this->cat_ico_image->OldUploadPath;
 			$rsnew = array();
 
 			// cat_name
@@ -2796,7 +2868,14 @@ class ccategories_list extends ccategories {
 			$this->cat_ico_class->SetDbValueDef($rsnew, $this->cat_ico_class->CurrentValue, NULL, $this->cat_ico_class->ReadOnly);
 
 			// cat_ico_image
-			$this->cat_ico_image->SetDbValueDef($rsnew, $this->cat_ico_image->CurrentValue, NULL, $this->cat_ico_image->ReadOnly);
+			if ($this->cat_ico_image->Visible && !$this->cat_ico_image->ReadOnly && !$this->cat_ico_image->Upload->KeepFile) {
+				$this->cat_ico_image->Upload->DbValue = $rsold['cat_ico_image']; // Get original value
+				if ($this->cat_ico_image->Upload->FileName == "") {
+					$rsnew['cat_ico_image'] = NULL;
+				} else {
+					$rsnew['cat_ico_image'] = $this->cat_ico_image->Upload->FileName;
+				}
+			}
 
 			// cat_home
 			$tmpBool = $this->cat_home->CurrentValue;
@@ -2816,6 +2895,44 @@ class ccategories_list extends ccategories {
 				$rs->Close();
 				return FALSE; // Update Failed
 			}
+			if ($this->cat_ico_image->Visible && !$this->cat_ico_image->Upload->KeepFile) {
+				$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+				$OldFiles = ew_Empty($this->cat_ico_image->Upload->DbValue) ? array() : array($this->cat_ico_image->Upload->DbValue);
+				if (!ew_Empty($this->cat_ico_image->Upload->FileName)) {
+					$NewFiles = array($this->cat_ico_image->Upload->FileName);
+					$NewFileCount = count($NewFiles);
+					for ($i = 0; $i < $NewFileCount; $i++) {
+						$fldvar = ($this->cat_ico_image->Upload->Index < 0) ? $this->cat_ico_image->FldVar : substr($this->cat_ico_image->FldVar, 0, 1) . $this->cat_ico_image->Upload->Index . substr($this->cat_ico_image->FldVar, 1);
+						if ($NewFiles[$i] <> "") {
+							$file = $NewFiles[$i];
+							if (file_exists(ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file)) {
+								$OldFileFound = FALSE;
+								$OldFileCount = count($OldFiles);
+								for ($j = 0; $j < $OldFileCount; $j++) {
+									$file1 = $OldFiles[$j];
+									if ($file1 == $file) { // Old file found, no need to delete anymore
+										unset($OldFiles[$j]);
+										$OldFileFound = TRUE;
+										break;
+									}
+								}
+								if ($OldFileFound) // No need to check if file exists further
+									continue;
+								$file1 = ew_UploadFileNameEx($this->cat_ico_image->PhysicalUploadPath(), $file); // Get new file name
+								if ($file1 <> $file) { // Rename temp file
+									while (file_exists(ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file1) || file_exists($this->cat_ico_image->PhysicalUploadPath() . $file1)) // Make sure no file name clash
+										$file1 = ew_UniqueFilename($this->cat_ico_image->PhysicalUploadPath(), $file1, TRUE); // Use indexed name
+									rename(ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file, ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file1);
+									$NewFiles[$i] = $file1;
+								}
+							}
+						}
+					}
+					$this->cat_ico_image->Upload->DbValue = empty($OldFiles) ? "" : implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $OldFiles);
+					$this->cat_ico_image->Upload->FileName = implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $NewFiles);
+					$this->cat_ico_image->SetDbValueDef($rsnew, $this->cat_ico_image->Upload->FileName, NULL, $this->cat_ico_image->ReadOnly);
+				}
+			}
 
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
@@ -2827,6 +2944,35 @@ class ccategories_list extends ccategories {
 					$EditRow = TRUE; // No field to update
 				$conn->raiseErrorFn = '';
 				if ($EditRow) {
+					if ($this->cat_ico_image->Visible && !$this->cat_ico_image->Upload->KeepFile) {
+						$OldFiles = ew_Empty($this->cat_ico_image->Upload->DbValue) ? array() : array($this->cat_ico_image->Upload->DbValue);
+						if (!ew_Empty($this->cat_ico_image->Upload->FileName)) {
+							$NewFiles = array($this->cat_ico_image->Upload->FileName);
+							$NewFiles2 = array($rsnew['cat_ico_image']);
+							$NewFileCount = count($NewFiles);
+							for ($i = 0; $i < $NewFileCount; $i++) {
+								$fldvar = ($this->cat_ico_image->Upload->Index < 0) ? $this->cat_ico_image->FldVar : substr($this->cat_ico_image->FldVar, 0, 1) . $this->cat_ico_image->Upload->Index . substr($this->cat_ico_image->FldVar, 1);
+								if ($NewFiles[$i] <> "") {
+									$file = ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $NewFiles[$i];
+									if (file_exists($file)) {
+										if (@$NewFiles2[$i] <> "") // Use correct file name
+											$NewFiles[$i] = $NewFiles2[$i];
+										if (!$this->cat_ico_image->Upload->SaveToFile($NewFiles[$i], TRUE, $i)) { // Just replace
+											$this->setFailureMessage($Language->Phrase("UploadErrMsg7"));
+											return FALSE;
+										}
+									}
+								}
+							}
+						} else {
+							$NewFiles = array();
+						}
+						$OldFileCount = count($OldFiles);
+						for ($i = 0; $i < $OldFileCount; $i++) {
+							if ($OldFiles[$i] <> "" && !in_array($OldFiles[$i], $NewFiles))
+								@unlink($this->cat_ico_image->OldPhysicalUploadPath() . $OldFiles[$i]);
+						}
+					}
 				}
 			} else {
 				if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
@@ -2846,6 +2992,9 @@ class ccategories_list extends ccategories {
 		if ($EditRow)
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
+
+		// cat_ico_image
+		ew_CleanUploadTempPath($this->cat_ico_image, $this->cat_ico_image->Upload->Index);
 		return $EditRow;
 	}
 
@@ -2882,6 +3031,8 @@ class ccategories_list extends ccategories {
 		// Load db values from rsold
 		$this->LoadDbValues($rsold);
 		if ($rsold) {
+			$this->cat_ico_image->OldUploadPath = "../uploads/category/icons";
+			$this->cat_ico_image->UploadPath = $this->cat_ico_image->OldUploadPath;
 		}
 		$rsnew = array();
 
@@ -2892,13 +3043,58 @@ class ccategories_list extends ccategories {
 		$this->cat_ico_class->SetDbValueDef($rsnew, $this->cat_ico_class->CurrentValue, NULL, FALSE);
 
 		// cat_ico_image
-		$this->cat_ico_image->SetDbValueDef($rsnew, $this->cat_ico_image->CurrentValue, NULL, FALSE);
+		if ($this->cat_ico_image->Visible && !$this->cat_ico_image->Upload->KeepFile) {
+			$this->cat_ico_image->Upload->DbValue = ""; // No need to delete old file
+			if ($this->cat_ico_image->Upload->FileName == "") {
+				$rsnew['cat_ico_image'] = NULL;
+			} else {
+				$rsnew['cat_ico_image'] = $this->cat_ico_image->Upload->FileName;
+			}
+		}
 
 		// cat_home
 		$tmpBool = $this->cat_home->CurrentValue;
 		if ($tmpBool <> "Y" && $tmpBool <> "N")
 			$tmpBool = (!empty($tmpBool)) ? "Y" : "N";
 		$this->cat_home->SetDbValueDef($rsnew, $tmpBool, NULL, FALSE);
+		if ($this->cat_ico_image->Visible && !$this->cat_ico_image->Upload->KeepFile) {
+			$this->cat_ico_image->UploadPath = "../uploads/category/icons";
+			$OldFiles = ew_Empty($this->cat_ico_image->Upload->DbValue) ? array() : array($this->cat_ico_image->Upload->DbValue);
+			if (!ew_Empty($this->cat_ico_image->Upload->FileName)) {
+				$NewFiles = array($this->cat_ico_image->Upload->FileName);
+				$NewFileCount = count($NewFiles);
+				for ($i = 0; $i < $NewFileCount; $i++) {
+					$fldvar = ($this->cat_ico_image->Upload->Index < 0) ? $this->cat_ico_image->FldVar : substr($this->cat_ico_image->FldVar, 0, 1) . $this->cat_ico_image->Upload->Index . substr($this->cat_ico_image->FldVar, 1);
+					if ($NewFiles[$i] <> "") {
+						$file = $NewFiles[$i];
+						if (file_exists(ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file)) {
+							$OldFileFound = FALSE;
+							$OldFileCount = count($OldFiles);
+							for ($j = 0; $j < $OldFileCount; $j++) {
+								$file1 = $OldFiles[$j];
+								if ($file1 == $file) { // Old file found, no need to delete anymore
+									unset($OldFiles[$j]);
+									$OldFileFound = TRUE;
+									break;
+								}
+							}
+							if ($OldFileFound) // No need to check if file exists further
+								continue;
+							$file1 = ew_UploadFileNameEx($this->cat_ico_image->PhysicalUploadPath(), $file); // Get new file name
+							if ($file1 <> $file) { // Rename temp file
+								while (file_exists(ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file1) || file_exists($this->cat_ico_image->PhysicalUploadPath() . $file1)) // Make sure no file name clash
+									$file1 = ew_UniqueFilename($this->cat_ico_image->PhysicalUploadPath(), $file1, TRUE); // Use indexed name
+								rename(ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file, ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $file1);
+								$NewFiles[$i] = $file1;
+							}
+						}
+					}
+				}
+				$this->cat_ico_image->Upload->DbValue = empty($OldFiles) ? "" : implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $OldFiles);
+				$this->cat_ico_image->Upload->FileName = implode(EW_MULTIPLE_UPLOAD_SEPARATOR, $NewFiles);
+				$this->cat_ico_image->SetDbValueDef($rsnew, $this->cat_ico_image->Upload->FileName, NULL, FALSE);
+			}
+		}
 
 		// Call Row Inserting event
 		$rs = ($rsold == NULL) ? NULL : $rsold->fields;
@@ -2908,6 +3104,35 @@ class ccategories_list extends ccategories {
 			$AddRow = $this->Insert($rsnew);
 			$conn->raiseErrorFn = '';
 			if ($AddRow) {
+				if ($this->cat_ico_image->Visible && !$this->cat_ico_image->Upload->KeepFile) {
+					$OldFiles = ew_Empty($this->cat_ico_image->Upload->DbValue) ? array() : array($this->cat_ico_image->Upload->DbValue);
+					if (!ew_Empty($this->cat_ico_image->Upload->FileName)) {
+						$NewFiles = array($this->cat_ico_image->Upload->FileName);
+						$NewFiles2 = array($rsnew['cat_ico_image']);
+						$NewFileCount = count($NewFiles);
+						for ($i = 0; $i < $NewFileCount; $i++) {
+							$fldvar = ($this->cat_ico_image->Upload->Index < 0) ? $this->cat_ico_image->FldVar : substr($this->cat_ico_image->FldVar, 0, 1) . $this->cat_ico_image->Upload->Index . substr($this->cat_ico_image->FldVar, 1);
+							if ($NewFiles[$i] <> "") {
+								$file = ew_UploadTempPath($fldvar, $this->cat_ico_image->TblVar) . $NewFiles[$i];
+								if (file_exists($file)) {
+									if (@$NewFiles2[$i] <> "") // Use correct file name
+										$NewFiles[$i] = $NewFiles2[$i];
+									if (!$this->cat_ico_image->Upload->SaveToFile($NewFiles[$i], TRUE, $i)) { // Just replace
+										$this->setFailureMessage($Language->Phrase("UploadErrMsg7"));
+										return FALSE;
+									}
+								}
+							}
+						}
+					} else {
+						$NewFiles = array();
+					}
+					$OldFileCount = count($OldFiles);
+					for ($i = 0; $i < $OldFileCount; $i++) {
+						if ($OldFiles[$i] <> "" && !in_array($OldFiles[$i], $NewFiles))
+							@unlink($this->cat_ico_image->OldPhysicalUploadPath() . $OldFiles[$i]);
+					}
+				}
 			}
 		} else {
 			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
@@ -2927,6 +3152,9 @@ class ccategories_list extends ccategories {
 			$rs = ($rsold == NULL) ? NULL : $rsold->fields;
 			$this->Row_Inserted($rs, $rsnew);
 		}
+
+		// cat_ico_image
+		ew_CleanUploadTempPath($this->cat_ico_image, $this->cat_ico_image->Upload->Index);
 		return $AddRow;
 	}
 
@@ -3790,7 +4018,18 @@ $categories_list->ListOptions->Render("body", "left", $categories_list->RowCnt);
 	<?php if ($categories->cat_ico_image->Visible) { // cat_ico_image ?>
 		<td data-name="cat_ico_image">
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="form-group categories_cat_ico_image">
-<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+<div id="fd_x<?php echo $categories_list->RowIndex ?>_cat_ico_image">
+<span title="<?php echo $categories->cat_ico_image->FldTitle() ? $categories->cat_ico_image->FldTitle() : $Language->Phrase("ChooseFile") ?>" class="btn btn-default btn-sm fileinput-button ewTooltip<?php if ($categories->cat_ico_image->ReadOnly || $categories->cat_ico_image->Disabled) echo " hide"; ?>">
+	<span><?php echo $Language->Phrase("ChooseFileBtn") ?></span>
+	<input type="file" title=" " data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<input type="hidden" name="fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->Upload->FileName ?>">
+<input type="hidden" name="fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="0">
+<input type="hidden" name="fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="250">
+<input type="hidden" name="fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadAllowedFileExt ?>">
+<input type="hidden" name="fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadMaxFileSize ?>">
+</div>
+<table id="ft_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" class="table table-condensed pull-left ewUploadTable"><tbody class="files"></tbody></table>
 </span>
 <input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->OldValue) ?>">
 </td>
@@ -4001,19 +4240,46 @@ $categories_list->ListOptions->Render("body", "left", $categories_list->RowCnt);
 		<td data-name="cat_ico_image"<?php echo $categories->cat_ico_image->CellAttributes() ?>>
 <?php if ($categories->RowType == EW_ROWTYPE_ADD) { // Add record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="form-group categories_cat_ico_image">
-<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+<div id="fd_x<?php echo $categories_list->RowIndex ?>_cat_ico_image">
+<span title="<?php echo $categories->cat_ico_image->FldTitle() ? $categories->cat_ico_image->FldTitle() : $Language->Phrase("ChooseFile") ?>" class="btn btn-default btn-sm fileinput-button ewTooltip<?php if ($categories->cat_ico_image->ReadOnly || $categories->cat_ico_image->Disabled) echo " hide"; ?>">
+	<span><?php echo $Language->Phrase("ChooseFileBtn") ?></span>
+	<input type="file" title=" " data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<input type="hidden" name="fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->Upload->FileName ?>">
+<input type="hidden" name="fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="0">
+<input type="hidden" name="fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="250">
+<input type="hidden" name="fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadAllowedFileExt ?>">
+<input type="hidden" name="fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadMaxFileSize ?>">
+</div>
+<table id="ft_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" class="table table-condensed pull-left ewUploadTable"><tbody class="files"></tbody></table>
 </span>
 <input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->OldValue) ?>">
 <?php } ?>
 <?php if ($categories->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="form-group categories_cat_ico_image">
-<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+<div id="fd_x<?php echo $categories_list->RowIndex ?>_cat_ico_image">
+<span title="<?php echo $categories->cat_ico_image->FldTitle() ? $categories->cat_ico_image->FldTitle() : $Language->Phrase("ChooseFile") ?>" class="btn btn-default btn-sm fileinput-button ewTooltip<?php if ($categories->cat_ico_image->ReadOnly || $categories->cat_ico_image->Disabled) echo " hide"; ?>">
+	<span><?php echo $Language->Phrase("ChooseFileBtn") ?></span>
+	<input type="file" title=" " data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<input type="hidden" name="fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->Upload->FileName ?>">
+<?php if (@$_POST["fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image"] == "0") { ?>
+<input type="hidden" name="fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="0">
+<?php } else { ?>
+<input type="hidden" name="fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="1">
+<?php } ?>
+<input type="hidden" name="fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="250">
+<input type="hidden" name="fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadAllowedFileExt ?>">
+<input type="hidden" name="fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadMaxFileSize ?>">
+</div>
+<table id="ft_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" class="table table-condensed pull-left ewUploadTable"><tbody class="files"></tbody></table>
 </span>
 <?php } ?>
 <?php if ($categories->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="categories_cat_ico_image">
-<span<?php echo $categories->cat_ico_image->ViewAttributes() ?>>
-<?php echo $categories->cat_ico_image->ListViewValue() ?></span>
+<span>
+<?php echo ew_GetFileViewTag($categories->cat_ico_image, $categories->cat_ico_image->ListViewValue()) ?>
+</span>
 </span>
 <?php } ?>
 </td>
@@ -4116,7 +4382,18 @@ $categories_list->ListOptions->Render("body", "left", $categories_list->RowIndex
 	<?php if ($categories->cat_ico_image->Visible) { // cat_ico_image ?>
 		<td data-name="cat_ico_image">
 <span id="el$rowindex$_categories_cat_ico_image" class="form-group categories_cat_ico_image">
-<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+<div id="fd_x<?php echo $categories_list->RowIndex ?>_cat_ico_image">
+<span title="<?php echo $categories->cat_ico_image->FldTitle() ? $categories->cat_ico_image->FldTitle() : $Language->Phrase("ChooseFile") ?>" class="btn btn-default btn-sm fileinput-button ewTooltip<?php if ($categories->cat_ico_image->ReadOnly || $categories->cat_ico_image->Disabled) echo " hide"; ?>">
+	<span><?php echo $Language->Phrase("ChooseFileBtn") ?></span>
+	<input type="file" title=" " data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<input type="hidden" name="fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fn_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->Upload->FileName ?>">
+<input type="hidden" name="fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fa_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="0">
+<input type="hidden" name="fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fs_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="250">
+<input type="hidden" name="fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fx_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadAllowedFileExt ?>">
+<input type="hidden" name="fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id= "fm_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo $categories->cat_ico_image->UploadMaxFileSize ?>">
+</div>
+<table id="ft_x<?php echo $categories_list->RowIndex ?>_cat_ico_image" class="table table-condensed pull-left ewUploadTable"><tbody class="files"></tbody></table>
 </span>
 <input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->OldValue) ?>">
 </td>
