@@ -7,6 +7,7 @@ ob_start(); // Turn on output buffering
 <?php include_once "phpfn14.php" ?>
 <?php include_once "productsinfo.php" ?>
 <?php include_once "companyinfo.php" ?>
+<?php include_once "product_gallerygridcls.php" ?>
 <?php include_once "userfn14.php" ?>
 <?php
 
@@ -486,6 +487,7 @@ class cproducts_view extends cproducts {
 	var $RecCnt;
 	var $RecKey = array();
 	var $IsModal = FALSE;
+	var $product_gallery_Count;
 	var $Recordset;
 
 	//
@@ -566,6 +568,9 @@ class cproducts_view extends cproducts {
 		$this->RowType = EW_ROWTYPE_VIEW;
 		$this->ResetAttrs();
 		$this->RenderRow();
+
+		// Set up detail parameters
+		$this->SetupDetailParms();
 	}
 
 	// Set up other options
@@ -603,11 +608,84 @@ class cproducts_view extends cproducts {
 
 		// Delete
 		$item = &$option->Add("delete");
-		if ($this->IsModal) // Handle as inline delete
-			$item->Body = "<a onclick=\"return ew_ConfirmDelete(this);\" class=\"ewAction ewDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("ViewPageDeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ViewPageDeleteLink")) . "\" href=\"" . ew_HtmlEncode(ew_UrlAddQuery($this->DeleteUrl, "a_delete=1")) . "\">" . $Language->Phrase("ViewPageDeleteLink") . "</a>";
-		else
-			$item->Body = "<a class=\"ewAction ewDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("ViewPageDeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ViewPageDeleteLink")) . "\" href=\"" . ew_HtmlEncode($this->DeleteUrl) . "\">" . $Language->Phrase("ViewPageDeleteLink") . "</a>";
+		$item->Body = "<a onclick=\"return ew_ConfirmDelete(this);\" class=\"ewAction ewDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("ViewPageDeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ViewPageDeleteLink")) . "\" href=\"" . ew_HtmlEncode($this->DeleteUrl) . "\">" . $Language->Phrase("ViewPageDeleteLink") . "</a>";
 		$item->Visible = ($this->DeleteUrl <> "" && $Security->CanDelete());
+		$option = &$options["detail"];
+		$DetailTableLink = "";
+		$DetailViewTblVar = "";
+		$DetailCopyTblVar = "";
+		$DetailEditTblVar = "";
+
+		// "detail_product_gallery"
+		$item = &$option->Add("detail_product_gallery");
+		$body = $Language->Phrase("ViewPageDetailLink") . $Language->TablePhrase("product_gallery", "TblCaption");
+		$body .= str_replace("%c", $this->product_gallery_Count, $Language->Phrase("DetailCount"));
+		$body = "<a class=\"btn btn-default btn-sm ewRowLink ewDetail\" data-action=\"list\" href=\"" . ew_HtmlEncode("product_gallerylist.php?" . EW_TABLE_SHOW_MASTER . "=products&fk_product_id=" . urlencode(strval($this->product_id->CurrentValue)) . "") . "\">" . $body . "</a>";
+		$links = "";
+		if ($GLOBALS["product_gallery_grid"] && $GLOBALS["product_gallery_grid"]->DetailView && $Security->CanView() && $Security->AllowView(CurrentProjectID() . 'product_gallery')) {
+			$links .= "<li><a class=\"ewRowLink ewDetailView\" data-action=\"view\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("MasterDetailViewLink")) . "\" href=\"" . ew_HtmlEncode($this->GetViewUrl(EW_TABLE_SHOW_DETAIL . "=product_gallery")) . "\">" . ew_HtmlImageAndText($Language->Phrase("MasterDetailViewLink")) . "</a></li>";
+			if ($DetailViewTblVar <> "") $DetailViewTblVar .= ",";
+			$DetailViewTblVar .= "product_gallery";
+		}
+		if ($GLOBALS["product_gallery_grid"] && $GLOBALS["product_gallery_grid"]->DetailEdit && $Security->CanEdit() && $Security->AllowEdit(CurrentProjectID() . 'product_gallery')) {
+			$links .= "<li><a class=\"ewRowLink ewDetailEdit\" data-action=\"edit\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("MasterDetailEditLink")) . "\" href=\"" . ew_HtmlEncode($this->GetEditUrl(EW_TABLE_SHOW_DETAIL . "=product_gallery")) . "\">" . ew_HtmlImageAndText($Language->Phrase("MasterDetailEditLink")) . "</a></li>";
+			if ($DetailEditTblVar <> "") $DetailEditTblVar .= ",";
+			$DetailEditTblVar .= "product_gallery";
+		}
+		if ($GLOBALS["product_gallery_grid"] && $GLOBALS["product_gallery_grid"]->DetailAdd && $Security->CanAdd() && $Security->AllowAdd(CurrentProjectID() . 'product_gallery')) {
+			$links .= "<li><a class=\"ewRowLink ewDetailCopy\" data-action=\"add\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("MasterDetailCopyLink")) . "\" href=\"" . ew_HtmlEncode($this->GetCopyUrl(EW_TABLE_SHOW_DETAIL . "=product_gallery")) . "\">" . ew_HtmlImageAndText($Language->Phrase("MasterDetailCopyLink")) . "</a></li>";
+			if ($DetailCopyTblVar <> "") $DetailCopyTblVar .= ",";
+			$DetailCopyTblVar .= "product_gallery";
+		}
+		if ($links <> "") {
+			$body .= "<button class=\"dropdown-toggle btn btn-default btn-sm ewDetail\" data-toggle=\"dropdown\"><b class=\"caret\"></b></button>";
+			$body .= "<ul class=\"dropdown-menu\">". $links . "</ul>";
+		}
+		$body = "<div class=\"btn-group\">" . $body . "</div>";
+		$item->Body = $body;
+		$item->Visible = $Security->AllowList(CurrentProjectID() . 'product_gallery');
+		if ($item->Visible) {
+			if ($DetailTableLink <> "") $DetailTableLink .= ",";
+			$DetailTableLink .= "product_gallery";
+		}
+		if ($this->ShowMultipleDetails) $item->Visible = FALSE;
+
+		// Multiple details
+		if ($this->ShowMultipleDetails) {
+			$body = $Language->Phrase("MultipleMasterDetails");
+			$body = "<div class=\"btn-group\">";
+			$links = "";
+			if ($DetailViewTblVar <> "") {
+				$links .= "<li><a class=\"ewRowLink ewDetailView\" data-action=\"view\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("MasterDetailViewLink")) . "\" href=\"" . ew_HtmlEncode($this->GetViewUrl(EW_TABLE_SHOW_DETAIL . "=" . $DetailViewTblVar)) . "\">" . ew_HtmlImageAndText($Language->Phrase("MasterDetailViewLink")) . "</a></li>";
+			}
+			if ($DetailEditTblVar <> "") {
+				$links .= "<li><a class=\"ewRowLink ewDetailEdit\" data-action=\"edit\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("MasterDetailEditLink")) . "\" href=\"" . ew_HtmlEncode($this->GetEditUrl(EW_TABLE_SHOW_DETAIL . "=" . $DetailEditTblVar)) . "\">" . ew_HtmlImageAndText($Language->Phrase("MasterDetailEditLink")) . "</a></li>";
+			}
+			if ($DetailCopyTblVar <> "") {
+				$links .= "<li><a class=\"ewRowLink ewDetailCopy\" data-action=\"add\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("MasterDetailCopyLink")) . "\" href=\"" . ew_HtmlEncode($this->GetCopyUrl(EW_TABLE_SHOW_DETAIL . "=" . $DetailCopyTblVar)) . "\">" . ew_HtmlImageAndText($Language->Phrase("MasterDetailCopyLink")) . "</a></li>";
+			}
+			if ($links <> "") {
+				$body .= "<button class=\"dropdown-toggle btn btn-default btn-sm ewMasterDetail\" title=\"" . ew_HtmlTitle($Language->Phrase("MultipleMasterDetails")) . "\" data-toggle=\"dropdown\">" . $Language->Phrase("MultipleMasterDetails") . "<b class=\"caret\"></b></button>";
+				$body .= "<ul class=\"dropdown-menu ewMenu\">". $links . "</ul>";
+			}
+			$body .= "</div>";
+
+			// Multiple details
+			$oListOpt = &$option->Add("details");
+			$oListOpt->Body = $body;
+		}
+
+		// Set up detail default
+		$option = &$options["detail"];
+		$options["detail"]->DropDownButtonPhrase = $Language->Phrase("ButtonDetails");
+		$option->UseImageAndText = TRUE;
+		$ar = explode(",", $DetailTableLink);
+		$cnt = count($ar);
+		$option->UseDropDownButton = ($cnt > 1);
+		$option->UseButtonGroup = TRUE;
+		$item = &$option->Add($option->GroupOptionName);
+		$item->Body = "";
+		$item->Visible = FALSE;
 
 		// Set up action default
 		$option = &$options["action"];
@@ -745,9 +823,20 @@ class cproducts_view extends cproducts {
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
+		if (array_key_exists('EV__folder_image', $rs->fields)) {
+			$this->folder_image->VirtualValue = $rs->fields('EV__folder_image'); // Set up virtual field value
+		} else {
+			$this->folder_image->VirtualValue = ""; // Clear value
+		}
 		$this->pro_status->setDbValue($row['pro_status']);
 		$this->branch_id->setDbValue($row['branch_id']);
 		$this->lang->setDbValue($row['lang']);
+		if (!isset($GLOBALS["product_gallery_grid"])) $GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid;
+		$sDetailFilter = $GLOBALS["product_gallery"]->SqlDetailFilter_products();
+		$sDetailFilter = str_replace("@product_id@", ew_AdjustSql($this->product_id->DbValue, "DB"), $sDetailFilter);
+		$GLOBALS["product_gallery"]->setCurrentMasterTable("products");
+		$sDetailFilter = $GLOBALS["product_gallery"]->ApplyUserIDFilters($sDetailFilter);
+		$this->product_gallery_Count = $GLOBALS["product_gallery"]->LoadRecordCount($sDetailFilter);
 	}
 
 	// Return a row with default values
@@ -950,7 +1039,7 @@ class cproducts_view extends cproducts {
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
-		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 0);
+		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 1);
 		$this->post_date->ViewCustomAttributes = "";
 
 		// ads_id
@@ -978,6 +1067,9 @@ class cproducts_view extends cproducts {
 		$this->featured_image->ViewCustomAttributes = "";
 
 		// folder_image
+		if ($this->folder_image->VirtualValue <> "") {
+			$this->folder_image->ViewValue = $this->folder_image->VirtualValue;
+		} else {
 		if (strval($this->folder_image->CurrentValue) <> "") {
 			$arwrk = explode(",", $this->folder_image->CurrentValue);
 			$sFilterWrk = "";
@@ -985,7 +1077,7 @@ class cproducts_view extends cproducts {
 				if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
 				$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
 			}
-		$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+		$sSqlWrk = "SELECT DISTINCT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
 		$sWhereWrk = "";
 		$this->folder_image->LookupFilters = array("dx1" => '`image`');
 		ew_AddFilter($sWhereWrk, $sFilterWrk);
@@ -1009,6 +1101,7 @@ class cproducts_view extends cproducts {
 			}
 		} else {
 			$this->folder_image->ViewValue = NULL;
+		}
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
@@ -1156,6 +1249,35 @@ class cproducts_view extends cproducts {
 		// Call Row Rendered event
 		if ($this->RowType <> EW_ROWTYPE_AGGREGATEINIT)
 			$this->Row_Rendered();
+	}
+
+	// Set up detail parms based on QueryString
+	function SetupDetailParms() {
+
+		// Get the keys for master table
+		if (isset($_GET[EW_TABLE_SHOW_DETAIL])) {
+			$sDetailTblVar = $_GET[EW_TABLE_SHOW_DETAIL];
+			$this->setCurrentDetailTable($sDetailTblVar);
+		} else {
+			$sDetailTblVar = $this->getCurrentDetailTable();
+		}
+		if ($sDetailTblVar <> "") {
+			$DetailTblVar = explode(",", $sDetailTblVar);
+			if (in_array("product_gallery", $DetailTblVar)) {
+				if (!isset($GLOBALS["product_gallery_grid"]))
+					$GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid;
+				if ($GLOBALS["product_gallery_grid"]->DetailView) {
+					$GLOBALS["product_gallery_grid"]->CurrentMode = "view";
+
+					// Save current master table to detail table
+					$GLOBALS["product_gallery_grid"]->setCurrentMasterTable($this->TableVar);
+					$GLOBALS["product_gallery_grid"]->setStartRecordNumber(1);
+					$GLOBALS["product_gallery_grid"]->product_id->FldIsDetailKey = TRUE;
+					$GLOBALS["product_gallery_grid"]->product_id->CurrentValue = $this->product_id->CurrentValue;
+					$GLOBALS["product_gallery_grid"]->product_id->setSessionValue($GLOBALS["product_gallery_grid"]->product_id->CurrentValue);
+				}
+			}
+		}
 	}
 
 	// Set up Breadcrumb
@@ -1631,6 +1753,14 @@ $products_view->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
+<?php
+	if (in_array("product_gallery", explode(",", $products->getCurrentDetailTable())) && $product_gallery->DetailView) {
+?>
+<?php if ($products->getCurrentDetailTable() <> "") { ?>
+<h4 class="ewDetailCaption"><?php echo $Language->TablePhrase("product_gallery", "TblCaption") ?></h4>
+<?php } ?>
+<?php include_once "product_gallerygrid.php" ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

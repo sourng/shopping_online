@@ -509,7 +509,11 @@ class ccategories_add extends ccategories {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -1022,16 +1026,29 @@ $categories_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $categories_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="categories">
+<?php if ($categories->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($categories_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($categories->cat_name->Visible) { // cat_name ?>
 	<div id="r_cat_name" class="form-group">
 		<label id="elh_categories_cat_name" for="x_cat_name" class="<?php echo $categories_add->LeftColumnClass ?>"><?php echo $categories->cat_name->FldCaption() ?></label>
 		<div class="<?php echo $categories_add->RightColumnClass ?>"><div<?php echo $categories->cat_name->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_name">
 <input type="text" data-table="categories" data-field="x_cat_name" name="x_cat_name" id="x_cat_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_name->getPlaceHolder()) ?>" value="<?php echo $categories->cat_name->EditValue ?>"<?php echo $categories->cat_name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_name">
+<span<?php echo $categories->cat_name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_name" name="x_cat_name" id="x_cat_name" value="<?php echo ew_HtmlEncode($categories->cat_name->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1039,9 +1056,17 @@ $categories_add->ShowMessage();
 	<div id="r_cat_ico_class" class="form-group">
 		<label id="elh_categories_cat_ico_class" for="x_cat_ico_class" class="<?php echo $categories_add->LeftColumnClass ?>"><?php echo $categories->cat_ico_class->FldCaption() ?></label>
 		<div class="<?php echo $categories_add->RightColumnClass ?>"><div<?php echo $categories->cat_ico_class->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_ico_class">
 <input type="text" data-table="categories" data-field="x_cat_ico_class" name="x_cat_ico_class" id="x_cat_ico_class" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_class->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_class->EditValue ?>"<?php echo $categories->cat_ico_class->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_ico_class">
+<span<?php echo $categories->cat_ico_class->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_ico_class->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_class" name="x_cat_ico_class" id="x_cat_ico_class" value="<?php echo ew_HtmlEncode($categories->cat_ico_class->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_ico_class->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1049,9 +1074,17 @@ $categories_add->ShowMessage();
 	<div id="r_cat_ico_image" class="form-group">
 		<label id="elh_categories_cat_ico_image" for="x_cat_ico_image" class="<?php echo $categories_add->LeftColumnClass ?>"><?php echo $categories->cat_ico_image->FldCaption() ?></label>
 		<div class="<?php echo $categories_add->RightColumnClass ?>"><div<?php echo $categories->cat_ico_image->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_ico_image">
 <input type="text" data-table="categories" data-field="x_cat_ico_image" name="x_cat_ico_image" id="x_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_ico_image">
+<span<?php echo $categories->cat_ico_image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_ico_image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="x_cat_ico_image" id="x_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_ico_image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1059,12 +1092,25 @@ $categories_add->ShowMessage();
 	<div id="r_cat_home" class="form-group">
 		<label id="elh_categories_cat_home" class="<?php echo $categories_add->LeftColumnClass ?>"><?php echo $categories->cat_home->FldCaption() ?></label>
 		<div class="<?php echo $categories_add->RightColumnClass ?>"><div<?php echo $categories->cat_home->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_home">
 <?php
 $selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" : "";
 ?>
 <input type="checkbox" data-table="categories" data-field="x_cat_home" name="x_cat_home[]" id="x_cat_home[]" value="1"<?php echo $selwrk ?><?php echo $categories->cat_home->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_home">
+<span<?php echo $categories->cat_home->ViewAttributes() ?>>
+<?php if (ew_ConvertToBool($categories->cat_home->CurrentValue)) { ?>
+<input type="checkbox" value="<?php echo $categories->cat_home->ViewValue ?>" disabled checked>
+<?php } else { ?>
+<input type="checkbox" value="<?php echo $categories->cat_home->ViewValue ?>" disabled>
+<?php } ?>
+</span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_home" name="x_cat_home" id="x_cat_home" value="<?php echo ew_HtmlEncode($categories->cat_home->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_home->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1072,8 +1118,13 @@ $selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" :
 <?php if (!$categories_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $categories_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($categories->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $categories_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

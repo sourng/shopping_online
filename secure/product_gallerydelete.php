@@ -6,6 +6,7 @@ ob_start(); // Turn on output buffering
 <?php include_once ((EW_USE_ADODB) ? "adodb5/adodb.inc.php" : "ewmysql14.php") ?>
 <?php include_once "phpfn14.php" ?>
 <?php include_once "product_galleryinfo.php" ?>
+<?php include_once "productsinfo.php" ?>
 <?php include_once "companyinfo.php" ?>
 <?php include_once "userfn14.php" ?>
 <?php
@@ -256,6 +257,9 @@ class cproduct_gallery_delete extends cproduct_gallery {
 			$GLOBALS["Table"] = &$GLOBALS["product_gallery"];
 		}
 
+		// Table object (products)
+		if (!isset($GLOBALS['products'])) $GLOBALS['products'] = new cproducts();
+
 		// Table object (company)
 		if (!isset($GLOBALS['company'])) $GLOBALS['company'] = new ccompany();
 
@@ -398,6 +402,9 @@ class cproduct_gallery_delete extends cproduct_gallery {
 	function Page_Main() {
 		global $Language;
 
+		// Set up master/detail parameters
+		$this->SetupMasterParms();
+
 		// Set up Breadcrumb
 		$this->SetupBreadcrumb();
 
@@ -418,7 +425,7 @@ class cproduct_gallery_delete extends cproduct_gallery {
 		} elseif (@$_GET["a_delete"] == "1") {
 			$this->CurrentAction = "D"; // Delete record directly
 		} else {
-			$this->CurrentAction = "I"; // Display record
+			$this->CurrentAction = "D"; // Delete record directly
 		}
 		if ($this->CurrentAction == "D") {
 			$this->SendEmail = TRUE; // Send email on delete success
@@ -427,7 +434,7 @@ class cproduct_gallery_delete extends cproduct_gallery {
 					$this->setSuccessMessage($Language->Phrase("DeleteSuccess")); // Set up success message
 				$this->Page_Terminate($this->getReturnUrl()); // Return to caller
 			} else { // Delete failed
-				$this->CurrentAction = "I"; // Display record
+				$this->Page_Terminate($this->getReturnUrl()); // Return to caller
 			}
 		}
 		if ($this->CurrentAction == "I") { // Load records for display
@@ -757,6 +764,68 @@ class cproduct_gallery_delete extends cproduct_gallery {
 			}
 		}
 		return $DeleteRows;
+	}
+
+	// Set up master/detail based on QueryString
+	function SetupMasterParms() {
+		$bValidMaster = FALSE;
+
+		// Get the keys for master table
+		if (isset($_GET[EW_TABLE_SHOW_MASTER])) {
+			$sMasterTblVar = $_GET[EW_TABLE_SHOW_MASTER];
+			if ($sMasterTblVar == "") {
+				$bValidMaster = TRUE;
+				$this->DbMasterFilter = "";
+				$this->DbDetailFilter = "";
+			}
+			if ($sMasterTblVar == "products") {
+				$bValidMaster = TRUE;
+				if (@$_GET["fk_product_id"] <> "") {
+					$GLOBALS["products"]->product_id->setQueryStringValue($_GET["fk_product_id"]);
+					$this->product_id->setQueryStringValue($GLOBALS["products"]->product_id->QueryStringValue);
+					$this->product_id->setSessionValue($this->product_id->QueryStringValue);
+					if (!is_numeric($GLOBALS["products"]->product_id->QueryStringValue)) $bValidMaster = FALSE;
+				} else {
+					$bValidMaster = FALSE;
+				}
+			}
+		} elseif (isset($_POST[EW_TABLE_SHOW_MASTER])) {
+			$sMasterTblVar = $_POST[EW_TABLE_SHOW_MASTER];
+			if ($sMasterTblVar == "") {
+				$bValidMaster = TRUE;
+				$this->DbMasterFilter = "";
+				$this->DbDetailFilter = "";
+			}
+			if ($sMasterTblVar == "products") {
+				$bValidMaster = TRUE;
+				if (@$_POST["fk_product_id"] <> "") {
+					$GLOBALS["products"]->product_id->setFormValue($_POST["fk_product_id"]);
+					$this->product_id->setFormValue($GLOBALS["products"]->product_id->FormValue);
+					$this->product_id->setSessionValue($this->product_id->FormValue);
+					if (!is_numeric($GLOBALS["products"]->product_id->FormValue)) $bValidMaster = FALSE;
+				} else {
+					$bValidMaster = FALSE;
+				}
+			}
+		}
+		if ($bValidMaster) {
+
+			// Save current master table
+			$this->setCurrentMasterTable($sMasterTblVar);
+
+			// Reset start record counter (new master key)
+			if (!$this->IsAddOrEdit()) {
+				$this->StartRec = 1;
+				$this->setStartRecordNumber($this->StartRec);
+			}
+
+			// Clear previous master key from Session
+			if ($sMasterTblVar <> "products") {
+				if ($this->product_id->CurrentValue == "") $this->product_id->setSessionValue("");
+			}
+		}
+		$this->DbMasterFilter = $this->GetMasterFilter(); // Get master filter
+		$this->DbDetailFilter = $this->GetDetailFilter(); // Get detail filter
 	}
 
 	// Set up Breadcrumb

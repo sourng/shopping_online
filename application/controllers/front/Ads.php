@@ -55,4 +55,6 @@ class Ads extends CI_Controller {
 			
 	}	
 
+	
+
 }

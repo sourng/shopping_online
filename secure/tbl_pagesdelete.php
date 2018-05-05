@@ -421,7 +421,7 @@ class ctbl_pages_delete extends ctbl_pages {
 		} elseif (@$_GET["a_delete"] == "1") {
 			$this->CurrentAction = "D"; // Delete record directly
 		} else {
-			$this->CurrentAction = "I"; // Display record
+			$this->CurrentAction = "D"; // Delete record directly
 		}
 		if ($this->CurrentAction == "D") {
 			$this->SendEmail = TRUE; // Send email on delete success
@@ -430,7 +430,7 @@ class ctbl_pages_delete extends ctbl_pages {
 					$this->setSuccessMessage($Language->Phrase("DeleteSuccess")); // Set up success message
 				$this->Page_Terminate($this->getReturnUrl()); // Return to caller
 			} else { // Delete failed
-				$this->CurrentAction = "I"; // Display record
+				$this->Page_Terminate($this->getReturnUrl()); // Return to caller
 			}
 		}
 		if ($this->CurrentAction == "I") { // Load records for display

@@ -19,7 +19,12 @@
 								</div>							
 							</div><!-- featured-top -->	
 
-							
+							<!-- pagination  -->
+							<div class="text-center">								
+								<?php 
+									echo $this->pagination->create_links();								
+								?>	
+							</div><!-- pagination  -->							
 							<?php 
 							foreach($getProducts as $pro){
 								//echo $pro['pro_status'];
@@ -39,7 +44,10 @@
 									<!-- ad-info -->
 									<div class="ad-info">
 										<h3 class="item-price">$<?php echo $pro['pro_sell_price']; ?></h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details/<?php echo $pro['product_id']; ?>"><?php echo $pro['pro_name']; ?></a></h4>
+										<h4 class="item-title">
+										<a href="<?php echo site_url(); ?>home/details/<?php echo $pro['product_id']; ?>">
+										<?php echo $pro['pro_name']; ?></a>
+										</h4>
 										<div class="item-cat">
 											<span><a href="#">Electronics & Gedgets</a></span> /
 											<span><a href="#">Tv & Video</a></span>
@@ -71,7 +79,7 @@
 								<div class="item-image-box col-sm-4">
 									<!-- item-image -->
 									<div class="item-image">
-										<a href="<?php echo site_url(); ?>categories/details/<?php echo $pro['product_id']; ?>"><img src="<?php echo base_url(); ?>public/images/listing/2.jpg" alt="Image" class="img-responsive"></a>
+										<a href="<?php echo site_url(); ?>home/details/<?php echo $pro['product_id']; ?>"><img src="<?php echo base_url(); ?>uploads/product/<?php echo $pro['featured_image']; ?>" alt="Image" class="img-responsive"></a>
 										<span class="featured-ad">Featured</span>
 										<a href="#" class="verified" data-toggle="tooltip" data-placement="left" title="Verified"><i class="fa fa-check-square-o"></i></a>
 									</div><!-- item-image -->
@@ -82,10 +90,12 @@
 									<!-- ad-info -->
 									<div class="ad-info">
 										<h3 class="item-price">$<?php echo $pro['pro_sell_price']; ?> <span>($<?php echo $pro['pro_base_price']; ?>)</span></h3>
-										<h4 class="item-title"><a href="<?php echo site_url(); ?>categories/details/<?php echo $pro['product_id']; ?>"><?php echo $pro['pro_name']; ?></a></h4>
+										<h4 class="item-title"><a href="<?php echo site_url(); ?>home/details/<?php echo $pro['product_id']; ?>"><?php echo $pro['pro_name']; ?></a></h4>
 										<div class="item-cat">
-											<span><a href="#">Home Appliances</a></span> /
-											<span><a href="#">Sofa</a></span>
+											<span><a href="<?php echo site_url(); ?>categories/find.html/<?php echo $pro['cat_id']; ?>">
+											<?php echo $this->m_crud->getFieldName('cat_name','categories','cat_id',$pro['cat_id']); ?>
+											</a></span> /
+											<span><a href="<?php echo site_url(); ?>#"><?php echo $this->m_crud->getFieldName('name','model','model_id',$pro['pro_model']); ?></a></span>
 										</div>										
 									</div><!-- ad-info -->
 									
@@ -97,8 +107,8 @@
 										</div>									
 										<!-- item-info-right -->
 										<div class="user-option pull-right">
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Address <?php echo $pro['company_id']; ?>"><i class="fa fa-map-marker"></i> </a>
-											<a class="online" href="#" data-toggle="tooltip" data-placement="top" title="Dealer"><i class="fa fa-suitcase"></i> </a>											
+											<a href="<?php echo site_url(); ?>#" data-toggle="tooltip" data-placement="top" title="Address: <?php echo $this->m_crud->getFieldName('com_address','company','company_id',$pro['company_id']); ?>"><i class="fa fa-map-marker"></i> </a>
+											<a class="online" href="<?php echo site_url(); ?>#" data-toggle="tooltip" data-placement="top" title="Dealer: <?php echo $this->m_crud->getFieldName('com_lname','company','company_id',$pro['company_id']); ?>"><i class="fa fa-suitcase"></i> </a>											
 										</div><!-- item-info-right -->
 									</div><!-- ad-meta -->
 								</div><!-- item-info -->
@@ -123,7 +133,7 @@
 							
 							<!-- pagination  -->
 							<div class="text-center">
-								<ul class="pagination ">
+								<!-- <ul class="pagination">
 									<li><a href="#"><i class="fa fa-chevron-left"></i></a></li>
 									<li><a href="#">1</a></li>
 									<li class="active"><a href="#">2</a></li>
@@ -135,7 +145,15 @@
 									<li><a href="#">20</a></li>
 									<li><a href="#">30</a></li>
 									<li><a href="#"><i class="fa fa-chevron-right"></i></a></li>			
-								</ul>
+									
+								</ul> -->
+								<?php 
+									echo $this->pagination->create_links();								
+								?>
+
+								
+
+								
 							</div><!-- pagination  -->					
 						</div>
 					</div>

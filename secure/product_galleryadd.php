@@ -6,6 +6,7 @@ ob_start(); // Turn on output buffering
 <?php include_once ((EW_USE_ADODB) ? "adodb5/adodb.inc.php" : "ewmysql14.php") ?>
 <?php include_once "phpfn14.php" ?>
 <?php include_once "product_galleryinfo.php" ?>
+<?php include_once "productsinfo.php" ?>
 <?php include_once "companyinfo.php" ?>
 <?php include_once "userfn14.php" ?>
 <?php
@@ -256,6 +257,9 @@ class cproduct_gallery_add extends cproduct_gallery {
 			$GLOBALS["Table"] = &$GLOBALS["product_gallery"];
 		}
 
+		// Table object (products)
+		if (!isset($GLOBALS['products'])) $GLOBALS['products'] = new cproducts();
+
 		// Table object (company)
 		if (!isset($GLOBALS['company'])) $GLOBALS['company'] = new ccompany();
 
@@ -438,6 +442,9 @@ class cproduct_gallery_add extends cproduct_gallery {
 		$this->IsMobileOrModal = ew_IsMobile() || $this->IsModal;
 		$this->FormClassName = "ewForm ewAddForm form-horizontal";
 
+		// Set up master/detail parameters
+		$this->SetupMasterParms();
+
 		// Set up current action
 		if (@$_POST["a_add"] <> "") {
 			$this->CurrentAction = $_POST["a_add"]; // Get form action
@@ -515,7 +522,11 @@ class cproduct_gallery_add extends cproduct_gallery {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -778,6 +789,34 @@ class cproduct_gallery_add extends cproduct_gallery {
 
 			// product_id
 			$this->product_id->EditCustomAttributes = "";
+			if ($this->product_id->getSessionValue() <> "") {
+				$this->product_id->CurrentValue = $this->product_id->getSessionValue();
+			if ($this->product_id->VirtualValue <> "") {
+				$this->product_id->ViewValue = $this->product_id->VirtualValue;
+			} else {
+			if (strval($this->product_id->CurrentValue) <> "") {
+				$sFilterWrk = "`product_id`" . ew_SearchString("=", $this->product_id->CurrentValue, EW_DATATYPE_NUMBER, "");
+			$sSqlWrk = "SELECT DISTINCT `product_id`, `pro_name` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `products`";
+			$sWhereWrk = "";
+			$this->product_id->LookupFilters = array("dx1" => '`pro_name`');
+			ew_AddFilter($sWhereWrk, $sFilterWrk);
+			$this->Lookup_Selecting($this->product_id, $sWhereWrk); // Call Lookup Selecting
+			if ($sWhereWrk <> "") $sSqlWrk .= " WHERE " . $sWhereWrk;
+				$rswrk = Conn()->Execute($sSqlWrk);
+				if ($rswrk && !$rswrk->EOF) { // Lookup values found
+					$arwrk = array();
+					$arwrk[1] = $rswrk->fields('DispFld');
+					$this->product_id->ViewValue = $this->product_id->DisplayValue($arwrk);
+					$rswrk->Close();
+				} else {
+					$this->product_id->ViewValue = $this->product_id->CurrentValue;
+				}
+			} else {
+				$this->product_id->ViewValue = NULL;
+			}
+			}
+			$this->product_id->ViewCustomAttributes = "";
+			} else {
 			if (trim(strval($this->product_id->CurrentValue)) == "") {
 				$sFilterWrk = "0=1";
 			} else {
@@ -800,6 +839,7 @@ class cproduct_gallery_add extends cproduct_gallery {
 			$arwrk = ($rswrk) ? $rswrk->GetRows() : array();
 			if ($rswrk) $rswrk->Close();
 			$this->product_id->EditValue = $arwrk;
+			}
 
 			// thumnail
 			$this->thumnail->EditAttrs["class"] = "form-control";
@@ -900,6 +940,26 @@ class cproduct_gallery_add extends cproduct_gallery {
 	// Add record
 	function AddRow($rsold = NULL) {
 		global $Language, $Security;
+
+		// Check referential integrity for master table 'products'
+		$bValidMasterRecord = TRUE;
+		$sMasterFilter = $this->SqlMasterFilter_products();
+		if (strval($this->product_id->CurrentValue) <> "") {
+			$sMasterFilter = str_replace("@product_id@", ew_AdjustSql($this->product_id->CurrentValue, "DB"), $sMasterFilter);
+		} else {
+			$bValidMasterRecord = FALSE;
+		}
+		if ($bValidMasterRecord) {
+			if (!isset($GLOBALS["products"])) $GLOBALS["products"] = new cproducts();
+			$rsmaster = $GLOBALS["products"]->LoadRs($sMasterFilter);
+			$bValidMasterRecord = ($rsmaster && !$rsmaster->EOF);
+			$rsmaster->Close();
+		}
+		if (!$bValidMasterRecord) {
+			$sRelatedRecordMsg = str_replace("%t", "products", $Language->Phrase("RelatedRecordRequired"));
+			$this->setFailureMessage($sRelatedRecordMsg);
+			return FALSE;
+		}
 		$conn = &$this->Connection();
 
 		// Load db values from rsold
@@ -923,8 +983,8 @@ class cproduct_gallery_add extends cproduct_gallery {
 			} else {
 				$rsnew['thumnail'] = $this->thumnail->Upload->FileName;
 			}
-			$this->thumnail->ImageWidth = 150; // Resize width
-			$this->thumnail->ImageHeight = 100; // Resize height
+			$this->thumnail->ImageWidth = 107; // Resize width
+			$this->thumnail->ImageHeight = 105; // Resize height
 		}
 
 		// image
@@ -935,6 +995,8 @@ class cproduct_gallery_add extends cproduct_gallery {
 			} else {
 				$rsnew['image'] = $this->image->Upload->FileName;
 			}
+			$this->image->ImageWidth = 875; // Resize width
+			$this->image->ImageHeight = 665; // Resize height
 		}
 		if ($this->thumnail->Visible && !$this->thumnail->Upload->KeepFile) {
 			$this->thumnail->UploadPath = "../uploads/product/thumnail";
@@ -1069,7 +1131,7 @@ class cproduct_gallery_add extends cproduct_gallery {
 								if (file_exists($file)) {
 									if (@$NewFiles2[$i] <> "") // Use correct file name
 										$NewFiles[$i] = $NewFiles2[$i];
-									if (!$this->image->Upload->SaveToFile($NewFiles[$i], TRUE, $i)) { // Just replace
+									if (!$this->image->Upload->ResizeAndSaveToFile($this->image->ImageWidth, $this->image->ImageHeight, EW_THUMBNAIL_DEFAULT_QUALITY, $NewFiles[$i], TRUE, $i)) {
 										$this->setFailureMessage($Language->Phrase("UploadErrMsg7"));
 										return FALSE;
 									}
@@ -1111,6 +1173,68 @@ class cproduct_gallery_add extends cproduct_gallery {
 		// image
 		ew_CleanUploadTempPath($this->image, $this->image->Upload->Index);
 		return $AddRow;
+	}
+
+	// Set up master/detail based on QueryString
+	function SetupMasterParms() {
+		$bValidMaster = FALSE;
+
+		// Get the keys for master table
+		if (isset($_GET[EW_TABLE_SHOW_MASTER])) {
+			$sMasterTblVar = $_GET[EW_TABLE_SHOW_MASTER];
+			if ($sMasterTblVar == "") {
+				$bValidMaster = TRUE;
+				$this->DbMasterFilter = "";
+				$this->DbDetailFilter = "";
+			}
+			if ($sMasterTblVar == "products") {
+				$bValidMaster = TRUE;
+				if (@$_GET["fk_product_id"] <> "") {
+					$GLOBALS["products"]->product_id->setQueryStringValue($_GET["fk_product_id"]);
+					$this->product_id->setQueryStringValue($GLOBALS["products"]->product_id->QueryStringValue);
+					$this->product_id->setSessionValue($this->product_id->QueryStringValue);
+					if (!is_numeric($GLOBALS["products"]->product_id->QueryStringValue)) $bValidMaster = FALSE;
+				} else {
+					$bValidMaster = FALSE;
+				}
+			}
+		} elseif (isset($_POST[EW_TABLE_SHOW_MASTER])) {
+			$sMasterTblVar = $_POST[EW_TABLE_SHOW_MASTER];
+			if ($sMasterTblVar == "") {
+				$bValidMaster = TRUE;
+				$this->DbMasterFilter = "";
+				$this->DbDetailFilter = "";
+			}
+			if ($sMasterTblVar == "products") {
+				$bValidMaster = TRUE;
+				if (@$_POST["fk_product_id"] <> "") {
+					$GLOBALS["products"]->product_id->setFormValue($_POST["fk_product_id"]);
+					$this->product_id->setFormValue($GLOBALS["products"]->product_id->FormValue);
+					$this->product_id->setSessionValue($this->product_id->FormValue);
+					if (!is_numeric($GLOBALS["products"]->product_id->FormValue)) $bValidMaster = FALSE;
+				} else {
+					$bValidMaster = FALSE;
+				}
+			}
+		}
+		if ($bValidMaster) {
+
+			// Save current master table
+			$this->setCurrentMasterTable($sMasterTblVar);
+
+			// Reset start record counter (new master key)
+			if (!$this->IsAddOrEdit()) {
+				$this->StartRec = 1;
+				$this->setStartRecordNumber($this->StartRec);
+			}
+
+			// Clear previous master key from Session
+			if ($sMasterTblVar <> "products") {
+				if ($this->product_id->CurrentValue == "") $this->product_id->setSessionValue("");
+			}
+		}
+		$this->DbMasterFilter = $this->GetMasterFilter(); // Get master filter
+		$this->DbDetailFilter = $this->GetDetailFilter(); // Get detail filter
 	}
 
 	// Set up Breadcrumb
@@ -1309,13 +1433,30 @@ $product_gallery_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $product_gallery_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="product_gallery">
+<?php if ($product_gallery->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($product_gallery_add->IsModal) ?>">
+<?php if ($product_gallery->getCurrentMasterTable() == "products") { ?>
+<input type="hidden" name="<?php echo EW_TABLE_SHOW_MASTER ?>" value="products">
+<input type="hidden" name="fk_product_id" value="<?php echo $product_gallery->product_id->getSessionValue() ?>">
+<?php } ?>
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($product_gallery->product_id->Visible) { // product_id ?>
 	<div id="r_product_id" class="form-group">
 		<label id="elh_product_gallery_product_id" for="x_product_id" class="<?php echo $product_gallery_add->LeftColumnClass ?>"><?php echo $product_gallery->product_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $product_gallery_add->RightColumnClass ?>"><div<?php echo $product_gallery->product_id->CellAttributes() ?>>
+<?php if ($product_gallery->CurrentAction <> "F") { ?>
+<?php if ($product_gallery->product_id->getSessionValue() <> "") { ?>
+<span id="el_product_gallery_product_id">
+<span<?php echo $product_gallery->product_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $product_gallery->product_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" id="x_product_id" name="x_product_id" value="<?php echo ew_HtmlEncode($product_gallery->product_id->CurrentValue) ?>">
+<?php } else { ?>
 <span id="el_product_gallery_product_id">
 <span class="ewLookupList">
 	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_product_id"><?php echo (strval($product_gallery->product_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $product_gallery->product_id->ViewValue); ?></span>
@@ -1324,6 +1465,14 @@ $product_gallery_add->ShowMessage();
 <input type="hidden" data-table="product_gallery" data-field="x_product_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $product_gallery->product_id->DisplayValueSeparatorAttribute() ?>" name="x_product_id" id="x_product_id" value="<?php echo $product_gallery->product_id->CurrentValue ?>"<?php echo $product_gallery->product_id->EditAttributes() ?>>
 <button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $product_gallery->product_id->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_product_id',url:'productsaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_product_id"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $product_gallery->product_id->FldCaption() ?></span></button>
 </span>
+<?php } ?>
+<?php } else { ?>
+<span id="el_product_gallery_product_id">
+<span<?php echo $product_gallery->product_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $product_gallery->product_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="product_gallery" data-field="x_product_id" name="x_product_id" id="x_product_id" value="<?php echo ew_HtmlEncode($product_gallery->product_id->FormValue) ?>">
+<?php } ?>
 <?php echo $product_gallery->product_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1373,8 +1522,13 @@ $product_gallery_add->ShowMessage();
 <?php if (!$product_gallery_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $product_gallery_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($product_gallery->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $product_gallery_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

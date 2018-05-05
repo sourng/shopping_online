@@ -7,6 +7,7 @@ ob_start(); // Turn on output buffering
 <?php include_once "phpfn14.php" ?>
 <?php include_once "productsinfo.php" ?>
 <?php include_once "companyinfo.php" ?>
+<?php include_once "product_gallerygridcls.php" ?>
 <?php include_once "userfn14.php" ?>
 <?php
 
@@ -352,6 +353,22 @@ class cproducts_add extends cproducts {
 
 		// Process auto fill
 		if (@$_POST["ajax"] == "autofill") {
+
+			// Get the keys for master table
+			$sDetailTblVar = $this->getCurrentDetailTable();
+			if ($sDetailTblVar <> "") {
+				$DetailTblVar = explode(",", $sDetailTblVar);
+				if (in_array("product_gallery", $DetailTblVar)) {
+
+					// Process auto fill for detail table 'product_gallery'
+					if (preg_match('/^fproduct_gallery(grid|add|addopt|edit|update|search)$/', @$_POST["form"])) {
+						if (!isset($GLOBALS["product_gallery_grid"])) $GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid;
+						$GLOBALS["product_gallery_grid"]->Page_Init();
+						$this->Page_Terminate();
+						exit();
+					}
+				}
+			}
 			$results = $this->GetAutoFill(@$_POST["name"], @$_POST["q"]);
 			if ($results) {
 
@@ -480,6 +497,9 @@ class cproducts_add extends cproducts {
 			$this->LoadFormValues(); // Load form values
 		}
 
+		// Set up detail parameters
+		$this->SetupDetailParms();
+
 		// Validate form if post back
 		if (@$_POST["a_add"] <> "") {
 			if (!$this->ValidateForm()) {
@@ -499,13 +519,19 @@ class cproducts_add extends cproducts {
 					if ($this->getFailureMessage() == "") $this->setFailureMessage($Language->Phrase("NoRecord")); // No record found
 					$this->Page_Terminate("productslist.php"); // No matching record, return to list
 				}
+
+				// Set up detail parameters
+				$this->SetupDetailParms();
 				break;
 			case "A": // Add new record
 				$this->SendEmail = TRUE; // Send email on add success
 				if ($this->AddRow($this->OldRecordset)) { // Add successful
 					if ($this->getSuccessMessage() == "")
 						$this->setSuccessMessage($Language->Phrase("AddSuccess")); // Set up success message
-					$sReturnUrl = $this->getReturnUrl();
+					if ($this->getCurrentDetailTable() <> "") // Master/detail add
+						$sReturnUrl = $this->GetDetailUrl();
+					else
+						$sReturnUrl = $this->getReturnUrl();
 					if (ew_GetPageName($sReturnUrl) == "productslist.php")
 						$sReturnUrl = $this->AddMasterUrl($sReturnUrl); // List page, return to List page with correct master key if necessary
 					elseif (ew_GetPageName($sReturnUrl) == "productsview.php")
@@ -514,6 +540,9 @@ class cproducts_add extends cproducts {
 				} else {
 					$this->EventCancelled = TRUE; // Event cancelled
 					$this->RestoreFormValues(); // Add failed, restore form values
+
+					// Set up detail parameters
+					$this->SetupDetailParms();
 				}
 		}
 
@@ -521,7 +550,11 @@ class cproducts_add extends cproducts {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -605,7 +638,7 @@ class cproducts_add extends cproducts {
 		}
 		if (!$this->post_date->FldIsDetailKey) {
 			$this->post_date->setFormValue($objForm->GetValue("x_post_date"));
-			$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 0);
+			$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 1);
 		}
 		if (!$this->ads_id->FldIsDetailKey) {
 			$this->ads_id->setFormValue($objForm->GetValue("x_ads_id"));
@@ -641,7 +674,7 @@ class cproducts_add extends cproducts {
 		$this->pro_condition->CurrentValue = $this->pro_condition->FormValue;
 		$this->pro_features->CurrentValue = $this->pro_features->FormValue;
 		$this->post_date->CurrentValue = $this->post_date->FormValue;
-		$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 0);
+		$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 1);
 		$this->ads_id->CurrentValue = $this->ads_id->FormValue;
 		$this->pro_base_price->CurrentValue = $this->pro_base_price->FormValue;
 		$this->pro_sell_price->CurrentValue = $this->pro_sell_price->FormValue;
@@ -649,6 +682,7 @@ class cproducts_add extends cproducts {
 		$this->pro_status->CurrentValue = $this->pro_status->FormValue;
 		$this->branch_id->CurrentValue = $this->branch_id->FormValue;
 		$this->lang->CurrentValue = $this->lang->FormValue;
+		$this->ResetDetailParms();
 	}
 
 	// Load row based on key values
@@ -714,6 +748,11 @@ class cproducts_add extends cproducts {
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
+		if (array_key_exists('EV__folder_image', $rs->fields)) {
+			$this->folder_image->VirtualValue = $rs->fields('EV__folder_image'); // Set up virtual field value
+		} else {
+			$this->folder_image->VirtualValue = ""; // Clear value
+		}
 		$this->pro_status->setDbValue($row['pro_status']);
 		$this->branch_id->setDbValue($row['branch_id']);
 		$this->lang->setDbValue($row['lang']);
@@ -936,7 +975,7 @@ class cproducts_add extends cproducts {
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
-		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 0);
+		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 1);
 		$this->post_date->ViewCustomAttributes = "";
 
 		// ads_id
@@ -964,6 +1003,9 @@ class cproducts_add extends cproducts {
 		$this->featured_image->ViewCustomAttributes = "";
 
 		// folder_image
+		if ($this->folder_image->VirtualValue <> "") {
+			$this->folder_image->ViewValue = $this->folder_image->VirtualValue;
+		} else {
 		if (strval($this->folder_image->CurrentValue) <> "") {
 			$arwrk = explode(",", $this->folder_image->CurrentValue);
 			$sFilterWrk = "";
@@ -971,7 +1013,7 @@ class cproducts_add extends cproducts {
 				if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
 				$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
 			}
-		$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+		$sSqlWrk = "SELECT DISTINCT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
 		$sWhereWrk = "";
 		$this->folder_image->LookupFilters = array("dx1" => '`image`');
 		ew_AddFilter($sWhereWrk, $sFilterWrk);
@@ -995,6 +1037,7 @@ class cproducts_add extends cproducts {
 			}
 		} else {
 			$this->folder_image->ViewValue = NULL;
+		}
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
@@ -1235,12 +1278,8 @@ class cproducts_add extends cproducts {
 			$this->pro_features->PlaceHolder = ew_RemoveHtml($this->pro_features->FldCaption());
 
 			// post_date
-			$this->post_date->EditAttrs["class"] = "form-control";
-			$this->post_date->EditCustomAttributes = "";
-			$this->post_date->EditValue = ew_HtmlEncode(ew_FormatDateTime($this->post_date->CurrentValue, 8));
-			$this->post_date->PlaceHolder = ew_RemoveHtml($this->post_date->FldCaption());
-
 			// ads_id
+
 			$this->ads_id->EditAttrs["class"] = "form-control";
 			$this->ads_id->EditCustomAttributes = "";
 			$this->ads_id->EditValue = ew_HtmlEncode($this->ads_id->CurrentValue);
@@ -1288,7 +1327,7 @@ class cproducts_add extends cproducts {
 					$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
 				}
 			}
-			$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `product_gallery`";
+			$sSqlWrk = "SELECT DISTINCT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `product_gallery`";
 			$sWhereWrk = "";
 			$this->folder_image->LookupFilters = array("dx1" => '`image`');
 			ew_AddFilter($sWhereWrk, $sFilterWrk);
@@ -1447,9 +1486,6 @@ class cproducts_add extends cproducts {
 		if (!$this->company_id->FldIsDetailKey && !is_null($this->company_id->FormValue) && $this->company_id->FormValue == "") {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->company_id->FldCaption(), $this->company_id->ReqErrMsg));
 		}
-		if (!ew_CheckDateDef($this->post_date->FormValue)) {
-			ew_AddMessage($gsFormError, $this->post_date->FldErrMsg());
-		}
 		if (!ew_CheckNumber($this->pro_base_price->FormValue)) {
 			ew_AddMessage($gsFormError, $this->pro_base_price->FldErrMsg());
 		}
@@ -1461,6 +1497,13 @@ class cproducts_add extends cproducts {
 		}
 		if ($this->folder_image->FormValue == "") {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->folder_image->FldCaption(), $this->folder_image->ReqErrMsg));
+		}
+
+		// Validate detail grid
+		$DetailTblVar = explode(",", $this->getCurrentDetailTable());
+		if (in_array("product_gallery", $DetailTblVar) && $GLOBALS["product_gallery"]->DetailAdd) {
+			if (!isset($GLOBALS["product_gallery_grid"])) $GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid(); // get detail page object
+			$GLOBALS["product_gallery_grid"]->ValidateGridForm();
 		}
 
 		// Return validate result
@@ -1479,6 +1522,10 @@ class cproducts_add extends cproducts {
 	function AddRow($rsold = NULL) {
 		global $Language, $Security;
 		$conn = &$this->Connection();
+
+		// Begin transaction
+		if ($this->getCurrentDetailTable() <> "")
+			$conn->BeginTrans();
 
 		// Load db values from rsold
 		$this->LoadDbValues($rsold);
@@ -1510,7 +1557,8 @@ class cproducts_add extends cproducts {
 		$this->pro_features->SetDbValueDef($rsnew, $this->pro_features->CurrentValue, NULL, FALSE);
 
 		// post_date
-		$this->post_date->SetDbValueDef($rsnew, ew_UnFormatDateTime($this->post_date->CurrentValue, 0), NULL, FALSE);
+		$this->post_date->SetDbValueDef($rsnew, ew_CurrentDateTime(), NULL);
+		$rsnew['post_date'] = &$this->post_date->DbValue;
 
 		// ads_id
 		$this->ads_id->SetDbValueDef($rsnew, $this->ads_id->CurrentValue, NULL, FALSE);
@@ -1636,6 +1684,29 @@ class cproducts_add extends cproducts {
 			}
 			$AddRow = FALSE;
 		}
+
+		// Add detail records
+		if ($AddRow) {
+			$DetailTblVar = explode(",", $this->getCurrentDetailTable());
+			if (in_array("product_gallery", $DetailTblVar) && $GLOBALS["product_gallery"]->DetailAdd) {
+				$GLOBALS["product_gallery"]->product_id->setSessionValue($this->product_id->CurrentValue); // Set master key
+				if (!isset($GLOBALS["product_gallery_grid"])) $GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid(); // Get detail page object
+				$Security->LoadCurrentUserLevel($this->ProjectID . "product_gallery"); // Load user level of detail table
+				$AddRow = $GLOBALS["product_gallery_grid"]->GridInsert();
+				$Security->LoadCurrentUserLevel($this->ProjectID . $this->TableName); // Restore user level of master table
+				if (!$AddRow)
+					$GLOBALS["product_gallery"]->product_id->setSessionValue(""); // Clear master key if insert failed
+			}
+		}
+
+		// Commit/Rollback transaction
+		if ($this->getCurrentDetailTable() <> "") {
+			if ($AddRow) {
+				$conn->CommitTrans(); // Commit transaction
+			} else {
+				$conn->RollbackTrans(); // Rollback transaction
+			}
+		}
 		if ($AddRow) {
 
 			// Call Row Inserted event
@@ -1646,6 +1717,66 @@ class cproducts_add extends cproducts {
 		// featured_image
 		ew_CleanUploadTempPath($this->featured_image, $this->featured_image->Upload->Index);
 		return $AddRow;
+	}
+
+	// Set up detail parms based on QueryString
+	function SetupDetailParms() {
+
+		// Get the keys for master table
+		if (isset($_GET[EW_TABLE_SHOW_DETAIL])) {
+			$sDetailTblVar = $_GET[EW_TABLE_SHOW_DETAIL];
+			$this->setCurrentDetailTable($sDetailTblVar);
+		} else {
+			$sDetailTblVar = $this->getCurrentDetailTable();
+		}
+		if ($sDetailTblVar <> "") {
+			$DetailTblVar = explode(",", $sDetailTblVar);
+			if (in_array("product_gallery", $DetailTblVar)) {
+				if (!isset($GLOBALS["product_gallery_grid"]))
+					$GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid;
+				if ($GLOBALS["product_gallery_grid"]->DetailAdd) {
+					if ($this->CopyRecord)
+						$GLOBALS["product_gallery_grid"]->CurrentMode = "copy";
+					else
+						$GLOBALS["product_gallery_grid"]->CurrentMode = "add";
+					if ($this->CurrentAction == "F")
+						$GLOBALS["product_gallery_grid"]->CurrentAction = "F";
+					else
+						$GLOBALS["product_gallery_grid"]->CurrentAction = "gridadd";
+					if ($this->CurrentAction == "X")
+						$GLOBALS["product_gallery_grid"]->EventCancelled = TRUE;
+
+					// Save current master table to detail table
+					$GLOBALS["product_gallery_grid"]->setCurrentMasterTable($this->TableVar);
+					$GLOBALS["product_gallery_grid"]->setStartRecordNumber(1);
+					$GLOBALS["product_gallery_grid"]->product_id->FldIsDetailKey = TRUE;
+					$GLOBALS["product_gallery_grid"]->product_id->CurrentValue = $this->product_id->CurrentValue;
+					$GLOBALS["product_gallery_grid"]->product_id->setSessionValue($GLOBALS["product_gallery_grid"]->product_id->CurrentValue);
+				}
+			}
+		}
+	}
+
+	// Reset detail parms
+	function ResetDetailParms() {
+
+		// Get the keys for master table
+		if (isset($_GET[EW_TABLE_SHOW_DETAIL])) {
+			$sDetailTblVar = $_GET[EW_TABLE_SHOW_DETAIL];
+			$this->setCurrentDetailTable($sDetailTblVar);
+		} else {
+			$sDetailTblVar = $this->getCurrentDetailTable();
+		}
+		if ($sDetailTblVar <> "") {
+			$DetailTblVar = explode(",", $sDetailTblVar);
+			if (in_array("product_gallery", $DetailTblVar)) {
+				if (!isset($GLOBALS["product_gallery_grid"]))
+					$GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid;
+				if ($GLOBALS["product_gallery_grid"]->DetailAdd) {
+					$GLOBALS["product_gallery_grid"]->CurrentAction = "gridadd";
+				}
+			}
+		}
 	}
 
 	// Set up Breadcrumb
@@ -1701,7 +1832,7 @@ class cproducts_add extends cproducts {
 			break;
 		case "x_folder_image":
 			$sSqlWrk = "";
-			$sSqlWrk = "SELECT `pro_gallery_id` AS `LinkFld`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+			$sSqlWrk = "SELECT DISTINCT `pro_gallery_id` AS `LinkFld`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
 			$sWhereWrk = "{filter}";
 			$fld->LookupFilters = array("dx1" => '`image`');
 			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`pro_gallery_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
@@ -1848,9 +1979,6 @@ fproductsadd.Validate = function() {
 			elm = this.GetElements("x" + infix + "_company_id");
 			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
 				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->company_id->FldCaption(), $products->company_id->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_post_date");
-			if (elm && !ew_CheckDateDef(elm.value))
-				return this.OnError(elm, "<?php echo ew_JsEncode2($products->post_date->FldErrMsg()) ?>");
 			elm = this.GetElements("x" + infix + "_pro_base_price");
 			if (elm && !ew_CheckNumber(elm.value))
 				return this.OnError(elm, "<?php echo ew_JsEncode2($products->pro_base_price->FldErrMsg()) ?>");
@@ -1925,13 +2053,19 @@ $products_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $products_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="products">
+<?php if ($products->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($products_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($products->cat_id->Visible) { // cat_id ?>
 	<div id="r_cat_id" class="form-group">
 		<label id="elh_products_cat_id" for="x_cat_id" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->cat_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->cat_id->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_cat_id">
 <span class="ewLookupList">
 	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_cat_id"><?php echo (strval($products->cat_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->cat_id->ViewValue); ?></span>
@@ -1940,6 +2074,13 @@ $products_add->ShowMessage();
 <input type="hidden" data-table="products" data-field="x_cat_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->cat_id->DisplayValueSeparatorAttribute() ?>" name="x_cat_id" id="x_cat_id" value="<?php echo $products->cat_id->CurrentValue ?>"<?php echo $products->cat_id->EditAttributes() ?>>
 <button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->cat_id->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_cat_id',url:'categoriesaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_cat_id"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->cat_id->FldCaption() ?></span></button>
 </span>
+<?php } else { ?>
+<span id="el_products_cat_id">
+<span<?php echo $products->cat_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->cat_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_cat_id" name="x_cat_id" id="x_cat_id" value="<?php echo ew_HtmlEncode($products->cat_id->FormValue) ?>">
+<?php } ?>
 <?php echo $products->cat_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1947,6 +2088,7 @@ $products_add->ShowMessage();
 	<div id="r_company_id" class="form-group">
 		<label id="elh_products_company_id" for="x_company_id" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->company_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->company_id->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_company_id">
 <span class="ewLookupList">
 	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_company_id"><?php echo (strval($products->company_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->company_id->ViewValue); ?></span>
@@ -1955,6 +2097,13 @@ $products_add->ShowMessage();
 <input type="hidden" data-table="products" data-field="x_company_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->company_id->DisplayValueSeparatorAttribute() ?>" name="x_company_id" id="x_company_id" value="<?php echo $products->company_id->CurrentValue ?>"<?php echo $products->company_id->EditAttributes() ?>>
 <button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->company_id->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_company_id',url:'companyaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_company_id"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->company_id->FldCaption() ?></span></button>
 </span>
+<?php } else { ?>
+<span id="el_products_company_id">
+<span<?php echo $products->company_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->company_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_company_id" name="x_company_id" id="x_company_id" value="<?php echo ew_HtmlEncode($products->company_id->FormValue) ?>">
+<?php } ?>
 <?php echo $products->company_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1962,6 +2111,7 @@ $products_add->ShowMessage();
 	<div id="r_pro_model" class="form-group">
 		<label id="elh_products_pro_model" for="x_pro_model" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_model->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_model->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_model">
 <span class="ewLookupList">
 	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_pro_model"><?php echo (strval($products->pro_model->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->pro_model->ViewValue); ?></span>
@@ -1970,6 +2120,13 @@ $products_add->ShowMessage();
 <input type="hidden" data-table="products" data-field="x_pro_model" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->pro_model->DisplayValueSeparatorAttribute() ?>" name="x_pro_model" id="x_pro_model" value="<?php echo $products->pro_model->CurrentValue ?>"<?php echo $products->pro_model->EditAttributes() ?>>
 <button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->pro_model->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_pro_model',url:'modeladdopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_pro_model"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->pro_model->FldCaption() ?></span></button>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_model">
+<span<?php echo $products->pro_model->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->pro_model->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_model" name="x_pro_model" id="x_pro_model" value="<?php echo ew_HtmlEncode($products->pro_model->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_model->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1977,9 +2134,17 @@ $products_add->ShowMessage();
 	<div id="r_pro_name" class="form-group">
 		<label id="elh_products_pro_name" for="x_pro_name" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_name->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_name->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_name">
 <input type="text" data-table="products" data-field="x_pro_name" name="x_pro_name" id="x_pro_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->pro_name->getPlaceHolder()) ?>" value="<?php echo $products->pro_name->EditValue ?>"<?php echo $products->pro_name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_name">
+<span<?php echo $products->pro_name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->pro_name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_name" name="x_pro_name" id="x_pro_name" value="<?php echo ew_HtmlEncode($products->pro_name->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1987,6 +2152,7 @@ $products_add->ShowMessage();
 	<div id="r_pro_description" class="form-group">
 		<label id="elh_products_pro_description" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_description->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_description->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_description">
 <?php ew_AppendClass($products->pro_description->EditAttrs["class"], "editor"); ?>
 <textarea data-table="products" data-field="x_pro_description" name="x_pro_description" id="x_pro_description" cols="45" rows="4" placeholder="<?php echo ew_HtmlEncode($products->pro_description->getPlaceHolder()) ?>"<?php echo $products->pro_description->EditAttributes() ?>><?php echo $products->pro_description->EditValue ?></textarea>
@@ -1994,6 +2160,13 @@ $products_add->ShowMessage();
 ew_CreateEditor("fproductsadd", "x_pro_description", 45, 4, <?php echo ($products->pro_description->ReadOnly || FALSE) ? "true" : "false" ?>);
 </script>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_description">
+<span<?php echo $products->pro_description->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->pro_description->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_description" name="x_pro_description" id="x_pro_description" value="<?php echo ew_HtmlEncode($products->pro_description->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_description->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2001,11 +2174,19 @@ ew_CreateEditor("fproductsadd", "x_pro_description", 45, 4, <?php echo ($product
 	<div id="r_pro_condition" class="form-group">
 		<label id="elh_products_pro_condition" for="x_pro_condition" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_condition->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_condition->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_condition">
 <select data-table="products" data-field="x_pro_condition" data-value-separator="<?php echo $products->pro_condition->DisplayValueSeparatorAttribute() ?>" id="x_pro_condition" name="x_pro_condition"<?php echo $products->pro_condition->EditAttributes() ?>>
 <?php echo $products->pro_condition->SelectOptionListHtml("x_pro_condition") ?>
 </select>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_condition">
+<span<?php echo $products->pro_condition->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->pro_condition->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_condition" name="x_pro_condition" id="x_pro_condition" value="<?php echo ew_HtmlEncode($products->pro_condition->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_condition->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2013,29 +2194,43 @@ ew_CreateEditor("fproductsadd", "x_pro_description", 45, 4, <?php echo ($product
 	<div id="r_pro_features" class="form-group">
 		<label id="elh_products_pro_features" for="x_pro_features" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_features->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_features->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_features">
 <input type="text" data-table="products" data-field="x_pro_features" name="x_pro_features" id="x_pro_features" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->pro_features->getPlaceHolder()) ?>" value="<?php echo $products->pro_features->EditValue ?>"<?php echo $products->pro_features->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_features">
+<span<?php echo $products->pro_features->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->pro_features->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_features" name="x_pro_features" id="x_pro_features" value="<?php echo ew_HtmlEncode($products->pro_features->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_features->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
-<?php if ($products->post_date->Visible) { // post_date ?>
-	<div id="r_post_date" class="form-group">
-		<label id="elh_products_post_date" for="x_post_date" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->post_date->FldCaption() ?></label>
-		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->post_date->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
+<?php } else { ?>
 <span id="el_products_post_date">
-<input type="text" data-table="products" data-field="x_post_date" name="x_post_date" id="x_post_date" placeholder="<?php echo ew_HtmlEncode($products->post_date->getPlaceHolder()) ?>" value="<?php echo $products->post_date->EditValue ?>"<?php echo $products->post_date->EditAttributes() ?>>
+<span<?php echo $products->post_date->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->post_date->ViewValue ?></p></span>
 </span>
-<?php echo $products->post_date->CustomMsg ?></div></div>
-	</div>
+<input type="hidden" data-table="products" data-field="x_post_date" name="x_post_date" id="x_post_date" value="<?php echo ew_HtmlEncode($products->post_date->FormValue) ?>">
 <?php } ?>
 <?php if ($products->ads_id->Visible) { // ads_id ?>
 	<div id="r_ads_id" class="form-group">
 		<label id="elh_products_ads_id" for="x_ads_id" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->ads_id->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->ads_id->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_ads_id">
 <input type="text" data-table="products" data-field="x_ads_id" name="x_ads_id" id="x_ads_id" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($products->ads_id->getPlaceHolder()) ?>" value="<?php echo $products->ads_id->EditValue ?>"<?php echo $products->ads_id->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_products_ads_id">
+<span<?php echo $products->ads_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->ads_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_ads_id" name="x_ads_id" id="x_ads_id" value="<?php echo ew_HtmlEncode($products->ads_id->FormValue) ?>">
+<?php } ?>
 <?php echo $products->ads_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2043,9 +2238,17 @@ ew_CreateEditor("fproductsadd", "x_pro_description", 45, 4, <?php echo ($product
 	<div id="r_pro_base_price" class="form-group">
 		<label id="elh_products_pro_base_price" for="x_pro_base_price" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_base_price->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_base_price->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_base_price">
 <input type="text" data-table="products" data-field="x_pro_base_price" name="x_pro_base_price" id="x_pro_base_price" size="30" placeholder="<?php echo ew_HtmlEncode($products->pro_base_price->getPlaceHolder()) ?>" value="<?php echo $products->pro_base_price->EditValue ?>"<?php echo $products->pro_base_price->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_base_price">
+<span<?php echo $products->pro_base_price->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->pro_base_price->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_base_price" name="x_pro_base_price" id="x_pro_base_price" value="<?php echo ew_HtmlEncode($products->pro_base_price->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_base_price->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2053,9 +2256,17 @@ ew_CreateEditor("fproductsadd", "x_pro_description", 45, 4, <?php echo ($product
 	<div id="r_pro_sell_price" class="form-group">
 		<label id="elh_products_pro_sell_price" for="x_pro_sell_price" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_sell_price->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_sell_price->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_sell_price">
 <input type="text" data-table="products" data-field="x_pro_sell_price" name="x_pro_sell_price" id="x_pro_sell_price" size="30" placeholder="<?php echo ew_HtmlEncode($products->pro_sell_price->getPlaceHolder()) ?>" value="<?php echo $products->pro_sell_price->EditValue ?>"<?php echo $products->pro_sell_price->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_sell_price">
+<span<?php echo $products->pro_sell_price->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->pro_sell_price->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_sell_price" name="x_pro_sell_price" id="x_pro_sell_price" value="<?php echo ew_HtmlEncode($products->pro_sell_price->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_sell_price->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2084,13 +2295,22 @@ ew_CreateEditor("fproductsadd", "x_pro_description", 45, 4, <?php echo ($product
 	<div id="r_folder_image" class="form-group">
 		<label id="elh_products_folder_image" for="x_folder_image" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->folder_image->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->folder_image->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_folder_image">
 <span class="ewLookupList">
 	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_folder_image"><?php echo (strval($products->folder_image->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->folder_image->ViewValue); ?></span>
 </span>
 <button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->folder_image->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_folder_image[]',m:1,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->folder_image->ReadOnly || $products->folder_image->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
 <input type="hidden" data-table="products" data-field="x_folder_image" data-multiple="1" data-lookup="1" data-value-separator="<?php echo $products->folder_image->DisplayValueSeparatorAttribute() ?>" name="x_folder_image[]" id="x_folder_image[]" value="<?php echo $products->folder_image->CurrentValue ?>"<?php echo $products->folder_image->EditAttributes() ?>>
+<button type="button" title="<?php echo ew_HtmlTitle($Language->Phrase("AddLink")) . "&nbsp;" . $products->folder_image->FldCaption() ?>" onclick="ew_AddOptDialogShow({lnk:this,el:'x_folder_image[]',url:'product_galleryaddopt.php'});" class="ewAddOptBtn btn btn-default btn-sm" id="aol_x_folder_image"><span class="glyphicon glyphicon-plus ewIcon"></span><span class="hide"><?php echo $Language->Phrase("AddLink") ?>&nbsp;<?php echo $products->folder_image->FldCaption() ?></span></button>
 </span>
+<?php } else { ?>
+<span id="el_products_folder_image">
+<span<?php echo $products->folder_image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->folder_image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_folder_image" name="x_folder_image" id="x_folder_image" value="<?php echo ew_HtmlEncode($products->folder_image->FormValue) ?>">
+<?php } ?>
 <?php echo $products->folder_image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2098,12 +2318,25 @@ ew_CreateEditor("fproductsadd", "x_pro_description", 45, 4, <?php echo ($product
 	<div id="r_pro_status" class="form-group">
 		<label id="elh_products_pro_status" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->pro_status->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->pro_status->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_pro_status">
 <?php
 $selwrk = (ew_ConvertToBool($products->pro_status->CurrentValue)) ? " checked" : "";
 ?>
 <input type="checkbox" data-table="products" data-field="x_pro_status" name="x_pro_status[]" id="x_pro_status[]" value="1"<?php echo $selwrk ?><?php echo $products->pro_status->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_products_pro_status">
+<span<?php echo $products->pro_status->ViewAttributes() ?>>
+<?php if (ew_ConvertToBool($products->pro_status->CurrentValue)) { ?>
+<input type="checkbox" value="<?php echo $products->pro_status->ViewValue ?>" disabled checked>
+<?php } else { ?>
+<input type="checkbox" value="<?php echo $products->pro_status->ViewValue ?>" disabled>
+<?php } ?>
+</span>
+</span>
+<input type="hidden" data-table="products" data-field="x_pro_status" name="x_pro_status" id="x_pro_status" value="<?php echo ew_HtmlEncode($products->pro_status->FormValue) ?>">
+<?php } ?>
 <?php echo $products->pro_status->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2111,6 +2344,7 @@ $selwrk = (ew_ConvertToBool($products->pro_status->CurrentValue)) ? " checked" :
 	<div id="r_branch_id" class="form-group">
 		<label id="elh_products_branch_id" for="x_branch_id" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->branch_id->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->branch_id->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_branch_id">
 <span class="ewLookupList">
 	<span onclick="jQuery(this).parent().next().click();" tabindex="-1" class="form-control ewLookupText" id="lu_x_branch_id"><?php echo (strval($products->branch_id->ViewValue) == "" ? $Language->Phrase("PleaseSelect") : $products->branch_id->ViewValue); ?></span>
@@ -2118,6 +2352,13 @@ $selwrk = (ew_ConvertToBool($products->pro_status->CurrentValue)) ? " checked" :
 <button type="button" title="<?php echo ew_HtmlEncode(str_replace("%s", ew_RemoveHtml($products->branch_id->FldCaption()), $Language->Phrase("LookupLink", TRUE))) ?>" onclick="ew_ModalLookupShow({lnk:this,el:'x_branch_id',m:0,n:10});" class="ewLookupBtn btn btn-default btn-sm"<?php echo (($products->branch_id->ReadOnly || $products->branch_id->Disabled) ? " disabled" : "")?>><span class="glyphicon glyphicon-search ewIcon"></span></button>
 <input type="hidden" data-table="products" data-field="x_branch_id" data-multiple="0" data-lookup="1" data-value-separator="<?php echo $products->branch_id->DisplayValueSeparatorAttribute() ?>" name="x_branch_id" id="x_branch_id" value="<?php echo $products->branch_id->CurrentValue ?>"<?php echo $products->branch_id->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_products_branch_id">
+<span<?php echo $products->branch_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->branch_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_branch_id" name="x_branch_id" id="x_branch_id" value="<?php echo ew_HtmlEncode($products->branch_id->FormValue) ?>">
+<?php } ?>
 <?php echo $products->branch_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2125,6 +2366,7 @@ $selwrk = (ew_ConvertToBool($products->pro_status->CurrentValue)) ? " checked" :
 	<div id="r_lang" class="form-group">
 		<label id="elh_products_lang" for="x_lang" class="<?php echo $products_add->LeftColumnClass ?>"><?php echo $products->lang->FldCaption() ?></label>
 		<div class="<?php echo $products_add->RightColumnClass ?>"><div<?php echo $products->lang->CellAttributes() ?>>
+<?php if ($products->CurrentAction <> "F") { ?>
 <span id="el_products_lang">
 <div class="ewDropdownList has-feedback">
 	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($products->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
@@ -2142,15 +2384,35 @@ $selwrk = (ew_ConvertToBool($products->pro_status->CurrentValue)) ? " checked" :
 	<div id="tp_x_lang" class="ewTemplate"><input type="radio" data-table="products" data-field="x_lang" data-value-separator="<?php echo $products->lang->DisplayValueSeparatorAttribute() ?>" name="x_lang" id="x_lang" value="{value}"<?php echo $products->lang->EditAttributes() ?>></div>
 </div>
 </span>
+<?php } else { ?>
+<span id="el_products_lang">
+<span<?php echo $products->lang->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $products->lang->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="products" data-field="x_lang" name="x_lang" id="x_lang" value="<?php echo ew_HtmlEncode($products->lang->FormValue) ?>">
+<?php } ?>
 <?php echo $products->lang->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
 </div><!-- /page* -->
+<?php
+	if (in_array("product_gallery", explode(",", $products->getCurrentDetailTable())) && $product_gallery->DetailAdd) {
+?>
+<?php if ($products->getCurrentDetailTable() <> "") { ?>
+<h4 class="ewDetailCaption"><?php echo $Language->TablePhrase("product_gallery", "TblCaption") ?></h4>
+<?php } ?>
+<?php include_once "product_gallerygrid.php" ?>
+<?php } ?>
 <?php if (!$products_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $products_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($products->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $products_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

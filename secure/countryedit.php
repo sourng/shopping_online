@@ -425,6 +425,7 @@ class ccountry_edit extends ccountry {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -516,6 +517,12 @@ class ccountry_edit extends ccountry {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -536,6 +543,7 @@ class ccountry_edit extends ccountry {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("countrylist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -559,7 +567,11 @@ class ccountry_edit extends ccountry {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -629,6 +641,8 @@ class ccountry_edit extends ccountry {
 		if (!$this->deatil->FldIsDetailKey) {
 			$this->deatil->setFormValue($objForm->GetValue("x_deatil"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -640,6 +654,8 @@ class ccountry_edit extends ccountry {
 		$this->country_code->CurrentValue = $this->country_code->FormValue;
 		$this->image->CurrentValue = $this->image->FormValue;
 		$this->deatil->CurrentValue = $this->deatil->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -685,6 +701,8 @@ class ccountry_edit extends ccountry {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -961,6 +979,19 @@ class ccountry_edit extends ccountry {
 			// deatil
 			$this->deatil->SetDbValueDef($rsnew, $this->deatil->CurrentValue, NULL, $this->deatil->ReadOnly);
 
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
 			if ($bUpdateRow) {
@@ -991,6 +1022,32 @@ class ccountry_edit extends ccountry {
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('country_name_kh')); // country_name_kh
+		$sHash .= ew_GetFldHash($rs->fields('country_name_en')); // country_name_en
+		$sHash .= ew_GetFldHash($rs->fields('country_code')); // country_code
+		$sHash .= ew_GetFldHash($rs->fields('image')); // image
+		$sHash .= ew_GetFldHash($rs->fields('deatil')); // deatil
+		return md5($sHash);
 	}
 
 	// Set up Breadcrumb
@@ -1168,6 +1225,7 @@ fcountryedit.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 $country_edit->ShowMessage();
 ?>
 <?php if (!$country_edit->IsModal) { ?>
+<?php if ($country->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($country_edit->Pager)) $country_edit->Pager = new cPrevNextPager($country_edit->StartRec, $country_edit->DisplayRecs, $country_edit->TotalRecs, $country_edit->AutoHidePager) ?>
 <?php if ($country_edit->Pager->RecordCount > 0 && $country_edit->Pager->Visible) { ?>
@@ -1212,23 +1270,41 @@ $country_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="fcountryedit" id="fcountryedit" class="<?php echo $country_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($country_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $country_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="country">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $country_edit->HashValue ?>">
+<?php if ($country->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($country->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($country_edit->IsModal) ?>">
 <div class="ewEditDiv"><!-- page* -->
 <?php if ($country->country_id->Visible) { // country_id ?>
 	<div id="r_country_id" class="form-group">
 		<label id="elh_country_country_id" class="<?php echo $country_edit->LeftColumnClass ?>"><?php echo $country->country_id->FldCaption() ?></label>
 		<div class="<?php echo $country_edit->RightColumnClass ?>"><div<?php echo $country->country_id->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_country_id">
 <span<?php echo $country->country_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $country->country_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="country" data-field="x_country_id" name="x_country_id" id="x_country_id" value="<?php echo ew_HtmlEncode($country->country_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_country_country_id">
+<span<?php echo $country->country_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->country_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_country_id" name="x_country_id" id="x_country_id" value="<?php echo ew_HtmlEncode($country->country_id->FormValue) ?>">
+<?php } ?>
 <?php echo $country->country_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1236,9 +1312,17 @@ $country_edit->ShowMessage();
 	<div id="r_country_name_kh" class="form-group">
 		<label id="elh_country_country_name_kh" for="x_country_name_kh" class="<?php echo $country_edit->LeftColumnClass ?>"><?php echo $country->country_name_kh->FldCaption() ?></label>
 		<div class="<?php echo $country_edit->RightColumnClass ?>"><div<?php echo $country->country_name_kh->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_country_name_kh">
 <input type="text" data-table="country" data-field="x_country_name_kh" name="x_country_name_kh" id="x_country_name_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->country_name_kh->getPlaceHolder()) ?>" value="<?php echo $country->country_name_kh->EditValue ?>"<?php echo $country->country_name_kh->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_country_name_kh">
+<span<?php echo $country->country_name_kh->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->country_name_kh->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_country_name_kh" name="x_country_name_kh" id="x_country_name_kh" value="<?php echo ew_HtmlEncode($country->country_name_kh->FormValue) ?>">
+<?php } ?>
 <?php echo $country->country_name_kh->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1246,9 +1330,17 @@ $country_edit->ShowMessage();
 	<div id="r_country_name_en" class="form-group">
 		<label id="elh_country_country_name_en" for="x_country_name_en" class="<?php echo $country_edit->LeftColumnClass ?>"><?php echo $country->country_name_en->FldCaption() ?></label>
 		<div class="<?php echo $country_edit->RightColumnClass ?>"><div<?php echo $country->country_name_en->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_country_name_en">
 <input type="text" data-table="country" data-field="x_country_name_en" name="x_country_name_en" id="x_country_name_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->country_name_en->getPlaceHolder()) ?>" value="<?php echo $country->country_name_en->EditValue ?>"<?php echo $country->country_name_en->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_country_name_en">
+<span<?php echo $country->country_name_en->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->country_name_en->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_country_name_en" name="x_country_name_en" id="x_country_name_en" value="<?php echo ew_HtmlEncode($country->country_name_en->FormValue) ?>">
+<?php } ?>
 <?php echo $country->country_name_en->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1256,9 +1348,17 @@ $country_edit->ShowMessage();
 	<div id="r_country_code" class="form-group">
 		<label id="elh_country_country_code" for="x_country_code" class="<?php echo $country_edit->LeftColumnClass ?>"><?php echo $country->country_code->FldCaption() ?></label>
 		<div class="<?php echo $country_edit->RightColumnClass ?>"><div<?php echo $country->country_code->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_country_code">
 <input type="text" data-table="country" data-field="x_country_code" name="x_country_code" id="x_country_code" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->country_code->getPlaceHolder()) ?>" value="<?php echo $country->country_code->EditValue ?>"<?php echo $country->country_code->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_country_code">
+<span<?php echo $country->country_code->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->country_code->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_country_code" name="x_country_code" id="x_country_code" value="<?php echo ew_HtmlEncode($country->country_code->FormValue) ?>">
+<?php } ?>
 <?php echo $country->country_code->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1266,9 +1366,17 @@ $country_edit->ShowMessage();
 	<div id="r_image" class="form-group">
 		<label id="elh_country_image" for="x_image" class="<?php echo $country_edit->LeftColumnClass ?>"><?php echo $country->image->FldCaption() ?></label>
 		<div class="<?php echo $country_edit->RightColumnClass ?>"><div<?php echo $country->image->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_image">
 <input type="text" data-table="country" data-field="x_image" name="x_image" id="x_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->image->getPlaceHolder()) ?>" value="<?php echo $country->image->EditValue ?>"<?php echo $country->image->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_image">
+<span<?php echo $country->image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_image" name="x_image" id="x_image" value="<?php echo ew_HtmlEncode($country->image->FormValue) ?>">
+<?php } ?>
 <?php echo $country->image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1276,9 +1384,17 @@ $country_edit->ShowMessage();
 	<div id="r_deatil" class="form-group">
 		<label id="elh_country_deatil" for="x_deatil" class="<?php echo $country_edit->LeftColumnClass ?>"><?php echo $country->deatil->FldCaption() ?></label>
 		<div class="<?php echo $country_edit->RightColumnClass ?>"><div<?php echo $country->deatil->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_deatil">
 <textarea data-table="country" data-field="x_deatil" name="x_deatil" id="x_deatil" cols="35" rows="4" placeholder="<?php echo ew_HtmlEncode($country->deatil->getPlaceHolder()) ?>"<?php echo $country->deatil->EditAttributes() ?>><?php echo $country->deatil->EditValue ?></textarea>
 </span>
+<?php } else { ?>
+<span id="el_country_deatil">
+<span<?php echo $country->deatil->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->deatil->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_deatil" name="x_deatil" id="x_deatil" value="<?php echo ew_HtmlEncode($country->deatil->FormValue) ?>">
+<?php } ?>
 <?php echo $country->deatil->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1286,12 +1402,23 @@ $country_edit->ShowMessage();
 <?php if (!$country_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $country_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($country->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($country->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $country_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$country_edit->IsModal) { ?>
+<?php if ($country->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($country_edit->Pager)) $country_edit->Pager = new cPrevNextPager($country_edit->StartRec, $country_edit->DisplayRecs, $country_edit->TotalRecs, $country_edit->AutoHidePager) ?>
 <?php if ($country_edit->Pager->RecordCount > 0 && $country_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -1333,6 +1460,7 @@ $country_edit->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

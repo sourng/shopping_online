@@ -34,7 +34,7 @@
 											<?php 
 												foreach($getCat_Left as $cat){												
 												?>
-												<li><a href="<?php echo site_url(); ?>"><i class="<?php echo $cat['cat_ico_class']; ?>"></i><?php echo $cat['cat_name']; ?><span>(<?php echo $cat['number']; ?>)</span></a></li>
+												<li><a href="<?php echo site_url(); ?>categories/find.html/<?php echo $cat['cat_id']; ?>"><i class="<?php echo $cat['cat_ico_class']; ?>"></i><?php echo $cat['cat_name']; ?><span>(<?php echo $cat['number']; ?>)</span></a></li>
 												<?php	
 												}											
 											?>

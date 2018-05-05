@@ -70,18 +70,70 @@ class Crud_model extends CI_Model
 		return  $this->db->update('categories',$data);
 	}
 
-	function getAllOrigin(){
+	public function getAllOrigin(){
         $query=$this->db->query("SELECT * FROM tbl_contacts");
         return $query->result_array();
         //returns from this string in the db, converts it into an array
     }
 
-  	function getOrigin(){ 
+	public function getOrigin(){ 
 	  $this->db->select("id,origin,photo,country");
 	  $this->db->from('tbl_origin');    
 	  $query = $this->db->get();  
 	  return $query->result();   
 	 }
+
+	 // Count all record of table "contact_info" in database.
+	public function record_count($table_name,$cat_id=false) {
+		if($cat_id!=false){
+			$this->db->where('cat_id',$cat_id);
+			// $query = $this->db->get_where('products', array('cat_id' => $cat_id));
+		}
+		return $this->db->count_all($table_name);
+	}
+
+	 // Count all record of table "contact_info" in database.
+	 public function get_total($table_name=false,$cat_id=false) {
+		if($cat_id!=false){
+			return $this->db
+				->where('cat_id', $cat_id)
+				// ->where('is_enabled', 1)
+				->count_all_results($table_name);
+		}else{
+			return $this->db->count_all($table_name);
+		}	
+	}
+
+	public function get_current_page_records($limit, $start,$cat_id=false)
+{
+	// $this->db->limit($limit, $start);	
+
+	if($cat_id!=false){
+		// $this->db->where('cat_id',$cat_id);
+		$query = $this->db->get_where('products', array('cat_id' => $cat_id), $limit, $start);
+	}else{
+		$query = $this->db->get('products', $limit, $start);
+	}	
+    // $query = $this->db->get("products");
+  
+    if ($query->num_rows() > 0)
+    {
+        
+		return $query->result_array();
+    }  
+    return false;
+}
+
+
+public function getFieldName($fieldName,$tableName,$fieldCond,$fieldFind){
+    // $this->db->select($fieldName);
+    // $this->db->from($tableName);
+    // $this->db->where($fieldCond,$fieldFind);
+	// return $this->db->get($tableName);
+	
+	$result = $this->db->query("SELECT ".$fieldName." FROM ".$tableName." WHERE $fieldCond='".$fieldFind."'")->row_array();
+    	return $result[$fieldName];
+}
 
 
 }

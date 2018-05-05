@@ -424,6 +424,7 @@ class ccategories_edit extends ccategories {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -515,6 +516,12 @@ class ccategories_edit extends ccategories {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -535,6 +542,7 @@ class ccategories_edit extends ccategories {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("categorieslist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -558,7 +566,11 @@ class ccategories_edit extends ccategories {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -625,6 +637,8 @@ class ccategories_edit extends ccategories {
 		if (!$this->cat_home->FldIsDetailKey) {
 			$this->cat_home->setFormValue($objForm->GetValue("x_cat_home"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -635,6 +649,8 @@ class ccategories_edit extends ccategories {
 		$this->cat_ico_class->CurrentValue = $this->cat_ico_class->FormValue;
 		$this->cat_ico_image->CurrentValue = $this->cat_ico_image->FormValue;
 		$this->cat_home->CurrentValue = $this->cat_home->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -680,6 +696,8 @@ class ccategories_edit extends ccategories {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -935,6 +953,19 @@ class ccategories_edit extends ccategories {
 				$tmpBool = (!empty($tmpBool)) ? "Y" : "N";
 			$this->cat_home->SetDbValueDef($rsnew, $tmpBool, NULL, $this->cat_home->ReadOnly);
 
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
 			if ($bUpdateRow) {
@@ -965,6 +996,31 @@ class ccategories_edit extends ccategories {
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('cat_name')); // cat_name
+		$sHash .= ew_GetFldHash($rs->fields('cat_ico_class')); // cat_ico_class
+		$sHash .= ew_GetFldHash($rs->fields('cat_ico_image')); // cat_ico_image
+		$sHash .= ew_GetFldHash($rs->fields('cat_home')); // cat_home
+		return md5($sHash);
 	}
 
 	// Set up Breadcrumb
@@ -1144,6 +1200,7 @@ fcategoriesedit.Lists["x_cat_home[]"].Options = <?php echo json_encode($categori
 $categories_edit->ShowMessage();
 ?>
 <?php if (!$categories_edit->IsModal) { ?>
+<?php if ($categories->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($categories_edit->Pager)) $categories_edit->Pager = new cPrevNextPager($categories_edit->StartRec, $categories_edit->DisplayRecs, $categories_edit->TotalRecs, $categories_edit->AutoHidePager) ?>
 <?php if ($categories_edit->Pager->RecordCount > 0 && $categories_edit->Pager->Visible) { ?>
@@ -1188,23 +1245,41 @@ $categories_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="fcategoriesedit" id="fcategoriesedit" class="<?php echo $categories_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($categories_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $categories_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="categories">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $categories_edit->HashValue ?>">
+<?php if ($categories->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($categories->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($categories_edit->IsModal) ?>">
 <div class="ewEditDiv"><!-- page* -->
 <?php if ($categories->cat_id->Visible) { // cat_id ?>
 	<div id="r_cat_id" class="form-group">
 		<label id="elh_categories_cat_id" class="<?php echo $categories_edit->LeftColumnClass ?>"><?php echo $categories->cat_id->FldCaption() ?></label>
 		<div class="<?php echo $categories_edit->RightColumnClass ?>"><div<?php echo $categories->cat_id->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_id">
 <span<?php echo $categories->cat_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $categories->cat_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="categories" data-field="x_cat_id" name="x_cat_id" id="x_cat_id" value="<?php echo ew_HtmlEncode($categories->cat_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_categories_cat_id">
+<span<?php echo $categories->cat_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_id" name="x_cat_id" id="x_cat_id" value="<?php echo ew_HtmlEncode($categories->cat_id->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1212,9 +1287,17 @@ $categories_edit->ShowMessage();
 	<div id="r_cat_name" class="form-group">
 		<label id="elh_categories_cat_name" for="x_cat_name" class="<?php echo $categories_edit->LeftColumnClass ?>"><?php echo $categories->cat_name->FldCaption() ?></label>
 		<div class="<?php echo $categories_edit->RightColumnClass ?>"><div<?php echo $categories->cat_name->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_name">
 <input type="text" data-table="categories" data-field="x_cat_name" name="x_cat_name" id="x_cat_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_name->getPlaceHolder()) ?>" value="<?php echo $categories->cat_name->EditValue ?>"<?php echo $categories->cat_name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_name">
+<span<?php echo $categories->cat_name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_name" name="x_cat_name" id="x_cat_name" value="<?php echo ew_HtmlEncode($categories->cat_name->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1222,9 +1305,17 @@ $categories_edit->ShowMessage();
 	<div id="r_cat_ico_class" class="form-group">
 		<label id="elh_categories_cat_ico_class" for="x_cat_ico_class" class="<?php echo $categories_edit->LeftColumnClass ?>"><?php echo $categories->cat_ico_class->FldCaption() ?></label>
 		<div class="<?php echo $categories_edit->RightColumnClass ?>"><div<?php echo $categories->cat_ico_class->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_ico_class">
 <input type="text" data-table="categories" data-field="x_cat_ico_class" name="x_cat_ico_class" id="x_cat_ico_class" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_class->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_class->EditValue ?>"<?php echo $categories->cat_ico_class->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_ico_class">
+<span<?php echo $categories->cat_ico_class->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_ico_class->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_class" name="x_cat_ico_class" id="x_cat_ico_class" value="<?php echo ew_HtmlEncode($categories->cat_ico_class->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_ico_class->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1232,9 +1323,17 @@ $categories_edit->ShowMessage();
 	<div id="r_cat_ico_image" class="form-group">
 		<label id="elh_categories_cat_ico_image" for="x_cat_ico_image" class="<?php echo $categories_edit->LeftColumnClass ?>"><?php echo $categories->cat_ico_image->FldCaption() ?></label>
 		<div class="<?php echo $categories_edit->RightColumnClass ?>"><div<?php echo $categories->cat_ico_image->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_ico_image">
 <input type="text" data-table="categories" data-field="x_cat_ico_image" name="x_cat_ico_image" id="x_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_ico_image">
+<span<?php echo $categories->cat_ico_image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_ico_image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="x_cat_ico_image" id="x_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_ico_image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1242,12 +1341,25 @@ $categories_edit->ShowMessage();
 	<div id="r_cat_home" class="form-group">
 		<label id="elh_categories_cat_home" class="<?php echo $categories_edit->LeftColumnClass ?>"><?php echo $categories->cat_home->FldCaption() ?></label>
 		<div class="<?php echo $categories_edit->RightColumnClass ?>"><div<?php echo $categories->cat_home->CellAttributes() ?>>
+<?php if ($categories->CurrentAction <> "F") { ?>
 <span id="el_categories_cat_home">
 <?php
 $selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" : "";
 ?>
 <input type="checkbox" data-table="categories" data-field="x_cat_home" name="x_cat_home[]" id="x_cat_home[]" value="1"<?php echo $selwrk ?><?php echo $categories->cat_home->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_categories_cat_home">
+<span<?php echo $categories->cat_home->ViewAttributes() ?>>
+<?php if (ew_ConvertToBool($categories->cat_home->CurrentValue)) { ?>
+<input type="checkbox" value="<?php echo $categories->cat_home->ViewValue ?>" disabled checked>
+<?php } else { ?>
+<input type="checkbox" value="<?php echo $categories->cat_home->ViewValue ?>" disabled>
+<?php } ?>
+</span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_home" name="x_cat_home" id="x_cat_home" value="<?php echo ew_HtmlEncode($categories->cat_home->FormValue) ?>">
+<?php } ?>
 <?php echo $categories->cat_home->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1255,12 +1367,23 @@ $selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" :
 <?php if (!$categories_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $categories_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($categories->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($categories->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $categories_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$categories_edit->IsModal) { ?>
+<?php if ($categories->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($categories_edit->Pager)) $categories_edit->Pager = new cPrevNextPager($categories_edit->StartRec, $categories_edit->DisplayRecs, $categories_edit->TotalRecs, $categories_edit->AutoHidePager) ?>
 <?php if ($categories_edit->Pager->RecordCount > 0 && $categories_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -1302,6 +1425,7 @@ $selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" :
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

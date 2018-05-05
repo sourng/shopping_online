@@ -11,16 +11,14 @@
 						<div class="dropdown category-dropdown">						
 							<a data-toggle="dropdown" href="#"><span class="change-text">Select Category</span> <i class="fa fa-angle-down"></i></a>
 							<ul class="dropdown-menu category-change">
-                                                          <?php
-                                                          foreach($categories as $cat){
-                                                              ?>
-                                                            <li><a href="#"><?php echo $cat['cat_name']; ?></a></li>
-                                                            <?php
-                                                          }                                                         
-                                                          
-                                                          ?>
-								
-								
+								<?php
+								foreach($categories as $cat){
+									?>
+								<li><a href="<?php echo site_url(); ?>categories/find.html/<?php echo $cat['cat_id']; ?>">
+								<?php echo $cat['cat_name']; ?>( <span style="color:red;"><?php echo $cat['number']; ?></span>)</a></li>
+								<?php
+								}  
+								?>
 							</ul>								
 						</div><!-- category-change -->
 					
@@ -173,7 +171,7 @@
                                     <!-- featured -->
 									<div class="featured">
 										<div class="featured-image">
-											<a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><img src="<?php echo base_url(); ?>public/images/slider/<?php echo $rows['featured_image']; ?>" alt="" class="img-respocive"></a>
+											<a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><img src="<?php echo base_url(); ?>uploads/product/<?php echo $rows['featured_image']; ?>" alt="" class="img-respocive"></a>
 											<a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>" class="verified" data-toggle="tooltip" data-placement="left" title="Verified"><i class="fa fa-check-square-o"></i></a>
 										</div>
 										
@@ -198,18 +196,12 @@
 											</div><!-- item-info-right -->
 										</div><!-- ad-meta -->
 									</div>
-                                                                        <!-- featured -->
-                                                                        
-                                                                        <?php
-                                                                            }
-                                                                        
-                                                                        ?>
-									
-									
-                                                                        
-                                                                        
-                                                                        
-                                                                        
+								<!-- featured -->
+								
+								<?php
+									}
+								
+								?>                                      
                                                                         
 								</div><!-- featured-slider -->
 							</div><!-- #featured-slider -->

@@ -6,6 +6,7 @@ ob_start(); // Turn on output buffering
 <?php include_once ((EW_USE_ADODB) ? "adodb5/adodb.inc.php" : "ewmysql14.php") ?>
 <?php include_once "phpfn14.php" ?>
 <?php include_once "product_galleryinfo.php" ?>
+<?php include_once "productsinfo.php" ?>
 <?php include_once "companyinfo.php" ?>
 <?php include_once "userfn14.php" ?>
 <?php
@@ -256,6 +257,9 @@ class cproduct_gallery_edit extends cproduct_gallery {
 			$GLOBALS["Table"] = &$GLOBALS["product_gallery"];
 		}
 
+		// Table object (products)
+		if (!isset($GLOBALS['products'])) $GLOBALS['products'] = new cproducts();
+
 		// Table object (company)
 		if (!isset($GLOBALS['company'])) $GLOBALS['company'] = new ccompany();
 
@@ -423,6 +427,7 @@ class cproduct_gallery_edit extends cproduct_gallery {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -485,6 +490,9 @@ class cproduct_gallery_edit extends cproduct_gallery {
 				$loadByPosition = TRUE;
 		}
 
+		// Set up master detail parameters
+		$this->SetupMasterParms();
+
 		// Load recordset
 		$this->StartRec = 1; // Initialize start position
 		if ($this->Recordset = $this->LoadRecordset()) // Load records
@@ -523,6 +531,12 @@ class cproduct_gallery_edit extends cproduct_gallery {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -543,6 +557,7 @@ class cproduct_gallery_edit extends cproduct_gallery {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("product_gallerylist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -566,7 +581,11 @@ class cproduct_gallery_edit extends cproduct_gallery {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -631,6 +650,8 @@ class cproduct_gallery_edit extends cproduct_gallery {
 		if (!$this->product_id->FldIsDetailKey) {
 			$this->product_id->setFormValue($objForm->GetValue("x_product_id"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -638,6 +659,8 @@ class cproduct_gallery_edit extends cproduct_gallery {
 		global $objForm;
 		$this->pro_gallery_id->CurrentValue = $this->pro_gallery_id->FormValue;
 		$this->product_id->CurrentValue = $this->product_id->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -683,6 +706,8 @@ class cproduct_gallery_edit extends cproduct_gallery {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -1052,8 +1077,8 @@ class cproduct_gallery_edit extends cproduct_gallery {
 				} else {
 					$rsnew['thumnail'] = $this->thumnail->Upload->FileName;
 				}
-				$this->thumnail->ImageWidth = 150; // Resize width
-				$this->thumnail->ImageHeight = 100; // Resize height
+				$this->thumnail->ImageWidth = 107; // Resize width
+				$this->thumnail->ImageHeight = 105; // Resize height
 			}
 
 			// image
@@ -1064,6 +1089,43 @@ class cproduct_gallery_edit extends cproduct_gallery {
 				} else {
 					$rsnew['image'] = $this->image->Upload->FileName;
 				}
+				$this->image->ImageWidth = 875; // Resize width
+				$this->image->ImageHeight = 665; // Resize height
+			}
+
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
+			// Check referential integrity for master table 'products'
+			$bValidMasterRecord = TRUE;
+			$sMasterFilter = $this->SqlMasterFilter_products();
+			$KeyValue = isset($rsnew['product_id']) ? $rsnew['product_id'] : $rsold['product_id'];
+			if (strval($KeyValue) <> "") {
+				$sMasterFilter = str_replace("@product_id@", ew_AdjustSql($KeyValue), $sMasterFilter);
+			} else {
+				$bValidMasterRecord = FALSE;
+			}
+			if ($bValidMasterRecord) {
+				if (!isset($GLOBALS["products"])) $GLOBALS["products"] = new cproducts();
+				$rsmaster = $GLOBALS["products"]->LoadRs($sMasterFilter);
+				$bValidMasterRecord = ($rsmaster && !$rsmaster->EOF);
+				$rsmaster->Close();
+			}
+			if (!$bValidMasterRecord) {
+				$sRelatedRecordMsg = str_replace("%t", "products", $Language->Phrase("RelatedRecordRequired"));
+				$this->setFailureMessage($sRelatedRecordMsg);
+				$rs->Close();
+				return FALSE;
 			}
 			if ($this->thumnail->Visible && !$this->thumnail->Upload->KeepFile) {
 				$this->thumnail->UploadPath = "../uploads/product/thumnail";
@@ -1194,7 +1256,7 @@ class cproduct_gallery_edit extends cproduct_gallery {
 									if (file_exists($file)) {
 										if (@$NewFiles2[$i] <> "") // Use correct file name
 											$NewFiles[$i] = $NewFiles2[$i];
-										if (!$this->image->Upload->SaveToFile($NewFiles[$i], TRUE, $i)) { // Just replace
+										if (!$this->image->Upload->ResizeAndSaveToFile($this->image->ImageWidth, $this->image->ImageHeight, EW_THUMBNAIL_DEFAULT_QUALITY, $NewFiles[$i], TRUE, $i)) {
 											$this->setFailureMessage($Language->Phrase("UploadErrMsg7"));
 											return FALSE;
 										}
@@ -1236,6 +1298,93 @@ class cproduct_gallery_edit extends cproduct_gallery {
 		// image
 		ew_CleanUploadTempPath($this->image, $this->image->Upload->Index);
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('product_id')); // product_id
+		$sHash .= ew_GetFldHash($rs->fields('thumnail')); // thumnail
+		$sHash .= ew_GetFldHash($rs->fields('image')); // image
+		return md5($sHash);
+	}
+
+	// Set up master/detail based on QueryString
+	function SetupMasterParms() {
+		$bValidMaster = FALSE;
+
+		// Get the keys for master table
+		if (isset($_GET[EW_TABLE_SHOW_MASTER])) {
+			$sMasterTblVar = $_GET[EW_TABLE_SHOW_MASTER];
+			if ($sMasterTblVar == "") {
+				$bValidMaster = TRUE;
+				$this->DbMasterFilter = "";
+				$this->DbDetailFilter = "";
+			}
+			if ($sMasterTblVar == "products") {
+				$bValidMaster = TRUE;
+				if (@$_GET["fk_product_id"] <> "") {
+					$GLOBALS["products"]->product_id->setQueryStringValue($_GET["fk_product_id"]);
+					$this->product_id->setQueryStringValue($GLOBALS["products"]->product_id->QueryStringValue);
+					$this->product_id->setSessionValue($this->product_id->QueryStringValue);
+					if (!is_numeric($GLOBALS["products"]->product_id->QueryStringValue)) $bValidMaster = FALSE;
+				} else {
+					$bValidMaster = FALSE;
+				}
+			}
+		} elseif (isset($_POST[EW_TABLE_SHOW_MASTER])) {
+			$sMasterTblVar = $_POST[EW_TABLE_SHOW_MASTER];
+			if ($sMasterTblVar == "") {
+				$bValidMaster = TRUE;
+				$this->DbMasterFilter = "";
+				$this->DbDetailFilter = "";
+			}
+			if ($sMasterTblVar == "products") {
+				$bValidMaster = TRUE;
+				if (@$_POST["fk_product_id"] <> "") {
+					$GLOBALS["products"]->product_id->setFormValue($_POST["fk_product_id"]);
+					$this->product_id->setFormValue($GLOBALS["products"]->product_id->FormValue);
+					$this->product_id->setSessionValue($this->product_id->FormValue);
+					if (!is_numeric($GLOBALS["products"]->product_id->FormValue)) $bValidMaster = FALSE;
+				} else {
+					$bValidMaster = FALSE;
+				}
+			}
+		}
+		if ($bValidMaster) {
+
+			// Save current master table
+			$this->setCurrentMasterTable($sMasterTblVar);
+			$this->setSessionWhere($this->GetDetailFilter());
+
+			// Reset start record counter (new master key)
+			if (!$this->IsAddOrEdit()) {
+				$this->StartRec = 1;
+				$this->setStartRecordNumber($this->StartRec);
+			}
+
+			// Clear previous master key from Session
+			if ($sMasterTblVar <> "products") {
+				if ($this->product_id->CurrentValue == "") $this->product_id->setSessionValue("");
+			}
+		}
+		$this->DbMasterFilter = $this->GetMasterFilter(); // Get master filter
+		$this->DbDetailFilter = $this->GetDetailFilter(); // Get detail filter
 	}
 
 	// Set up Breadcrumb
@@ -1418,6 +1567,7 @@ fproduct_galleryedit.Lists["x_product_id"].Data = "<?php echo $product_gallery_e
 $product_gallery_edit->ShowMessage();
 ?>
 <?php if (!$product_gallery_edit->IsModal) { ?>
+<?php if ($product_gallery->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($product_gallery_edit->Pager)) $product_gallery_edit->Pager = new cPrevNextPager($product_gallery_edit->StartRec, $product_gallery_edit->DisplayRecs, $product_gallery_edit->TotalRecs, $product_gallery_edit->AutoHidePager) ?>
 <?php if ($product_gallery_edit->Pager->RecordCount > 0 && $product_gallery_edit->Pager->Visible) { ?>
@@ -1462,23 +1612,45 @@ $product_gallery_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="fproduct_galleryedit" id="fproduct_galleryedit" class="<?php echo $product_gallery_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($product_gallery_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $product_gallery_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="product_gallery">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $product_gallery_edit->HashValue ?>">
+<?php if ($product_gallery->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($product_gallery->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($product_gallery_edit->IsModal) ?>">
+<?php if ($product_gallery->getCurrentMasterTable() == "products") { ?>
+<input type="hidden" name="<?php echo EW_TABLE_SHOW_MASTER ?>" value="products">
+<input type="hidden" name="fk_product_id" value="<?php echo $product_gallery->product_id->getSessionValue() ?>">
+<?php } ?>
 <div class="ewEditDiv"><!-- page* -->
 <?php if ($product_gallery->pro_gallery_id->Visible) { // pro_gallery_id ?>
 	<div id="r_pro_gallery_id" class="form-group">
 		<label id="elh_product_gallery_pro_gallery_id" class="<?php echo $product_gallery_edit->LeftColumnClass ?>"><?php echo $product_gallery->pro_gallery_id->FldCaption() ?></label>
 		<div class="<?php echo $product_gallery_edit->RightColumnClass ?>"><div<?php echo $product_gallery->pro_gallery_id->CellAttributes() ?>>
+<?php if ($product_gallery->CurrentAction <> "F") { ?>
 <span id="el_product_gallery_pro_gallery_id">
 <span<?php echo $product_gallery->pro_gallery_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $product_gallery->pro_gallery_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="product_gallery" data-field="x_pro_gallery_id" name="x_pro_gallery_id" id="x_pro_gallery_id" value="<?php echo ew_HtmlEncode($product_gallery->pro_gallery_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_product_gallery_pro_gallery_id">
+<span<?php echo $product_gallery->pro_gallery_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $product_gallery->pro_gallery_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="product_gallery" data-field="x_pro_gallery_id" name="x_pro_gallery_id" id="x_pro_gallery_id" value="<?php echo ew_HtmlEncode($product_gallery->pro_gallery_id->FormValue) ?>">
+<?php } ?>
 <?php echo $product_gallery->pro_gallery_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1486,11 +1658,19 @@ $product_gallery_edit->ShowMessage();
 	<div id="r_product_id" class="form-group">
 		<label id="elh_product_gallery_product_id" for="x_product_id" class="<?php echo $product_gallery_edit->LeftColumnClass ?>"><?php echo $product_gallery->product_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $product_gallery_edit->RightColumnClass ?>"><div<?php echo $product_gallery->product_id->CellAttributes() ?>>
+<?php if ($product_gallery->CurrentAction <> "F") { ?>
 <span id="el_product_gallery_product_id">
 <span<?php echo $product_gallery->product_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $product_gallery->product_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="product_gallery" data-field="x_product_id" name="x_product_id" id="x_product_id" value="<?php echo ew_HtmlEncode($product_gallery->product_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_product_gallery_product_id">
+<span<?php echo $product_gallery->product_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $product_gallery->product_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="product_gallery" data-field="x_product_id" name="x_product_id" id="x_product_id" value="<?php echo ew_HtmlEncode($product_gallery->product_id->FormValue) ?>">
+<?php } ?>
 <?php echo $product_gallery->product_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1548,12 +1728,23 @@ $product_gallery_edit->ShowMessage();
 <?php if (!$product_gallery_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $product_gallery_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($product_gallery->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($product_gallery->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $product_gallery_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$product_gallery_edit->IsModal) { ?>
+<?php if ($product_gallery->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($product_gallery_edit->Pager)) $product_gallery_edit->Pager = new cPrevNextPager($product_gallery_edit->StartRec, $product_gallery_edit->DisplayRecs, $product_gallery_edit->TotalRecs, $product_gallery_edit->AutoHidePager) ?>
 <?php if ($product_gallery_edit->Pager->RecordCount > 0 && $product_gallery_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -1595,6 +1786,7 @@ $product_gallery_edit->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

@@ -393,8 +393,11 @@ class cprovince_list extends cprovince {
 		// 
 		// Security = null;
 		// 
-		// Get export parameters
+		// Create form object
 
+		$objForm = new cFormObj();
+
+		// Get export parameters
 		$custom = "";
 		if (@$_GET["export"] <> "") {
 			$this->Export = $_GET["export"];
@@ -560,7 +563,7 @@ class cprovince_list extends cprovince {
 	var $ListActions; // List actions
 	var $SelectedCount = 0;
 	var $SelectedIndex = 0;
-	var $DisplayRecs = 20;
+	var $DisplayRecs = 10;
 	var $StartRec;
 	var $StopRec;
 	var $TotalRecs = 0;
@@ -592,6 +595,7 @@ class cprovince_list extends cprovince {
 	var $MultiSelectKey;
 	var $Command;
 	var $RestoreSearch = FALSE;
+	var $HashValue; // Hash value
 	var $DetailPages;
 	var $Recordset;
 	var $OldRecordset;
@@ -622,6 +626,71 @@ class cprovince_list extends cprovince {
 			if ($this->Export == "")
 				$this->SetupBreadcrumb();
 
+			// Check QueryString parameters
+			if (@$_GET["a"] <> "") {
+				$this->CurrentAction = $_GET["a"];
+
+				// Clear inline mode
+				if ($this->CurrentAction == "cancel")
+					$this->ClearInlineMode();
+
+				// Switch to grid edit mode
+				if ($this->CurrentAction == "gridedit")
+					$this->GridEditMode();
+
+				// Switch to inline edit mode
+				if ($this->CurrentAction == "edit")
+					$this->InlineEditMode();
+
+				// Switch to inline add mode
+				if ($this->CurrentAction == "add" || $this->CurrentAction == "copy")
+					$this->InlineAddMode();
+
+				// Switch to grid add mode
+				if ($this->CurrentAction == "gridadd")
+					$this->GridAddMode();
+			} else {
+				if (@$_POST["a_list"] <> "") {
+					$this->CurrentAction = $_POST["a_list"]; // Get action
+
+					// Grid Update
+					if (($this->CurrentAction == "gridupdate" || $this->CurrentAction == "gridoverwrite") && @$_SESSION[EW_SESSION_INLINE_MODE] == "gridedit") {
+						if ($this->ValidateGridForm()) {
+							$bGridUpdate = $this->GridUpdate();
+						} else {
+							$bGridUpdate = FALSE;
+							$this->setFailureMessage($gsFormError);
+						}
+						if (!$bGridUpdate) {
+							$this->EventCancelled = TRUE;
+							$this->CurrentAction = "gridedit"; // Stay in Grid Edit mode
+						}
+					}
+
+					// Inline Update
+					if (($this->CurrentAction == "update" || $this->CurrentAction == "overwrite") && @$_SESSION[EW_SESSION_INLINE_MODE] == "edit")
+						$this->InlineUpdate();
+
+					// Insert Inline
+					if ($this->CurrentAction == "insert" && @$_SESSION[EW_SESSION_INLINE_MODE] == "add")
+						$this->InlineInsert();
+
+					// Grid Insert
+					if ($this->CurrentAction == "gridinsert" && @$_SESSION[EW_SESSION_INLINE_MODE] == "gridadd") {
+						if ($this->ValidateGridForm()) {
+							$bGridInsert = $this->GridInsert();
+						} else {
+							$bGridInsert = FALSE;
+							$this->setFailureMessage($gsFormError);
+						}
+						if (!$bGridInsert) {
+							$this->EventCancelled = TRUE;
+							$this->CurrentAction = "gridadd"; // Stay in Grid Add mode
+						}
+					}
+				}
+			}
+
 			// Hide list options
 			if ($this->Export <> "") {
 				$this->ListOptions->HideAllOptions(array("sequence"));
@@ -643,6 +712,14 @@ class cprovince_list extends cprovince {
 			if ($this->Export <> "") {
 				foreach ($this->OtherOptions as &$option)
 					$option->HideAllOptions();
+			}
+
+			// Show grid delete link for grid add / grid edit
+			if ($this->AllowAddDeleteRow) {
+				if ($this->CurrentAction == "gridadd" || $this->CurrentAction == "gridedit") {
+					$item = $this->ListOptions->GetItem("griddelete");
+					if ($item) $item->Visible = TRUE;
+				}
 			}
 
 			// Get default search criteria
@@ -673,7 +750,7 @@ class cprovince_list extends cprovince {
 		if ($this->Command <> "json" && $this->getRecordsPerPage() <> "") {
 			$this->DisplayRecs = $this->getRecordsPerPage(); // Restore from Session
 		} else {
-			$this->DisplayRecs = 20; // Load default
+			$this->DisplayRecs = 10; // Load default
 		}
 
 		// Load Sorting Order
@@ -747,6 +824,240 @@ class cprovince_list extends cprovince {
 		$this->SetupSearchOptions();
 	}
 
+	// Exit inline mode
+	function ClearInlineMode() {
+		$this->setKey("province_id", ""); // Clear inline edit key
+		$this->setKey("country_id", ""); // Clear inline edit key
+		$this->LastAction = $this->CurrentAction; // Save last action
+		$this->CurrentAction = ""; // Clear action
+		$_SESSION[EW_SESSION_INLINE_MODE] = ""; // Clear inline mode
+	}
+
+	// Switch to Grid Add mode
+	function GridAddMode() {
+		$_SESSION[EW_SESSION_INLINE_MODE] = "gridadd"; // Enabled grid add
+	}
+
+	// Switch to Grid Edit mode
+	function GridEditMode() {
+		$_SESSION[EW_SESSION_INLINE_MODE] = "gridedit"; // Enable grid edit
+	}
+
+	// Switch to Inline Edit mode
+	function InlineEditMode() {
+		global $Security, $Language;
+		if (!$Security->CanEdit())
+			$this->Page_Terminate("login.php"); // Go to login page
+		$bInlineEdit = TRUE;
+		if (isset($_GET["province_id"])) {
+			$this->province_id->setQueryStringValue($_GET["province_id"]);
+		} else {
+			$bInlineEdit = FALSE;
+		}
+		if (isset($_GET["country_id"])) {
+			$this->country_id->setQueryStringValue($_GET["country_id"]);
+		} else {
+			$bInlineEdit = FALSE;
+		}
+		if ($bInlineEdit) {
+			if ($this->LoadRow()) {
+				$this->setKey("province_id", $this->province_id->CurrentValue); // Set up inline edit key
+				$this->setKey("country_id", $this->country_id->CurrentValue); // Set up inline edit key
+				$_SESSION[EW_SESSION_INLINE_MODE] = "edit"; // Enable inline edit
+			}
+		}
+	}
+
+	// Perform update to Inline Edit record
+	function InlineUpdate() {
+		global $Language, $objForm, $gsFormError;
+		$objForm->Index = 1;
+		$this->LoadFormValues(); // Get form values
+
+		// Validate form
+		$bInlineUpdate = TRUE;
+		if (!$this->ValidateForm()) {
+			$bInlineUpdate = FALSE; // Form error, reset action
+			$this->setFailureMessage($gsFormError);
+		} else {
+
+			// Overwrite record, just reload hash value
+			if ($this->CurrentAction == "overwrite")
+				$this->LoadRowHash();
+			$bInlineUpdate = FALSE;
+			$rowkey = strval($objForm->GetValue($this->FormKeyName));
+			if ($this->SetupKeyValues($rowkey)) { // Set up key values
+				if ($this->CheckInlineEditKey()) { // Check key
+					$this->SendEmail = TRUE; // Send email on update success
+					$bInlineUpdate = $this->EditRow(); // Update record
+				} else {
+					$bInlineUpdate = FALSE;
+				}
+			}
+		}
+		if ($bInlineUpdate) { // Update success
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("UpdateSuccess")); // Set up success message
+			$this->ClearInlineMode(); // Clear inline edit mode
+		} else {
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("UpdateFailed")); // Set update failed message
+			$this->EventCancelled = TRUE; // Cancel event
+			$this->CurrentAction = "edit"; // Stay in edit mode
+		}
+	}
+
+	// Check Inline Edit key
+	function CheckInlineEditKey() {
+
+		//CheckInlineEditKey = True
+		if (strval($this->getKey("province_id")) <> strval($this->province_id->CurrentValue))
+			return FALSE;
+		if (strval($this->getKey("country_id")) <> strval($this->country_id->CurrentValue))
+			return FALSE;
+		return TRUE;
+	}
+
+	// Switch to Inline Add mode
+	function InlineAddMode() {
+		global $Security, $Language;
+		if (!$Security->CanAdd())
+			$this->Page_Terminate("login.php"); // Return to login page
+		$this->CurrentAction = "add";
+		$_SESSION[EW_SESSION_INLINE_MODE] = "add"; // Enable inline add
+	}
+
+	// Perform update to Inline Add/Copy record
+	function InlineInsert() {
+		global $Language, $objForm, $gsFormError;
+		$this->LoadOldRecord(); // Load old record
+		$objForm->Index = 0;
+		$this->LoadFormValues(); // Get form values
+
+		// Validate form
+		if (!$this->ValidateForm()) {
+			$this->setFailureMessage($gsFormError); // Set validation error message
+			$this->EventCancelled = TRUE; // Set event cancelled
+			$this->CurrentAction = "add"; // Stay in add mode
+			return;
+		}
+		$this->SendEmail = TRUE; // Send email on add success
+		if ($this->AddRow($this->OldRecordset)) { // Add record
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("AddSuccess")); // Set up add success message
+			$this->ClearInlineMode(); // Clear inline add mode
+		} else { // Add failed
+			$this->EventCancelled = TRUE; // Set event cancelled
+			$this->CurrentAction = "add"; // Stay in add mode
+		}
+	}
+
+	// Perform update to grid
+	function GridUpdate() {
+		global $Language, $objForm, $gsFormError;
+		$bGridUpdate = TRUE;
+
+		// Get old recordset
+		$this->CurrentFilter = $this->BuildKeyFilter();
+		if ($this->CurrentFilter == "")
+			$this->CurrentFilter = "0=1";
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		if ($rs = $conn->Execute($sSql)) {
+			$rsold = $rs->GetRows();
+			$rs->Close();
+		}
+
+		// Call Grid Updating event
+		if (!$this->Grid_Updating($rsold)) {
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("GridEditCancelled")); // Set grid edit cancelled message
+			return FALSE;
+		}
+
+		// Begin transaction
+		$conn->BeginTrans();
+		$sKey = "";
+
+		// Update row index and get row key
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Update all rows based on key
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+			$objForm->Index = $rowindex;
+			$rowkey = strval($objForm->GetValue($this->FormKeyName));
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+
+			// Load all values and keys
+			if ($rowaction <> "insertdelete") { // Skip insert then deleted rows
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "" || $rowaction == "edit" || $rowaction == "delete") {
+					$bGridUpdate = $this->SetupKeyValues($rowkey); // Set up key values
+				} else {
+					$bGridUpdate = TRUE;
+				}
+
+				// Skip empty row
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// No action required
+				// Validate form and insert/update/delete record
+
+				} elseif ($bGridUpdate) {
+					if ($rowaction == "delete") {
+						$this->CurrentFilter = $this->KeyFilter();
+						$bGridUpdate = $this->DeleteRows(); // Delete this row
+					} else if (!$this->ValidateForm()) {
+						$bGridUpdate = FALSE; // Form error, reset action
+						$this->setFailureMessage($gsFormError);
+					} else {
+						if ($rowaction == "insert") {
+							$bGridUpdate = $this->AddRow(); // Insert this row
+						} else {
+							if ($rowkey <> "") {
+
+								// Overwrite record, just reload hash value
+								if ($this->CurrentAction == "gridoverwrite")
+									$this->LoadRowHash();
+								$this->SendEmail = FALSE; // Do not send email on update success
+								$bGridUpdate = $this->EditRow(); // Update this row
+							}
+						} // End update
+					}
+				}
+				if ($bGridUpdate) {
+					if ($sKey <> "") $sKey .= ", ";
+					$sKey .= $rowkey;
+				} else {
+					break;
+				}
+			}
+		}
+		if ($bGridUpdate) {
+			$conn->CommitTrans(); // Commit transaction
+
+			// Get new recordset
+			if ($rs = $conn->Execute($sSql)) {
+				$rsnew = $rs->GetRows();
+				$rs->Close();
+			}
+
+			// Call Grid_Updated event
+			$this->Grid_Updated($rsold, $rsnew);
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("UpdateSuccess")); // Set up update success message
+			$this->ClearInlineMode(); // Clear inline edit mode
+		} else {
+			$conn->RollbackTrans(); // Rollback transaction
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("UpdateFailed")); // Set update failed message
+		}
+		return $bGridUpdate;
+	}
+
 	// Build filter for all keys
 	function BuildKeyFilter() {
 		global $objForm;
@@ -786,6 +1097,199 @@ class cprovince_list extends cprovince {
 				return FALSE;
 		}
 		return TRUE;
+	}
+
+	// Perform Grid Add
+	function GridInsert() {
+		global $Language, $objForm, $gsFormError;
+		$rowindex = 1;
+		$bGridInsert = FALSE;
+		$conn = &$this->Connection();
+
+		// Call Grid Inserting event
+		if (!$this->Grid_Inserting()) {
+			if ($this->getFailureMessage() == "") {
+				$this->setFailureMessage($Language->Phrase("GridAddCancelled")); // Set grid add cancelled message
+			}
+			return FALSE;
+		}
+
+		// Begin transaction
+		$conn->BeginTrans();
+
+		// Init key filter
+		$sWrkFilter = "";
+		$addcnt = 0;
+		$sKey = "";
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Insert all rows
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "" && $rowaction <> "insert")
+				continue; // Skip
+			$this->LoadFormValues(); // Get form values
+			if (!$this->EmptyRow()) {
+				$addcnt++;
+				$this->SendEmail = FALSE; // Do not send email on insert success
+
+				// Validate form
+				if (!$this->ValidateForm()) {
+					$bGridInsert = FALSE; // Form error, reset action
+					$this->setFailureMessage($gsFormError);
+				} else {
+					$bGridInsert = $this->AddRow($this->OldRecordset); // Insert this row
+				}
+				if ($bGridInsert) {
+					if ($sKey <> "") $sKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+					$sKey .= $this->province_id->CurrentValue;
+					if ($sKey <> "") $sKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+					$sKey .= $this->country_id->CurrentValue;
+
+					// Add filter for this record
+					$sFilter = $this->KeyFilter();
+					if ($sWrkFilter <> "") $sWrkFilter .= " OR ";
+					$sWrkFilter .= $sFilter;
+				} else {
+					break;
+				}
+			}
+		}
+		if ($addcnt == 0) { // No record inserted
+			$this->setFailureMessage($Language->Phrase("NoAddRecord"));
+			$bGridInsert = FALSE;
+		}
+		if ($bGridInsert) {
+			$conn->CommitTrans(); // Commit transaction
+
+			// Get new recordset
+			$this->CurrentFilter = $sWrkFilter;
+			$sSql = $this->SQL();
+			if ($rs = $conn->Execute($sSql)) {
+				$rsnew = $rs->GetRows();
+				$rs->Close();
+			}
+
+			// Call Grid_Inserted event
+			$this->Grid_Inserted($rsnew);
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("InsertSuccess")); // Set up insert success message
+			$this->ClearInlineMode(); // Clear grid add mode
+		} else {
+			$conn->RollbackTrans(); // Rollback transaction
+			if ($this->getFailureMessage() == "") {
+				$this->setFailureMessage($Language->Phrase("InsertFailed")); // Set insert failed message
+			}
+		}
+		return $bGridInsert;
+	}
+
+	// Check if empty row
+	function EmptyRow() {
+		global $objForm;
+		if ($objForm->HasValue("x_country_id") && $objForm->HasValue("o_country_id") && $this->country_id->CurrentValue <> $this->country_id->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_province_name_kh") && $objForm->HasValue("o_province_name_kh") && $this->province_name_kh->CurrentValue <> $this->province_name_kh->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_province_name_en") && $objForm->HasValue("o_province_name_en") && $this->province_name_en->CurrentValue <> $this->province_name_en->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_capital_kh") && $objForm->HasValue("o_capital_kh") && $this->capital_kh->CurrentValue <> $this->capital_kh->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_capital_en") && $objForm->HasValue("o_capital_en") && $this->capital_en->CurrentValue <> $this->capital_en->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_population_kh") && $objForm->HasValue("o_population_kh") && $this->population_kh->CurrentValue <> $this->population_kh->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_population_en") && $objForm->HasValue("o_population_en") && $this->population_en->CurrentValue <> $this->population_en->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_area_kh") && $objForm->HasValue("o_area_kh") && $this->area_kh->CurrentValue <> $this->area_kh->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_area_en") && $objForm->HasValue("o_area_en") && $this->area_en->CurrentValue <> $this->area_en->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_density_kh") && $objForm->HasValue("o_density_kh") && $this->density_kh->CurrentValue <> $this->density_kh->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_density_en") && $objForm->HasValue("o_density_en") && $this->density_en->CurrentValue <> $this->density_en->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_province_code") && $objForm->HasValue("o_province_code") && $this->province_code->CurrentValue <> $this->province_code->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_image") && $objForm->HasValue("o_image") && $this->image->CurrentValue <> $this->image->OldValue)
+			return FALSE;
+		return TRUE;
+	}
+
+	// Validate grid form
+	function ValidateGridForm() {
+		global $objForm;
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Validate all records
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "delete" && $rowaction <> "insertdelete") {
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// Ignore
+				} else if (!$this->ValidateForm()) {
+					return FALSE;
+				}
+			}
+		}
+		return TRUE;
+	}
+
+	// Get all form values of the grid
+	function GetGridFormValues() {
+		global $objForm;
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+		$rows = array();
+
+		// Loop through all records
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "delete" && $rowaction <> "insertdelete") {
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// Ignore
+				} else {
+					$rows[] = $this->GetFieldValues("FormValue"); // Return row as array
+				}
+			}
+		}
+		return $rows; // Return as array of array
+	}
+
+	// Restore form values for current row
+	function RestoreCurrentRowFormValues($idx) {
+		global $objForm;
+
+		// Get row based on current index
+		$objForm->Index = $idx;
+		$this->LoadFormValues(); // Load form values
 	}
 
 	// Get list of filters
@@ -1204,6 +1708,14 @@ class cprovince_list extends cprovince {
 	function SetupListOptions() {
 		global $Security, $Language;
 
+		// "griddelete"
+		if ($this->AllowAddDeleteRow) {
+			$item = &$this->ListOptions->Add("griddelete");
+			$item->CssClass = "text-nowrap";
+			$item->OnLeft = TRUE;
+			$item->Visible = FALSE; // Default hidden
+		}
+
 		// Add group option item
 		$item = &$this->ListOptions->Add($this->ListOptions->GroupOptionName);
 		$item->Body = "";
@@ -1269,11 +1781,81 @@ class cprovince_list extends cprovince {
 		// Call ListOptions_Rendering event
 		$this->ListOptions_Rendering();
 
+		// Set up row action and key
+		if (is_numeric($this->RowIndex) && $this->CurrentMode <> "view") {
+			$objForm->Index = $this->RowIndex;
+			$ActionName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormActionName);
+			$OldKeyName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormOldKeyName);
+			$KeyName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormKeyName);
+			$BlankRowName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormBlankRowName);
+			if ($this->RowAction <> "")
+				$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $ActionName . "\" id=\"" . $ActionName . "\" value=\"" . $this->RowAction . "\">";
+			if ($this->RowAction == "delete") {
+				$rowkey = $objForm->GetValue($this->FormKeyName);
+				$this->SetupKeyValues($rowkey);
+			}
+			if ($this->RowAction == "insert" && $this->CurrentAction == "F" && $this->EmptyRow())
+				$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $BlankRowName . "\" id=\"" . $BlankRowName . "\" value=\"1\">";
+		}
+
+		// "delete"
+		if ($this->AllowAddDeleteRow) {
+			if ($this->CurrentAction == "gridadd" || $this->CurrentAction == "gridedit") {
+				$option = &$this->ListOptions;
+				$option->UseButtonGroup = TRUE; // Use button group for grid delete button
+				$option->UseImageAndText = TRUE; // Use image and text for grid delete button
+				$oListOpt = &$option->Items["griddelete"];
+				if (!$Security->CanDelete() && is_numeric($this->RowIndex) && ($this->RowAction == "" || $this->RowAction == "edit")) { // Do not allow delete existing record
+					$oListOpt->Body = "&nbsp;";
+				} else {
+					$oListOpt->Body = "<a class=\"ewGridLink ewGridDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" onclick=\"return ew_DeleteGridRow(this, " . $this->RowIndex . ");\">" . $Language->Phrase("DeleteLink") . "</a>";
+				}
+			}
+		}
+
+		// "copy"
+		$oListOpt = &$this->ListOptions->Items["copy"];
+		if (($this->CurrentAction == "add" || $this->CurrentAction == "copy") && $this->RowType == EW_ROWTYPE_ADD) { // Inline Add/Copy
+			$this->ListOptions->CustomItem = "copy"; // Show copy column only
+			$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+			$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+				"<a class=\"ewGridLink ewInlineInsert\" title=\"" . ew_HtmlTitle($Language->Phrase("InsertLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InsertLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("InsertLink") . "</a>&nbsp;" .
+				"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("CancelLink") . "</a>" .
+				"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"insert\"></div>";
+			return;
+		}
+
+		// "edit"
+		$oListOpt = &$this->ListOptions->Items["edit"];
+		if ($this->CurrentAction == "edit" && $this->RowType == EW_ROWTYPE_EDIT) { // Inline-Edit
+			$this->ListOptions->CustomItem = "edit"; // Show edit column only
+			$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+			if ($this->UpdateConflict == "U") {
+				$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+					"<a class=\"ewGridLink ewInlineReload\" title=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" href=\"" . ew_HtmlEncode(ew_UrlAddHash($this->InlineEditUrl, "r" . $this->RowCnt . "_" . $this->TableVar)) . "\">" .
+					$Language->Phrase("ReloadLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineOverwrite\" title=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . ew_UrlAddHash($this->PageName(), "r" . $this->RowCnt . "_" . $this->TableVar) . "');\">" . $Language->Phrase("OverwriteLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("ConflictCancelLink") . "</a>" .
+					"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"overwrite\"></div>";
+			} else {
+				$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+					"<a class=\"ewGridLink ewInlineUpdate\" title=\"" . ew_HtmlTitle($Language->Phrase("UpdateLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("UpdateLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . ew_UrlAddHash($this->PageName(), "r" . $this->RowCnt . "_" . $this->TableVar) . "');\">" . $Language->Phrase("UpdateLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("CancelLink") . "</a>" .
+					"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"update\"></div>";
+			}
+			$oListOpt->Body .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_hash\" id=\"k" . $this->RowIndex . "_hash\" value=\"" . $this->HashValue . "\">";
+			$oListOpt->Body .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_key\" id=\"k" . $this->RowIndex . "_key\" value=\"" . ew_HtmlEncode($this->province_id->CurrentValue . $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"] . $this->country_id->CurrentValue) . "\">";
+			return;
+		}
+
 		// "view"
 		$oListOpt = &$this->ListOptions->Items["view"];
 		$viewcaption = ew_HtmlTitle($Language->Phrase("ViewLink"));
 		if ($Security->CanView()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-caption=\"" . $viewcaption . "\" href=\"" . ew_HtmlEncode($this->ViewUrl) . "\">" . $Language->Phrase("ViewLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-caption=\"" . $viewcaption . "\" href=\"" . ew_HtmlEncode($this->ViewUrl) . "\">" . $Language->Phrase("ViewLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-table=\"province\" data-caption=\"" . $viewcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,url:'" . ew_HtmlEncode($this->ViewUrl) . "',btn:null});\">" . $Language->Phrase("ViewLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1282,7 +1864,11 @@ class cprovince_list extends cprovince {
 		$oListOpt = &$this->ListOptions->Items["edit"];
 		$editcaption = ew_HtmlTitle($Language->Phrase("EditLink"));
 		if ($Security->CanEdit()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("EditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("EditLink")) . "\" href=\"" . ew_HtmlEncode($this->EditUrl) . "\">" . $Language->Phrase("EditLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . $editcaption . "\" data-caption=\"" . $editcaption . "\" href=\"" . ew_HtmlEncode($this->EditUrl) . "\">" . $Language->Phrase("EditLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . $editcaption . "\" data-table=\"province\" data-caption=\"" . $editcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'SaveBtn',url:'" . ew_HtmlEncode($this->EditUrl) . "'});\">" . $Language->Phrase("EditLink") . "</a>";
+			$oListOpt->Body .= "<a class=\"ewRowLink ewInlineEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("InlineEditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InlineEditLink")) . "\" href=\"" . ew_HtmlEncode(ew_UrlAddHash($this->InlineEditUrl, "r" . $this->RowCnt . "_" . $this->TableVar)) . "\">" . $Language->Phrase("InlineEditLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1291,7 +1877,10 @@ class cprovince_list extends cprovince {
 		$oListOpt = &$this->ListOptions->Items["copy"];
 		$copycaption = ew_HtmlTitle($Language->Phrase("CopyLink"));
 		if ($Security->CanAdd()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-caption=\"" . $copycaption . "\" href=\"" . ew_HtmlEncode($this->CopyUrl) . "\">" . $Language->Phrase("CopyLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-caption=\"" . $copycaption . "\" href=\"" . ew_HtmlEncode($this->CopyUrl) . "\">" . $Language->Phrase("CopyLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-table=\"province\" data-caption=\"" . $copycaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'AddBtn',url:'" . ew_HtmlEncode($this->CopyUrl) . "'});\">" . $Language->Phrase("CopyLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1328,6 +1917,10 @@ class cprovince_list extends cprovince {
 		// "checkbox"
 		$oListOpt = &$this->ListOptions->Items["checkbox"];
 		$oListOpt->Body = "<input type=\"checkbox\" name=\"key_m[]\" class=\"ewMultiSelect\" value=\"" . ew_HtmlEncode($this->province_id->CurrentValue . $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"] . $this->country_id->CurrentValue) . "\" onclick=\"ew_ClickMultiCheckbox(event);\">";
+		if ($this->CurrentAction == "gridedit" && is_numeric($this->RowIndex)) {
+			$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $KeyName . "\" id=\"" . $KeyName . "\" value=\"" . $this->province_id->CurrentValue . $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"] . $this->country_id->CurrentValue . "\">";
+			$this->MultiSelectKey .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_hash\" id=\"k" . $this->RowIndex . "_hash\" value=\"" . $this->HashValue . "\">";
+		}
 		$this->RenderListOptionsExt();
 
 		// Call ListOptions_Rendered event
@@ -1343,14 +1936,36 @@ class cprovince_list extends cprovince {
 		// Add
 		$item = &$option->Add("add");
 		$addcaption = ew_HtmlTitle($Language->Phrase("AddLink"));
-		$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-caption=\"" . $addcaption . "\" href=\"" . ew_HtmlEncode($this->AddUrl) . "\">" . $Language->Phrase("AddLink") . "</a>";
+		if (ew_IsMobile())
+			$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-caption=\"" . $addcaption . "\" href=\"" . ew_HtmlEncode($this->AddUrl) . "\">" . $Language->Phrase("AddLink") . "</a>";
+		else
+			$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-table=\"province\" data-caption=\"" . $addcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'AddBtn',url:'" . ew_HtmlEncode($this->AddUrl) . "'});\">" . $Language->Phrase("AddLink") . "</a>";
 		$item->Visible = ($this->AddUrl <> "" && $Security->CanAdd());
+
+		// Inline Add
+		$item = &$option->Add("inlineadd");
+		$item->Body = "<a class=\"ewAddEdit ewInlineAdd\" title=\"" . ew_HtmlTitle($Language->Phrase("InlineAddLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InlineAddLink")) . "\" href=\"" . ew_HtmlEncode($this->InlineAddUrl) . "\">" .$Language->Phrase("InlineAddLink") . "</a>";
+		$item->Visible = ($this->InlineAddUrl <> "" && $Security->CanAdd());
+		$item = &$option->Add("gridadd");
+		$item->Body = "<a class=\"ewAddEdit ewGridAdd\" title=\"" . ew_HtmlTitle($Language->Phrase("GridAddLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridAddLink")) . "\" href=\"" . ew_HtmlEncode($this->GridAddUrl) . "\">" . $Language->Phrase("GridAddLink") . "</a>";
+		$item->Visible = ($this->GridAddUrl <> "" && $Security->CanAdd());
+
+		// Add grid edit
+		$option = $options["addedit"];
+		$item = &$option->Add("gridedit");
+		$item->Body = "<a class=\"ewAddEdit ewGridEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("GridEditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridEditLink")) . "\" href=\"" . ew_HtmlEncode($this->GridEditUrl) . "\">" . $Language->Phrase("GridEditLink") . "</a>";
+		$item->Visible = ($this->GridEditUrl <> "" && $Security->CanEdit());
 		$option = $options["action"];
 
 		// Add multi delete
 		$item = &$option->Add("multidelete");
-		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fprovincelist,url:'" . $this->MultiDeleteUrl . "'});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
+		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fprovincelist,url:'" . $this->MultiDeleteUrl . "',msg:ewLanguage.Phrase('DeleteConfirmMsg')});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
 		$item->Visible = ($Security->CanDelete());
+
+		// Add multi update
+		$item = &$option->Add("multiupdate");
+		$item->Body = "<a class=\"ewAction ewMultiUpdate\" title=\"" . ew_HtmlTitle($Language->Phrase("UpdateSelectedLink")) . "\" data-table=\"province\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("UpdateSelectedLink")) . "\" href=\"\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'UpdateBtn',f:document.fprovincelist,url:'" . $this->MultiUpdateUrl . "'});return false;\">" . $Language->Phrase("UpdateSelectedLink") . "</a>";
+		$item->Visible = ($Security->CanEdit());
 
 		// Set up options default
 		foreach ($options as &$option) {
@@ -1387,6 +2002,7 @@ class cprovince_list extends cprovince {
 	function RenderOtherOptions() {
 		global $Language, $Security;
 		$options = &$this->OtherOptions;
+		if ($this->CurrentAction <> "gridadd" && $this->CurrentAction <> "gridedit") { // Not grid add/edit mode
 			$option = &$options["action"];
 
 			// Set up list action buttons
@@ -1408,6 +2024,66 @@ class cprovince_list extends cprovince {
 				$option = &$options["action"];
 				$option->HideAllOptions();
 			}
+		} else { // Grid add/edit mode
+
+			// Hide all options first
+			foreach ($options as &$option)
+				$option->HideAllOptions();
+			if ($this->CurrentAction == "gridadd") {
+				if ($this->AllowAddDeleteRow) {
+
+					// Add add blank row
+					$option = &$options["addedit"];
+					$option->UseDropDownButton = FALSE;
+					$option->UseImageAndText = TRUE;
+					$item = &$option->Add("addblankrow");
+					$item->Body = "<a class=\"ewAddEdit ewAddBlankRow\" title=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" href=\"javascript:void(0);\" onclick=\"ew_AddGridRow(this);\">" . $Language->Phrase("AddBlankRow") . "</a>";
+					$item->Visible = $Security->CanAdd();
+				}
+				$option = &$options["action"];
+				$option->UseDropDownButton = FALSE;
+				$option->UseImageAndText = TRUE;
+
+				// Add grid insert
+				$item = &$option->Add("gridinsert");
+				$item->Body = "<a class=\"ewAction ewGridInsert\" title=\"" . ew_HtmlTitle($Language->Phrase("GridInsertLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridInsertLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("GridInsertLink") . "</a>";
+
+				// Add grid cancel
+				$item = &$option->Add("gridcancel");
+				$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+				$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("GridCancelLink") . "</a>";
+			}
+			if ($this->CurrentAction == "gridedit") {
+				if ($this->AllowAddDeleteRow) {
+
+					// Add add blank row
+					$option = &$options["addedit"];
+					$option->UseDropDownButton = FALSE;
+					$option->UseImageAndText = TRUE;
+					$item = &$option->Add("addblankrow");
+					$item->Body = "<a class=\"ewAddEdit ewAddBlankRow\" title=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" href=\"javascript:void(0);\" onclick=\"ew_AddGridRow(this);\">" . $Language->Phrase("AddBlankRow") . "</a>";
+					$item->Visible = $Security->CanAdd();
+				}
+				$option = &$options["action"];
+				$option->UseDropDownButton = FALSE;
+				$option->UseImageAndText = TRUE;
+				if ($this->UpdateConflict == "U") { // Record already updated by other user
+					$item = &$option->Add("reload");
+					$item->Body = "<a class=\"ewAction ewGridReload\" title=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" href=\"" . ew_HtmlEncode($this->GridEditUrl) . "\">" . $Language->Phrase("ReloadLink") . "</a>";
+					$item = &$option->Add("overwrite");
+					$item->Body = "<a class=\"ewAction ewGridOverwrite\" title=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("OverwriteLink") . "</a>";
+					$item = &$option->Add("cancel");
+					$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+					$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("ConflictCancelLink") . "</a>";
+				} else {
+					$item = &$option->Add("gridsave");
+					$item->Body = "<a class=\"ewAction ewGridSave\" title=\"" . ew_HtmlTitle($Language->Phrase("GridSaveLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridSaveLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("GridSaveLink") . "</a>";
+					$item = &$option->Add("gridcancel");
+					$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+					$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("GridCancelLink") . "</a>";
+				}
+			}
+		}
 	}
 
 	// Process list action
@@ -1507,6 +2183,11 @@ class cprovince_list extends cprovince {
 		$item->Body = "<a class=\"btn btn-default ewShowAll\" title=\"" . $Language->Phrase("ShowAll") . "\" data-caption=\"" . $Language->Phrase("ShowAll") . "\" href=\"" . $this->PageUrl() . "cmd=reset\">" . $Language->Phrase("ShowAllBtn") . "</a>";
 		$item->Visible = ($this->SearchWhere <> $this->DefaultSearchWhere && $this->SearchWhere <> "0=101");
 
+		// Search highlight button
+		$item = &$this->SearchOptions->Add("searchhighlight");
+		$item->Body = "<button type=\"button\" class=\"btn btn-default ewHighlight active\" title=\"" . $Language->Phrase("Highlight") . "\" data-caption=\"" . $Language->Phrase("Highlight") . "\" data-toggle=\"button\" data-form=\"fprovincelistsrch\" data-name=\"" . $this->HighlightName() . "\">" . $Language->Phrase("HighlightBtn") . "</button>";
+		$item->Visible = ($this->SearchWhere <> "" && $this->TotalRecs > 0);
+
 		// Button group for search
 		$this->SearchOptions->UseDropDownButton = FALSE;
 		$this->SearchOptions->UseImageAndText = TRUE;
@@ -1572,11 +2253,128 @@ class cprovince_list extends cprovince {
 		}
 	}
 
+	// Load default values
+	function LoadDefaultValues() {
+		$this->province_id->CurrentValue = NULL;
+		$this->province_id->OldValue = $this->province_id->CurrentValue;
+		$this->country_id->CurrentValue = NULL;
+		$this->country_id->OldValue = $this->country_id->CurrentValue;
+		$this->province_name_kh->CurrentValue = NULL;
+		$this->province_name_kh->OldValue = $this->province_name_kh->CurrentValue;
+		$this->province_name_en->CurrentValue = NULL;
+		$this->province_name_en->OldValue = $this->province_name_en->CurrentValue;
+		$this->capital_kh->CurrentValue = NULL;
+		$this->capital_kh->OldValue = $this->capital_kh->CurrentValue;
+		$this->capital_en->CurrentValue = NULL;
+		$this->capital_en->OldValue = $this->capital_en->CurrentValue;
+		$this->population_kh->CurrentValue = NULL;
+		$this->population_kh->OldValue = $this->population_kh->CurrentValue;
+		$this->population_en->CurrentValue = NULL;
+		$this->population_en->OldValue = $this->population_en->CurrentValue;
+		$this->area_kh->CurrentValue = NULL;
+		$this->area_kh->OldValue = $this->area_kh->CurrentValue;
+		$this->area_en->CurrentValue = NULL;
+		$this->area_en->OldValue = $this->area_en->CurrentValue;
+		$this->density_kh->CurrentValue = NULL;
+		$this->density_kh->OldValue = $this->density_kh->CurrentValue;
+		$this->density_en->CurrentValue = NULL;
+		$this->density_en->OldValue = $this->density_en->CurrentValue;
+		$this->province_code->CurrentValue = NULL;
+		$this->province_code->OldValue = $this->province_code->CurrentValue;
+		$this->image->CurrentValue = NULL;
+		$this->image->OldValue = $this->image->CurrentValue;
+	}
+
 	// Load basic search values
 	function LoadBasicSearchValues() {
 		$this->BasicSearch->Keyword = @$_GET[EW_TABLE_BASIC_SEARCH];
 		if ($this->BasicSearch->Keyword <> "" && $this->Command == "") $this->Command = "search";
 		$this->BasicSearch->Type = @$_GET[EW_TABLE_BASIC_SEARCH_TYPE];
+	}
+
+	// Load form values
+	function LoadFormValues() {
+
+		// Load from form
+		global $objForm;
+		if (!$this->province_id->FldIsDetailKey && $this->CurrentAction <> "gridadd" && $this->CurrentAction <> "add")
+			$this->province_id->setFormValue($objForm->GetValue("x_province_id"));
+		if (!$this->country_id->FldIsDetailKey) {
+			$this->country_id->setFormValue($objForm->GetValue("x_country_id"));
+		}
+		$this->country_id->setOldValue($objForm->GetValue("o_country_id"));
+		if (!$this->province_name_kh->FldIsDetailKey) {
+			$this->province_name_kh->setFormValue($objForm->GetValue("x_province_name_kh"));
+		}
+		$this->province_name_kh->setOldValue($objForm->GetValue("o_province_name_kh"));
+		if (!$this->province_name_en->FldIsDetailKey) {
+			$this->province_name_en->setFormValue($objForm->GetValue("x_province_name_en"));
+		}
+		$this->province_name_en->setOldValue($objForm->GetValue("o_province_name_en"));
+		if (!$this->capital_kh->FldIsDetailKey) {
+			$this->capital_kh->setFormValue($objForm->GetValue("x_capital_kh"));
+		}
+		$this->capital_kh->setOldValue($objForm->GetValue("o_capital_kh"));
+		if (!$this->capital_en->FldIsDetailKey) {
+			$this->capital_en->setFormValue($objForm->GetValue("x_capital_en"));
+		}
+		$this->capital_en->setOldValue($objForm->GetValue("o_capital_en"));
+		if (!$this->population_kh->FldIsDetailKey) {
+			$this->population_kh->setFormValue($objForm->GetValue("x_population_kh"));
+		}
+		$this->population_kh->setOldValue($objForm->GetValue("o_population_kh"));
+		if (!$this->population_en->FldIsDetailKey) {
+			$this->population_en->setFormValue($objForm->GetValue("x_population_en"));
+		}
+		$this->population_en->setOldValue($objForm->GetValue("o_population_en"));
+		if (!$this->area_kh->FldIsDetailKey) {
+			$this->area_kh->setFormValue($objForm->GetValue("x_area_kh"));
+		}
+		$this->area_kh->setOldValue($objForm->GetValue("o_area_kh"));
+		if (!$this->area_en->FldIsDetailKey) {
+			$this->area_en->setFormValue($objForm->GetValue("x_area_en"));
+		}
+		$this->area_en->setOldValue($objForm->GetValue("o_area_en"));
+		if (!$this->density_kh->FldIsDetailKey) {
+			$this->density_kh->setFormValue($objForm->GetValue("x_density_kh"));
+		}
+		$this->density_kh->setOldValue($objForm->GetValue("o_density_kh"));
+		if (!$this->density_en->FldIsDetailKey) {
+			$this->density_en->setFormValue($objForm->GetValue("x_density_en"));
+		}
+		$this->density_en->setOldValue($objForm->GetValue("o_density_en"));
+		if (!$this->province_code->FldIsDetailKey) {
+			$this->province_code->setFormValue($objForm->GetValue("x_province_code"));
+		}
+		$this->province_code->setOldValue($objForm->GetValue("o_province_code"));
+		if (!$this->image->FldIsDetailKey) {
+			$this->image->setFormValue($objForm->GetValue("x_image"));
+		}
+		$this->image->setOldValue($objForm->GetValue("o_image"));
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
+	}
+
+	// Restore form values
+	function RestoreFormValues() {
+		global $objForm;
+		if ($this->CurrentAction <> "gridadd" && $this->CurrentAction <> "add")
+			$this->province_id->CurrentValue = $this->province_id->FormValue;
+		$this->country_id->CurrentValue = $this->country_id->FormValue;
+		$this->province_name_kh->CurrentValue = $this->province_name_kh->FormValue;
+		$this->province_name_en->CurrentValue = $this->province_name_en->FormValue;
+		$this->capital_kh->CurrentValue = $this->capital_kh->FormValue;
+		$this->capital_en->CurrentValue = $this->capital_en->FormValue;
+		$this->population_kh->CurrentValue = $this->population_kh->FormValue;
+		$this->population_en->CurrentValue = $this->population_en->FormValue;
+		$this->area_kh->CurrentValue = $this->area_kh->FormValue;
+		$this->area_en->CurrentValue = $this->area_en->FormValue;
+		$this->density_kh->CurrentValue = $this->density_kh->FormValue;
+		$this->density_en->CurrentValue = $this->density_en->FormValue;
+		$this->province_code->CurrentValue = $this->province_code->FormValue;
+		$this->image->CurrentValue = $this->image->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -1622,6 +2420,8 @@ class cprovince_list extends cprovince {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -1656,21 +2456,22 @@ class cprovince_list extends cprovince {
 
 	// Return a row with default values
 	function NewRow() {
+		$this->LoadDefaultValues();
 		$row = array();
-		$row['province_id'] = NULL;
-		$row['country_id'] = NULL;
-		$row['province_name_kh'] = NULL;
-		$row['province_name_en'] = NULL;
-		$row['capital_kh'] = NULL;
-		$row['capital_en'] = NULL;
-		$row['population_kh'] = NULL;
-		$row['population_en'] = NULL;
-		$row['area_kh'] = NULL;
-		$row['area_en'] = NULL;
-		$row['density_kh'] = NULL;
-		$row['density_en'] = NULL;
-		$row['province_code'] = NULL;
-		$row['image'] = NULL;
+		$row['province_id'] = $this->province_id->CurrentValue;
+		$row['country_id'] = $this->country_id->CurrentValue;
+		$row['province_name_kh'] = $this->province_name_kh->CurrentValue;
+		$row['province_name_en'] = $this->province_name_en->CurrentValue;
+		$row['capital_kh'] = $this->capital_kh->CurrentValue;
+		$row['capital_en'] = $this->capital_en->CurrentValue;
+		$row['population_kh'] = $this->population_kh->CurrentValue;
+		$row['population_en'] = $this->population_en->CurrentValue;
+		$row['area_kh'] = $this->area_kh->CurrentValue;
+		$row['area_en'] = $this->area_en->CurrentValue;
+		$row['density_kh'] = $this->density_kh->CurrentValue;
+		$row['density_en'] = $this->density_en->CurrentValue;
+		$row['province_code'] = $this->province_code->CurrentValue;
+		$row['image'] = $this->image->CurrentValue;
 		return $row;
 	}
 
@@ -1824,66 +2625,711 @@ class cprovince_list extends cprovince {
 			$this->province_name_kh->LinkCustomAttributes = "";
 			$this->province_name_kh->HrefValue = "";
 			$this->province_name_kh->TooltipValue = "";
+			if ($this->Export == "")
+				$this->province_name_kh->ViewValue = $this->HighlightValue($this->province_name_kh);
 
 			// province_name_en
 			$this->province_name_en->LinkCustomAttributes = "";
 			$this->province_name_en->HrefValue = "";
 			$this->province_name_en->TooltipValue = "";
+			if ($this->Export == "")
+				$this->province_name_en->ViewValue = $this->HighlightValue($this->province_name_en);
 
 			// capital_kh
 			$this->capital_kh->LinkCustomAttributes = "";
 			$this->capital_kh->HrefValue = "";
 			$this->capital_kh->TooltipValue = "";
+			if ($this->Export == "")
+				$this->capital_kh->ViewValue = $this->HighlightValue($this->capital_kh);
 
 			// capital_en
 			$this->capital_en->LinkCustomAttributes = "";
 			$this->capital_en->HrefValue = "";
 			$this->capital_en->TooltipValue = "";
+			if ($this->Export == "")
+				$this->capital_en->ViewValue = $this->HighlightValue($this->capital_en);
 
 			// population_kh
 			$this->population_kh->LinkCustomAttributes = "";
 			$this->population_kh->HrefValue = "";
 			$this->population_kh->TooltipValue = "";
+			if ($this->Export == "")
+				$this->population_kh->ViewValue = $this->HighlightValue($this->population_kh);
 
 			// population_en
 			$this->population_en->LinkCustomAttributes = "";
 			$this->population_en->HrefValue = "";
 			$this->population_en->TooltipValue = "";
+			if ($this->Export == "")
+				$this->population_en->ViewValue = $this->HighlightValue($this->population_en);
 
 			// area_kh
 			$this->area_kh->LinkCustomAttributes = "";
 			$this->area_kh->HrefValue = "";
 			$this->area_kh->TooltipValue = "";
+			if ($this->Export == "")
+				$this->area_kh->ViewValue = $this->HighlightValue($this->area_kh);
 
 			// area_en
 			$this->area_en->LinkCustomAttributes = "";
 			$this->area_en->HrefValue = "";
 			$this->area_en->TooltipValue = "";
+			if ($this->Export == "")
+				$this->area_en->ViewValue = $this->HighlightValue($this->area_en);
 
 			// density_kh
 			$this->density_kh->LinkCustomAttributes = "";
 			$this->density_kh->HrefValue = "";
 			$this->density_kh->TooltipValue = "";
+			if ($this->Export == "")
+				$this->density_kh->ViewValue = $this->HighlightValue($this->density_kh);
 
 			// density_en
 			$this->density_en->LinkCustomAttributes = "";
 			$this->density_en->HrefValue = "";
 			$this->density_en->TooltipValue = "";
+			if ($this->Export == "")
+				$this->density_en->ViewValue = $this->HighlightValue($this->density_en);
 
 			// province_code
 			$this->province_code->LinkCustomAttributes = "";
 			$this->province_code->HrefValue = "";
 			$this->province_code->TooltipValue = "";
+			if ($this->Export == "")
+				$this->province_code->ViewValue = $this->HighlightValue($this->province_code);
 
 			// image
 			$this->image->LinkCustomAttributes = "";
 			$this->image->HrefValue = "";
 			$this->image->TooltipValue = "";
+			if ($this->Export == "")
+				$this->image->ViewValue = $this->HighlightValue($this->image);
+		} elseif ($this->RowType == EW_ROWTYPE_ADD) { // Add row
+
+			// province_id
+			// country_id
+
+			$this->country_id->EditAttrs["class"] = "form-control";
+			$this->country_id->EditCustomAttributes = "";
+			$this->country_id->EditValue = ew_HtmlEncode($this->country_id->CurrentValue);
+			$this->country_id->PlaceHolder = ew_RemoveHtml($this->country_id->FldCaption());
+
+			// province_name_kh
+			$this->province_name_kh->EditAttrs["class"] = "form-control";
+			$this->province_name_kh->EditCustomAttributes = "";
+			$this->province_name_kh->EditValue = ew_HtmlEncode($this->province_name_kh->CurrentValue);
+			$this->province_name_kh->PlaceHolder = ew_RemoveHtml($this->province_name_kh->FldCaption());
+
+			// province_name_en
+			$this->province_name_en->EditAttrs["class"] = "form-control";
+			$this->province_name_en->EditCustomAttributes = "";
+			$this->province_name_en->EditValue = ew_HtmlEncode($this->province_name_en->CurrentValue);
+			$this->province_name_en->PlaceHolder = ew_RemoveHtml($this->province_name_en->FldCaption());
+
+			// capital_kh
+			$this->capital_kh->EditAttrs["class"] = "form-control";
+			$this->capital_kh->EditCustomAttributes = "";
+			$this->capital_kh->EditValue = ew_HtmlEncode($this->capital_kh->CurrentValue);
+			$this->capital_kh->PlaceHolder = ew_RemoveHtml($this->capital_kh->FldCaption());
+
+			// capital_en
+			$this->capital_en->EditAttrs["class"] = "form-control";
+			$this->capital_en->EditCustomAttributes = "";
+			$this->capital_en->EditValue = ew_HtmlEncode($this->capital_en->CurrentValue);
+			$this->capital_en->PlaceHolder = ew_RemoveHtml($this->capital_en->FldCaption());
+
+			// population_kh
+			$this->population_kh->EditAttrs["class"] = "form-control";
+			$this->population_kh->EditCustomAttributes = "";
+			$this->population_kh->EditValue = ew_HtmlEncode($this->population_kh->CurrentValue);
+			$this->population_kh->PlaceHolder = ew_RemoveHtml($this->population_kh->FldCaption());
+
+			// population_en
+			$this->population_en->EditAttrs["class"] = "form-control";
+			$this->population_en->EditCustomAttributes = "";
+			$this->population_en->EditValue = ew_HtmlEncode($this->population_en->CurrentValue);
+			$this->population_en->PlaceHolder = ew_RemoveHtml($this->population_en->FldCaption());
+
+			// area_kh
+			$this->area_kh->EditAttrs["class"] = "form-control";
+			$this->area_kh->EditCustomAttributes = "";
+			$this->area_kh->EditValue = ew_HtmlEncode($this->area_kh->CurrentValue);
+			$this->area_kh->PlaceHolder = ew_RemoveHtml($this->area_kh->FldCaption());
+
+			// area_en
+			$this->area_en->EditAttrs["class"] = "form-control";
+			$this->area_en->EditCustomAttributes = "";
+			$this->area_en->EditValue = ew_HtmlEncode($this->area_en->CurrentValue);
+			$this->area_en->PlaceHolder = ew_RemoveHtml($this->area_en->FldCaption());
+
+			// density_kh
+			$this->density_kh->EditAttrs["class"] = "form-control";
+			$this->density_kh->EditCustomAttributes = "";
+			$this->density_kh->EditValue = ew_HtmlEncode($this->density_kh->CurrentValue);
+			$this->density_kh->PlaceHolder = ew_RemoveHtml($this->density_kh->FldCaption());
+
+			// density_en
+			$this->density_en->EditAttrs["class"] = "form-control";
+			$this->density_en->EditCustomAttributes = "";
+			$this->density_en->EditValue = ew_HtmlEncode($this->density_en->CurrentValue);
+			$this->density_en->PlaceHolder = ew_RemoveHtml($this->density_en->FldCaption());
+
+			// province_code
+			$this->province_code->EditAttrs["class"] = "form-control";
+			$this->province_code->EditCustomAttributes = "";
+			$this->province_code->EditValue = ew_HtmlEncode($this->province_code->CurrentValue);
+			$this->province_code->PlaceHolder = ew_RemoveHtml($this->province_code->FldCaption());
+
+			// image
+			$this->image->EditAttrs["class"] = "form-control";
+			$this->image->EditCustomAttributes = "";
+			$this->image->EditValue = ew_HtmlEncode($this->image->CurrentValue);
+			$this->image->PlaceHolder = ew_RemoveHtml($this->image->FldCaption());
+
+			// Add refer script
+			// province_id
+
+			$this->province_id->LinkCustomAttributes = "";
+			$this->province_id->HrefValue = "";
+
+			// country_id
+			$this->country_id->LinkCustomAttributes = "";
+			$this->country_id->HrefValue = "";
+
+			// province_name_kh
+			$this->province_name_kh->LinkCustomAttributes = "";
+			$this->province_name_kh->HrefValue = "";
+
+			// province_name_en
+			$this->province_name_en->LinkCustomAttributes = "";
+			$this->province_name_en->HrefValue = "";
+
+			// capital_kh
+			$this->capital_kh->LinkCustomAttributes = "";
+			$this->capital_kh->HrefValue = "";
+
+			// capital_en
+			$this->capital_en->LinkCustomAttributes = "";
+			$this->capital_en->HrefValue = "";
+
+			// population_kh
+			$this->population_kh->LinkCustomAttributes = "";
+			$this->population_kh->HrefValue = "";
+
+			// population_en
+			$this->population_en->LinkCustomAttributes = "";
+			$this->population_en->HrefValue = "";
+
+			// area_kh
+			$this->area_kh->LinkCustomAttributes = "";
+			$this->area_kh->HrefValue = "";
+
+			// area_en
+			$this->area_en->LinkCustomAttributes = "";
+			$this->area_en->HrefValue = "";
+
+			// density_kh
+			$this->density_kh->LinkCustomAttributes = "";
+			$this->density_kh->HrefValue = "";
+
+			// density_en
+			$this->density_en->LinkCustomAttributes = "";
+			$this->density_en->HrefValue = "";
+
+			// province_code
+			$this->province_code->LinkCustomAttributes = "";
+			$this->province_code->HrefValue = "";
+
+			// image
+			$this->image->LinkCustomAttributes = "";
+			$this->image->HrefValue = "";
+		} elseif ($this->RowType == EW_ROWTYPE_EDIT) { // Edit row
+
+			// province_id
+			$this->province_id->EditAttrs["class"] = "form-control";
+			$this->province_id->EditCustomAttributes = "";
+			$this->province_id->EditValue = $this->province_id->CurrentValue;
+			$this->province_id->ViewCustomAttributes = "";
+
+			// country_id
+			$this->country_id->EditAttrs["class"] = "form-control";
+			$this->country_id->EditCustomAttributes = "";
+			$this->country_id->EditValue = $this->country_id->CurrentValue;
+			$this->country_id->ViewCustomAttributes = "";
+
+			// province_name_kh
+			$this->province_name_kh->EditAttrs["class"] = "form-control";
+			$this->province_name_kh->EditCustomAttributes = "";
+			$this->province_name_kh->EditValue = ew_HtmlEncode($this->province_name_kh->CurrentValue);
+			$this->province_name_kh->PlaceHolder = ew_RemoveHtml($this->province_name_kh->FldCaption());
+
+			// province_name_en
+			$this->province_name_en->EditAttrs["class"] = "form-control";
+			$this->province_name_en->EditCustomAttributes = "";
+			$this->province_name_en->EditValue = ew_HtmlEncode($this->province_name_en->CurrentValue);
+			$this->province_name_en->PlaceHolder = ew_RemoveHtml($this->province_name_en->FldCaption());
+
+			// capital_kh
+			$this->capital_kh->EditAttrs["class"] = "form-control";
+			$this->capital_kh->EditCustomAttributes = "";
+			$this->capital_kh->EditValue = ew_HtmlEncode($this->capital_kh->CurrentValue);
+			$this->capital_kh->PlaceHolder = ew_RemoveHtml($this->capital_kh->FldCaption());
+
+			// capital_en
+			$this->capital_en->EditAttrs["class"] = "form-control";
+			$this->capital_en->EditCustomAttributes = "";
+			$this->capital_en->EditValue = ew_HtmlEncode($this->capital_en->CurrentValue);
+			$this->capital_en->PlaceHolder = ew_RemoveHtml($this->capital_en->FldCaption());
+
+			// population_kh
+			$this->population_kh->EditAttrs["class"] = "form-control";
+			$this->population_kh->EditCustomAttributes = "";
+			$this->population_kh->EditValue = ew_HtmlEncode($this->population_kh->CurrentValue);
+			$this->population_kh->PlaceHolder = ew_RemoveHtml($this->population_kh->FldCaption());
+
+			// population_en
+			$this->population_en->EditAttrs["class"] = "form-control";
+			$this->population_en->EditCustomAttributes = "";
+			$this->population_en->EditValue = ew_HtmlEncode($this->population_en->CurrentValue);
+			$this->population_en->PlaceHolder = ew_RemoveHtml($this->population_en->FldCaption());
+
+			// area_kh
+			$this->area_kh->EditAttrs["class"] = "form-control";
+			$this->area_kh->EditCustomAttributes = "";
+			$this->area_kh->EditValue = ew_HtmlEncode($this->area_kh->CurrentValue);
+			$this->area_kh->PlaceHolder = ew_RemoveHtml($this->area_kh->FldCaption());
+
+			// area_en
+			$this->area_en->EditAttrs["class"] = "form-control";
+			$this->area_en->EditCustomAttributes = "";
+			$this->area_en->EditValue = ew_HtmlEncode($this->area_en->CurrentValue);
+			$this->area_en->PlaceHolder = ew_RemoveHtml($this->area_en->FldCaption());
+
+			// density_kh
+			$this->density_kh->EditAttrs["class"] = "form-control";
+			$this->density_kh->EditCustomAttributes = "";
+			$this->density_kh->EditValue = ew_HtmlEncode($this->density_kh->CurrentValue);
+			$this->density_kh->PlaceHolder = ew_RemoveHtml($this->density_kh->FldCaption());
+
+			// density_en
+			$this->density_en->EditAttrs["class"] = "form-control";
+			$this->density_en->EditCustomAttributes = "";
+			$this->density_en->EditValue = ew_HtmlEncode($this->density_en->CurrentValue);
+			$this->density_en->PlaceHolder = ew_RemoveHtml($this->density_en->FldCaption());
+
+			// province_code
+			$this->province_code->EditAttrs["class"] = "form-control";
+			$this->province_code->EditCustomAttributes = "";
+			$this->province_code->EditValue = ew_HtmlEncode($this->province_code->CurrentValue);
+			$this->province_code->PlaceHolder = ew_RemoveHtml($this->province_code->FldCaption());
+
+			// image
+			$this->image->EditAttrs["class"] = "form-control";
+			$this->image->EditCustomAttributes = "";
+			$this->image->EditValue = ew_HtmlEncode($this->image->CurrentValue);
+			$this->image->PlaceHolder = ew_RemoveHtml($this->image->FldCaption());
+
+			// Edit refer script
+			// province_id
+
+			$this->province_id->LinkCustomAttributes = "";
+			$this->province_id->HrefValue = "";
+
+			// country_id
+			$this->country_id->LinkCustomAttributes = "";
+			$this->country_id->HrefValue = "";
+
+			// province_name_kh
+			$this->province_name_kh->LinkCustomAttributes = "";
+			$this->province_name_kh->HrefValue = "";
+
+			// province_name_en
+			$this->province_name_en->LinkCustomAttributes = "";
+			$this->province_name_en->HrefValue = "";
+
+			// capital_kh
+			$this->capital_kh->LinkCustomAttributes = "";
+			$this->capital_kh->HrefValue = "";
+
+			// capital_en
+			$this->capital_en->LinkCustomAttributes = "";
+			$this->capital_en->HrefValue = "";
+
+			// population_kh
+			$this->population_kh->LinkCustomAttributes = "";
+			$this->population_kh->HrefValue = "";
+
+			// population_en
+			$this->population_en->LinkCustomAttributes = "";
+			$this->population_en->HrefValue = "";
+
+			// area_kh
+			$this->area_kh->LinkCustomAttributes = "";
+			$this->area_kh->HrefValue = "";
+
+			// area_en
+			$this->area_en->LinkCustomAttributes = "";
+			$this->area_en->HrefValue = "";
+
+			// density_kh
+			$this->density_kh->LinkCustomAttributes = "";
+			$this->density_kh->HrefValue = "";
+
+			// density_en
+			$this->density_en->LinkCustomAttributes = "";
+			$this->density_en->HrefValue = "";
+
+			// province_code
+			$this->province_code->LinkCustomAttributes = "";
+			$this->province_code->HrefValue = "";
+
+			// image
+			$this->image->LinkCustomAttributes = "";
+			$this->image->HrefValue = "";
 		}
+		if ($this->RowType == EW_ROWTYPE_ADD || $this->RowType == EW_ROWTYPE_EDIT || $this->RowType == EW_ROWTYPE_SEARCH) // Add/Edit/Search row
+			$this->SetupFieldTitles();
 
 		// Call Row Rendered event
 		if ($this->RowType <> EW_ROWTYPE_AGGREGATEINIT)
 			$this->Row_Rendered();
+	}
+
+	// Validate form
+	function ValidateForm() {
+		global $Language, $gsFormError;
+
+		// Initialize form error message
+		$gsFormError = "";
+
+		// Check if validation required
+		if (!EW_SERVER_VALIDATE)
+			return ($gsFormError == "");
+		if (!$this->country_id->FldIsDetailKey && !is_null($this->country_id->FormValue) && $this->country_id->FormValue == "") {
+			ew_AddMessage($gsFormError, str_replace("%s", $this->country_id->FldCaption(), $this->country_id->ReqErrMsg));
+		}
+		if (!ew_CheckInteger($this->country_id->FormValue)) {
+			ew_AddMessage($gsFormError, $this->country_id->FldErrMsg());
+		}
+
+		// Return validate result
+		$ValidateForm = ($gsFormError == "");
+
+		// Call Form_CustomValidate event
+		$sFormCustomError = "";
+		$ValidateForm = $ValidateForm && $this->Form_CustomValidate($sFormCustomError);
+		if ($sFormCustomError <> "") {
+			ew_AddMessage($gsFormError, $sFormCustomError);
+		}
+		return $ValidateForm;
+	}
+
+	//
+	// Delete records based on current filter
+	//
+	function DeleteRows() {
+		global $Language, $Security;
+		if (!$Security->CanDelete()) {
+			$this->setFailureMessage($Language->Phrase("NoDeletePermission")); // No delete permission
+			return FALSE;
+		}
+		$DeleteRows = TRUE;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+		$rs = $conn->Execute($sSql);
+		$conn->raiseErrorFn = '';
+		if ($rs === FALSE) {
+			return FALSE;
+		} elseif ($rs->EOF) {
+			$this->setFailureMessage($Language->Phrase("NoRecord")); // No record found
+			$rs->Close();
+			return FALSE;
+		}
+		$rows = ($rs) ? $rs->GetRows() : array();
+
+		// Clone old rows
+		$rsold = $rows;
+		if ($rs)
+			$rs->Close();
+
+		// Call row deleting event
+		if ($DeleteRows) {
+			foreach ($rsold as $row) {
+				$DeleteRows = $this->Row_Deleting($row);
+				if (!$DeleteRows) break;
+			}
+		}
+		if ($DeleteRows) {
+			$sKey = "";
+			foreach ($rsold as $row) {
+				$sThisKey = "";
+				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+				$sThisKey .= $row['province_id'];
+				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+				$sThisKey .= $row['country_id'];
+
+				// Delete old files
+				$this->LoadDbValues($row);
+				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+				$DeleteRows = $this->Delete($row); // Delete
+				$conn->raiseErrorFn = '';
+				if ($DeleteRows === FALSE)
+					break;
+				if ($sKey <> "") $sKey .= ", ";
+				$sKey .= $sThisKey;
+			}
+		}
+		if (!$DeleteRows) {
+
+			// Set up error message
+			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+				// Use the message, do nothing
+			} elseif ($this->CancelMessage <> "") {
+				$this->setFailureMessage($this->CancelMessage);
+				$this->CancelMessage = "";
+			} else {
+				$this->setFailureMessage($Language->Phrase("DeleteCancelled"));
+			}
+		}
+		if ($DeleteRows) {
+		} else {
+		}
+
+		// Call Row Deleted event
+		if ($DeleteRows) {
+			foreach ($rsold as $row) {
+				$this->Row_Deleted($row);
+			}
+		}
+		return $DeleteRows;
+	}
+
+	// Update record based on key values
+	function EditRow() {
+		global $Security, $Language;
+		$sFilter = $this->KeyFilter();
+		$sFilter = $this->ApplyUserIDFilters($sFilter);
+		$conn = &$this->Connection();
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+		$rs = $conn->Execute($sSql);
+		$conn->raiseErrorFn = '';
+		if ($rs === FALSE)
+			return FALSE;
+		if ($rs->EOF) {
+			$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
+			$EditRow = FALSE; // Update Failed
+		} else {
+
+			// Save old values
+			$rsold = &$rs->fields;
+			$this->LoadDbValues($rsold);
+			$rsnew = array();
+
+			// country_id
+			// province_name_kh
+
+			$this->province_name_kh->SetDbValueDef($rsnew, $this->province_name_kh->CurrentValue, NULL, $this->province_name_kh->ReadOnly);
+
+			// province_name_en
+			$this->province_name_en->SetDbValueDef($rsnew, $this->province_name_en->CurrentValue, NULL, $this->province_name_en->ReadOnly);
+
+			// capital_kh
+			$this->capital_kh->SetDbValueDef($rsnew, $this->capital_kh->CurrentValue, NULL, $this->capital_kh->ReadOnly);
+
+			// capital_en
+			$this->capital_en->SetDbValueDef($rsnew, $this->capital_en->CurrentValue, NULL, $this->capital_en->ReadOnly);
+
+			// population_kh
+			$this->population_kh->SetDbValueDef($rsnew, $this->population_kh->CurrentValue, NULL, $this->population_kh->ReadOnly);
+
+			// population_en
+			$this->population_en->SetDbValueDef($rsnew, $this->population_en->CurrentValue, NULL, $this->population_en->ReadOnly);
+
+			// area_kh
+			$this->area_kh->SetDbValueDef($rsnew, $this->area_kh->CurrentValue, NULL, $this->area_kh->ReadOnly);
+
+			// area_en
+			$this->area_en->SetDbValueDef($rsnew, $this->area_en->CurrentValue, NULL, $this->area_en->ReadOnly);
+
+			// density_kh
+			$this->density_kh->SetDbValueDef($rsnew, $this->density_kh->CurrentValue, NULL, $this->density_kh->ReadOnly);
+
+			// density_en
+			$this->density_en->SetDbValueDef($rsnew, $this->density_en->CurrentValue, NULL, $this->density_en->ReadOnly);
+
+			// province_code
+			$this->province_code->SetDbValueDef($rsnew, $this->province_code->CurrentValue, NULL, $this->province_code->ReadOnly);
+
+			// image
+			$this->image->SetDbValueDef($rsnew, $this->image->CurrentValue, NULL, $this->image->ReadOnly);
+
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
+			// Call Row Updating event
+			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
+			if ($bUpdateRow) {
+				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+				if (count($rsnew) > 0)
+					$EditRow = $this->Update($rsnew, "", $rsold);
+				else
+					$EditRow = TRUE; // No field to update
+				$conn->raiseErrorFn = '';
+				if ($EditRow) {
+				}
+			} else {
+				if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+					// Use the message, do nothing
+				} elseif ($this->CancelMessage <> "") {
+					$this->setFailureMessage($this->CancelMessage);
+					$this->CancelMessage = "";
+				} else {
+					$this->setFailureMessage($Language->Phrase("UpdateCancelled"));
+				}
+				$EditRow = FALSE;
+			}
+		}
+
+		// Call Row_Updated event
+		if ($EditRow)
+			$this->Row_Updated($rsold, $rsnew);
+		$rs->Close();
+		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('country_id')); // country_id
+		$sHash .= ew_GetFldHash($rs->fields('province_name_kh')); // province_name_kh
+		$sHash .= ew_GetFldHash($rs->fields('province_name_en')); // province_name_en
+		$sHash .= ew_GetFldHash($rs->fields('capital_kh')); // capital_kh
+		$sHash .= ew_GetFldHash($rs->fields('capital_en')); // capital_en
+		$sHash .= ew_GetFldHash($rs->fields('population_kh')); // population_kh
+		$sHash .= ew_GetFldHash($rs->fields('population_en')); // population_en
+		$sHash .= ew_GetFldHash($rs->fields('area_kh')); // area_kh
+		$sHash .= ew_GetFldHash($rs->fields('area_en')); // area_en
+		$sHash .= ew_GetFldHash($rs->fields('density_kh')); // density_kh
+		$sHash .= ew_GetFldHash($rs->fields('density_en')); // density_en
+		$sHash .= ew_GetFldHash($rs->fields('province_code')); // province_code
+		$sHash .= ew_GetFldHash($rs->fields('image')); // image
+		return md5($sHash);
+	}
+
+	// Add record
+	function AddRow($rsold = NULL) {
+		global $Language, $Security;
+		$conn = &$this->Connection();
+
+		// Load db values from rsold
+		$this->LoadDbValues($rsold);
+		if ($rsold) {
+		}
+		$rsnew = array();
+
+		// country_id
+		$this->country_id->SetDbValueDef($rsnew, $this->country_id->CurrentValue, 0, strval($this->country_id->CurrentValue) == "");
+
+		// province_name_kh
+		$this->province_name_kh->SetDbValueDef($rsnew, $this->province_name_kh->CurrentValue, NULL, FALSE);
+
+		// province_name_en
+		$this->province_name_en->SetDbValueDef($rsnew, $this->province_name_en->CurrentValue, NULL, FALSE);
+
+		// capital_kh
+		$this->capital_kh->SetDbValueDef($rsnew, $this->capital_kh->CurrentValue, NULL, FALSE);
+
+		// capital_en
+		$this->capital_en->SetDbValueDef($rsnew, $this->capital_en->CurrentValue, NULL, FALSE);
+
+		// population_kh
+		$this->population_kh->SetDbValueDef($rsnew, $this->population_kh->CurrentValue, NULL, FALSE);
+
+		// population_en
+		$this->population_en->SetDbValueDef($rsnew, $this->population_en->CurrentValue, NULL, FALSE);
+
+		// area_kh
+		$this->area_kh->SetDbValueDef($rsnew, $this->area_kh->CurrentValue, NULL, FALSE);
+
+		// area_en
+		$this->area_en->SetDbValueDef($rsnew, $this->area_en->CurrentValue, NULL, FALSE);
+
+		// density_kh
+		$this->density_kh->SetDbValueDef($rsnew, $this->density_kh->CurrentValue, NULL, FALSE);
+
+		// density_en
+		$this->density_en->SetDbValueDef($rsnew, $this->density_en->CurrentValue, NULL, FALSE);
+
+		// province_code
+		$this->province_code->SetDbValueDef($rsnew, $this->province_code->CurrentValue, NULL, FALSE);
+
+		// image
+		$this->image->SetDbValueDef($rsnew, $this->image->CurrentValue, NULL, FALSE);
+
+		// Call Row Inserting event
+		$rs = ($rsold == NULL) ? NULL : $rsold->fields;
+		$bInsertRow = $this->Row_Inserting($rs, $rsnew);
+
+		// Check if key value entered
+		if ($bInsertRow && $this->ValidateKey && strval($rsnew['country_id']) == "") {
+			$this->setFailureMessage($Language->Phrase("InvalidKeyValue"));
+			$bInsertRow = FALSE;
+		}
+		if ($bInsertRow) {
+			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+			$AddRow = $this->Insert($rsnew);
+			$conn->raiseErrorFn = '';
+			if ($AddRow) {
+			}
+		} else {
+			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+				// Use the message, do nothing
+			} elseif ($this->CancelMessage <> "") {
+				$this->setFailureMessage($this->CancelMessage);
+				$this->CancelMessage = "";
+			} else {
+				$this->setFailureMessage($Language->Phrase("InsertCancelled"));
+			}
+			$AddRow = FALSE;
+		}
+		if ($AddRow) {
+
+			// Call Row Inserted event
+			$rs = ($rsold == NULL) ? NULL : $rsold->fields;
+			$this->Row_Inserted($rs, $rsnew);
+		}
+		return $AddRow;
 	}
 
 	// Build export filter for selected records
@@ -1944,7 +3390,7 @@ class cprovince_list extends cprovince {
 		// Drop down button for export
 		$this->ExportOptions->UseButtonGroup = TRUE;
 		$this->ExportOptions->UseImageAndText = TRUE;
-		$this->ExportOptions->UseDropDownButton = TRUE;
+		$this->ExportOptions->UseDropDownButton = FALSE;
 		if ($this->ExportOptions->UseButtonGroup && ew_IsMobile())
 			$this->ExportOptions->UseDropDownButton = TRUE;
 		$this->ExportOptions->DropDownButtonPhrase = $Language->Phrase("ButtonExport");
@@ -2339,6 +3785,62 @@ var CurrentPageID = EW_PAGE_ID = "list";
 var CurrentForm = fprovincelist = new ew_Form("fprovincelist", "list");
 fprovincelist.FormKeyCountName = '<?php echo $province_list->FormKeyCountName ?>';
 
+// Validate form
+fprovincelist.Validate = function() {
+	if (!this.ValidateRequired)
+		return true; // Ignore validation
+	var $ = jQuery, fobj = this.GetForm(), $fobj = $(fobj);
+	if ($fobj.find("#a_confirm").val() == "F")
+		return true;
+	var elm, felm, uelm, addcnt = 0;
+	var $k = $fobj.find("#" + this.FormKeyCountName); // Get key_count
+	var rowcnt = ($k[0]) ? parseInt($k.val(), 10) : 1;
+	var startcnt = (rowcnt == 0) ? 0 : 1; // Check rowcnt == 0 => Inline-Add
+	var gridinsert = $fobj.find("#a_list").val() == "gridinsert";
+	for (var i = startcnt; i <= rowcnt; i++) {
+		var infix = ($k[0]) ? String(i) : "";
+		$fobj.data("rowindex", infix);
+		var checkrow = (gridinsert) ? !this.EmptyRow(infix) : true;
+		if (checkrow) {
+			addcnt++;
+			elm = this.GetElements("x" + infix + "_country_id");
+			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
+				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $province->country_id->FldCaption(), $province->country_id->ReqErrMsg)) ?>");
+			elm = this.GetElements("x" + infix + "_country_id");
+			if (elm && !ew_CheckInteger(elm.value))
+				return this.OnError(elm, "<?php echo ew_JsEncode2($province->country_id->FldErrMsg()) ?>");
+
+			// Fire Form_CustomValidate event
+			if (!this.Form_CustomValidate(fobj))
+				return false;
+		} // End Grid Add checking
+	}
+	if (gridinsert && addcnt == 0) { // No row added
+		ew_Alert(ewLanguage.Phrase("NoAddRecord"));
+		return false;
+	}
+	return true;
+}
+
+// Check empty row
+fprovincelist.EmptyRow = function(infix) {
+	var fobj = this.Form;
+	if (ew_ValueChanged(fobj, infix, "country_id", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "province_name_kh", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "province_name_en", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "capital_kh", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "capital_en", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "population_kh", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "population_en", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "area_kh", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "area_en", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "density_kh", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "density_en", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "province_code", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "image", false)) return false;
+	return true;
+}
+
 // Form_CustomValidate event
 fprovincelist.Form_CustomValidate = 
  function(fobj) { // DO NOT CHANGE THIS LINE!
@@ -2375,6 +3877,13 @@ var CurrentSearchForm = fprovincelistsrch = new ew_Form("fprovincelistsrch");
 </div>
 <?php } ?>
 <?php
+if ($province->CurrentAction == "gridadd") {
+	$province->CurrentFilter = "0=1";
+	$province_list->StartRec = 1;
+	$province_list->DisplayRecs = $province->GridAddRowCount;
+	$province_list->TotalRecs = $province_list->DisplayRecs;
+	$province_list->StopRec = $province_list->DisplayRecs;
+} else {
 	$bSelectLimit = $province_list->UseSelectLimit;
 	if ($bSelectLimit) {
 		if ($province_list->TotalRecs <= 0)
@@ -2400,6 +3909,7 @@ var CurrentSearchForm = fprovincelistsrch = new ew_Form("fprovincelistsrch");
 		else
 			$province_list->setWarningMessage($Language->Phrase("NoRecord"));
 	}
+}
 $province_list->RenderOtherOptions();
 ?>
 <?php if ($Security->CanSearch()) { ?>
@@ -2504,7 +4014,7 @@ $province_list->ShowMessage();
 <input type="hidden" name="t" value="province">
 <input type="hidden" name="exporttype" id="exporttype" value="">
 <div id="gmp_province" class="<?php if (ew_IsResponsiveLayout()) { ?>table-responsive <?php } ?>ewGridMiddlePanel">
-<?php if ($province_list->TotalRecs > 0 || $province->CurrentAction == "gridedit") { ?>
+<?php if ($province_list->TotalRecs > 0 || $province->CurrentAction == "add" || $province->CurrentAction == "copy" || $province->CurrentAction == "gridedit") { ?>
 <table id="tbl_provincelist" class="table ewTable">
 <thead>
 	<tr class="ewTableHeader">
@@ -2654,6 +4164,154 @@ $province_list->ListOptions->Render("header", "right");
 </thead>
 <tbody>
 <?php
+	if ($province->CurrentAction == "add" || $province->CurrentAction == "copy") {
+		$province_list->RowIndex = 0;
+		$province_list->KeyCount = $province_list->RowIndex;
+		if ($province->CurrentAction == "add")
+			$province_list->LoadRowValues();
+		if ($province->EventCancelled) // Insert failed
+			$province_list->RestoreFormValues(); // Restore form values
+
+		// Set row properties
+		$province->ResetAttrs();
+		$province->RowAttrs = array_merge($province->RowAttrs, array('data-rowindex'=>0, 'id'=>'r0_province', 'data-rowtype'=>EW_ROWTYPE_ADD));
+		$province->RowType = EW_ROWTYPE_ADD;
+
+		// Render row
+		$province_list->RenderRow();
+
+		// Render list options
+		$province_list->RenderListOptions();
+		$province_list->StartRowCnt = 0;
+?>
+	<tr<?php echo $province->RowAttributes() ?>>
+<?php
+
+// Render list options (body, left)
+$province_list->ListOptions->Render("body", "left", $province_list->RowCnt);
+?>
+	<?php if ($province->province_id->Visible) { // province_id ?>
+		<td data-name="province_id">
+<input type="hidden" data-table="province" data-field="x_province_id" name="o<?php echo $province_list->RowIndex ?>_province_id" id="o<?php echo $province_list->RowIndex ?>_province_id" value="<?php echo ew_HtmlEncode($province->province_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->country_id->Visible) { // country_id ?>
+		<td data-name="country_id">
+<span id="el<?php echo $province_list->RowCnt ?>_province_country_id" class="form-group province_country_id">
+<input type="text" data-table="province" data-field="x_country_id" name="x<?php echo $province_list->RowIndex ?>_country_id" id="x<?php echo $province_list->RowIndex ?>_country_id" size="30" placeholder="<?php echo ew_HtmlEncode($province->country_id->getPlaceHolder()) ?>" value="<?php echo $province->country_id->EditValue ?>"<?php echo $province->country_id->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_country_id" name="o<?php echo $province_list->RowIndex ?>_country_id" id="o<?php echo $province_list->RowIndex ?>_country_id" value="<?php echo ew_HtmlEncode($province->country_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->province_name_kh->Visible) { // province_name_kh ?>
+		<td data-name="province_name_kh">
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_name_kh" class="form-group province_province_name_kh">
+<input type="text" data-table="province" data-field="x_province_name_kh" name="x<?php echo $province_list->RowIndex ?>_province_name_kh" id="x<?php echo $province_list->RowIndex ?>_province_name_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_kh->getPlaceHolder()) ?>" value="<?php echo $province->province_name_kh->EditValue ?>"<?php echo $province->province_name_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_kh" name="o<?php echo $province_list->RowIndex ?>_province_name_kh" id="o<?php echo $province_list->RowIndex ?>_province_name_kh" value="<?php echo ew_HtmlEncode($province->province_name_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->province_name_en->Visible) { // province_name_en ?>
+		<td data-name="province_name_en">
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_name_en" class="form-group province_province_name_en">
+<input type="text" data-table="province" data-field="x_province_name_en" name="x<?php echo $province_list->RowIndex ?>_province_name_en" id="x<?php echo $province_list->RowIndex ?>_province_name_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_en->getPlaceHolder()) ?>" value="<?php echo $province->province_name_en->EditValue ?>"<?php echo $province->province_name_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_en" name="o<?php echo $province_list->RowIndex ?>_province_name_en" id="o<?php echo $province_list->RowIndex ?>_province_name_en" value="<?php echo ew_HtmlEncode($province->province_name_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->capital_kh->Visible) { // capital_kh ?>
+		<td data-name="capital_kh">
+<span id="el<?php echo $province_list->RowCnt ?>_province_capital_kh" class="form-group province_capital_kh">
+<input type="text" data-table="province" data-field="x_capital_kh" name="x<?php echo $province_list->RowIndex ?>_capital_kh" id="x<?php echo $province_list->RowIndex ?>_capital_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_kh->getPlaceHolder()) ?>" value="<?php echo $province->capital_kh->EditValue ?>"<?php echo $province->capital_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_kh" name="o<?php echo $province_list->RowIndex ?>_capital_kh" id="o<?php echo $province_list->RowIndex ?>_capital_kh" value="<?php echo ew_HtmlEncode($province->capital_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->capital_en->Visible) { // capital_en ?>
+		<td data-name="capital_en">
+<span id="el<?php echo $province_list->RowCnt ?>_province_capital_en" class="form-group province_capital_en">
+<input type="text" data-table="province" data-field="x_capital_en" name="x<?php echo $province_list->RowIndex ?>_capital_en" id="x<?php echo $province_list->RowIndex ?>_capital_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_en->getPlaceHolder()) ?>" value="<?php echo $province->capital_en->EditValue ?>"<?php echo $province->capital_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_en" name="o<?php echo $province_list->RowIndex ?>_capital_en" id="o<?php echo $province_list->RowIndex ?>_capital_en" value="<?php echo ew_HtmlEncode($province->capital_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->population_kh->Visible) { // population_kh ?>
+		<td data-name="population_kh">
+<span id="el<?php echo $province_list->RowCnt ?>_province_population_kh" class="form-group province_population_kh">
+<input type="text" data-table="province" data-field="x_population_kh" name="x<?php echo $province_list->RowIndex ?>_population_kh" id="x<?php echo $province_list->RowIndex ?>_population_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_kh->getPlaceHolder()) ?>" value="<?php echo $province->population_kh->EditValue ?>"<?php echo $province->population_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_kh" name="o<?php echo $province_list->RowIndex ?>_population_kh" id="o<?php echo $province_list->RowIndex ?>_population_kh" value="<?php echo ew_HtmlEncode($province->population_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->population_en->Visible) { // population_en ?>
+		<td data-name="population_en">
+<span id="el<?php echo $province_list->RowCnt ?>_province_population_en" class="form-group province_population_en">
+<input type="text" data-table="province" data-field="x_population_en" name="x<?php echo $province_list->RowIndex ?>_population_en" id="x<?php echo $province_list->RowIndex ?>_population_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_en->getPlaceHolder()) ?>" value="<?php echo $province->population_en->EditValue ?>"<?php echo $province->population_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_en" name="o<?php echo $province_list->RowIndex ?>_population_en" id="o<?php echo $province_list->RowIndex ?>_population_en" value="<?php echo ew_HtmlEncode($province->population_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->area_kh->Visible) { // area_kh ?>
+		<td data-name="area_kh">
+<span id="el<?php echo $province_list->RowCnt ?>_province_area_kh" class="form-group province_area_kh">
+<input type="text" data-table="province" data-field="x_area_kh" name="x<?php echo $province_list->RowIndex ?>_area_kh" id="x<?php echo $province_list->RowIndex ?>_area_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_kh->getPlaceHolder()) ?>" value="<?php echo $province->area_kh->EditValue ?>"<?php echo $province->area_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_kh" name="o<?php echo $province_list->RowIndex ?>_area_kh" id="o<?php echo $province_list->RowIndex ?>_area_kh" value="<?php echo ew_HtmlEncode($province->area_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->area_en->Visible) { // area_en ?>
+		<td data-name="area_en">
+<span id="el<?php echo $province_list->RowCnt ?>_province_area_en" class="form-group province_area_en">
+<input type="text" data-table="province" data-field="x_area_en" name="x<?php echo $province_list->RowIndex ?>_area_en" id="x<?php echo $province_list->RowIndex ?>_area_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_en->getPlaceHolder()) ?>" value="<?php echo $province->area_en->EditValue ?>"<?php echo $province->area_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_en" name="o<?php echo $province_list->RowIndex ?>_area_en" id="o<?php echo $province_list->RowIndex ?>_area_en" value="<?php echo ew_HtmlEncode($province->area_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->density_kh->Visible) { // density_kh ?>
+		<td data-name="density_kh">
+<span id="el<?php echo $province_list->RowCnt ?>_province_density_kh" class="form-group province_density_kh">
+<input type="text" data-table="province" data-field="x_density_kh" name="x<?php echo $province_list->RowIndex ?>_density_kh" id="x<?php echo $province_list->RowIndex ?>_density_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_kh->getPlaceHolder()) ?>" value="<?php echo $province->density_kh->EditValue ?>"<?php echo $province->density_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_kh" name="o<?php echo $province_list->RowIndex ?>_density_kh" id="o<?php echo $province_list->RowIndex ?>_density_kh" value="<?php echo ew_HtmlEncode($province->density_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->density_en->Visible) { // density_en ?>
+		<td data-name="density_en">
+<span id="el<?php echo $province_list->RowCnt ?>_province_density_en" class="form-group province_density_en">
+<input type="text" data-table="province" data-field="x_density_en" name="x<?php echo $province_list->RowIndex ?>_density_en" id="x<?php echo $province_list->RowIndex ?>_density_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_en->getPlaceHolder()) ?>" value="<?php echo $province->density_en->EditValue ?>"<?php echo $province->density_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_en" name="o<?php echo $province_list->RowIndex ?>_density_en" id="o<?php echo $province_list->RowIndex ?>_density_en" value="<?php echo ew_HtmlEncode($province->density_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->province_code->Visible) { // province_code ?>
+		<td data-name="province_code">
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_code" class="form-group province_province_code">
+<input type="text" data-table="province" data-field="x_province_code" name="x<?php echo $province_list->RowIndex ?>_province_code" id="x<?php echo $province_list->RowIndex ?>_province_code" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_code->getPlaceHolder()) ?>" value="<?php echo $province->province_code->EditValue ?>"<?php echo $province->province_code->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_code" name="o<?php echo $province_list->RowIndex ?>_province_code" id="o<?php echo $province_list->RowIndex ?>_province_code" value="<?php echo ew_HtmlEncode($province->province_code->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->image->Visible) { // image ?>
+		<td data-name="image">
+<span id="el<?php echo $province_list->RowCnt ?>_province_image" class="form-group province_image">
+<input type="text" data-table="province" data-field="x_image" name="x<?php echo $province_list->RowIndex ?>_image" id="x<?php echo $province_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->image->getPlaceHolder()) ?>" value="<?php echo $province->image->EditValue ?>"<?php echo $province->image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_image" name="o<?php echo $province_list->RowIndex ?>_image" id="o<?php echo $province_list->RowIndex ?>_image" value="<?php echo ew_HtmlEncode($province->image->OldValue) ?>">
+</td>
+	<?php } ?>
+<?php
+
+// Render list options (body, right)
+$province_list->ListOptions->Render("body", "right", $province_list->RowCnt);
+?>
+<script type="text/javascript">
+fprovincelist.UpdateOpts(<?php echo $province_list->RowIndex ?>);
+</script>
+	</tr>
+<?php
+}
+?>
+<?php
 if ($province->ExportAll && $province->Export <> "") {
 	$province_list->StopRec = $province_list->TotalRecs;
 } else {
@@ -2663,6 +4321,15 @@ if ($province->ExportAll && $province->Export <> "") {
 		$province_list->StopRec = $province_list->StartRec + $province_list->DisplayRecs - 1;
 	else
 		$province_list->StopRec = $province_list->TotalRecs;
+}
+
+// Restore number of post back records
+if ($objForm) {
+	$objForm->Index = -1;
+	if ($objForm->HasValue($province_list->FormKeyCountName) && ($province->CurrentAction == "gridadd" || $province->CurrentAction == "gridedit" || $province->CurrentAction == "F")) {
+		$province_list->KeyCount = $objForm->GetValue($province_list->FormKeyCountName);
+		$province_list->StopRec = $province_list->StartRec + $province_list->KeyCount - 1;
+	}
 }
 $province_list->RecCnt = $province_list->StartRec - 1;
 if ($province_list->Recordset && !$province_list->Recordset->EOF) {
@@ -2678,10 +4345,27 @@ if ($province_list->Recordset && !$province_list->Recordset->EOF) {
 $province->RowType = EW_ROWTYPE_AGGREGATEINIT;
 $province->ResetAttrs();
 $province_list->RenderRow();
+$province_list->EditRowCnt = 0;
+if ($province->CurrentAction == "edit")
+	$province_list->RowIndex = 1;
+if ($province->CurrentAction == "gridadd")
+	$province_list->RowIndex = 0;
+if ($province->CurrentAction == "gridedit")
+	$province_list->RowIndex = 0;
 while ($province_list->RecCnt < $province_list->StopRec) {
 	$province_list->RecCnt++;
 	if (intval($province_list->RecCnt) >= intval($province_list->StartRec)) {
 		$province_list->RowCnt++;
+		if ($province->CurrentAction == "gridadd" || $province->CurrentAction == "gridedit" || $province->CurrentAction == "F") {
+			$province_list->RowIndex++;
+			$objForm->Index = $province_list->RowIndex;
+			if ($objForm->HasValue($province_list->FormActionName))
+				$province_list->RowAction = strval($objForm->GetValue($province_list->FormActionName));
+			elseif ($province->CurrentAction == "gridadd")
+				$province_list->RowAction = "insert";
+			else
+				$province_list->RowAction = "";
+		}
 
 		// Set up key count
 		$province_list->KeyCount = $province_list->RowIndex;
@@ -2690,10 +4374,41 @@ while ($province_list->RecCnt < $province_list->StopRec) {
 		$province->ResetAttrs();
 		$province->CssClass = "";
 		if ($province->CurrentAction == "gridadd") {
+			$province_list->LoadRowValues(); // Load default values
 		} else {
 			$province_list->LoadRowValues($province_list->Recordset); // Load row values
 		}
 		$province->RowType = EW_ROWTYPE_VIEW; // Render view
+		if ($province->CurrentAction == "gridadd") // Grid add
+			$province->RowType = EW_ROWTYPE_ADD; // Render add
+		if ($province->CurrentAction == "gridadd" && $province->EventCancelled && !$objForm->HasValue("k_blankrow")) // Insert failed
+			$province_list->RestoreCurrentRowFormValues($province_list->RowIndex); // Restore form values
+		if ($province->CurrentAction == "edit") {
+			if ($province_list->CheckInlineEditKey() && $province_list->EditRowCnt == 0) { // Inline edit
+				$province->RowType = EW_ROWTYPE_EDIT; // Render edit
+				if (!$province->EventCancelled)
+					$province_list->HashValue = $province_list->GetRowHash($province_list->Recordset); // Get hash value for record
+			}
+		}
+		if ($province->CurrentAction == "gridedit") { // Grid edit
+			if ($province->EventCancelled) {
+				$province_list->RestoreCurrentRowFormValues($province_list->RowIndex); // Restore form values
+			}
+			if ($province_list->RowAction == "insert")
+				$province->RowType = EW_ROWTYPE_ADD; // Render add
+			else
+				$province->RowType = EW_ROWTYPE_EDIT; // Render edit
+			if (!$province->EventCancelled)
+				$province_list->HashValue = $province_list->GetRowHash($province_list->Recordset); // Get hash value for record
+		}
+		if ($province->CurrentAction == "edit" && $province->RowType == EW_ROWTYPE_EDIT && $province->EventCancelled) { // Update failed
+			$objForm->Index = 1;
+			$province_list->RestoreFormValues(); // Restore form values
+		}
+		if ($province->CurrentAction == "gridedit" && ($province->RowType == EW_ROWTYPE_EDIT || $province->RowType == EW_ROWTYPE_ADD) && $province->EventCancelled) // Update failed
+			$province_list->RestoreCurrentRowFormValues($province_list->RowIndex); // Restore form values
+		if ($province->RowType == EW_ROWTYPE_EDIT) // Edit row
+			$province_list->EditRowCnt++;
 
 		// Set up row id / data-rowindex
 		$province->RowAttrs = array_merge($province->RowAttrs, array('data-rowindex'=>$province_list->RowCnt, 'id'=>'r' . $province_list->RowCnt . '_province', 'data-rowtype'=>$province->RowType));
@@ -2703,6 +4418,9 @@ while ($province_list->RecCnt < $province_list->StopRec) {
 
 		// Render list options
 		$province_list->RenderListOptions();
+
+		// Skip delete row / empty row for confirm page
+		if ($province_list->RowAction <> "delete" && $province_list->RowAction <> "insertdelete" && !($province_list->RowAction == "insert" && $province->CurrentAction == "F" && $province_list->EmptyRow())) {
 ?>
 	<tr<?php echo $province->RowAttributes() ?>>
 <?php
@@ -2712,114 +4430,297 @@ $province_list->ListOptions->Render("body", "left", $province_list->RowCnt);
 ?>
 	<?php if ($province->province_id->Visible) { // province_id ?>
 		<td data-name="province_id"<?php echo $province->province_id->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<input type="hidden" data-table="province" data-field="x_province_id" name="o<?php echo $province_list->RowIndex ?>_province_id" id="o<?php echo $province_list->RowIndex ?>_province_id" value="<?php echo ew_HtmlEncode($province->province_id->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_id" class="form-group province_province_id">
+<span<?php echo $province->province_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->province_id->EditValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_id" name="x<?php echo $province_list->RowIndex ?>_province_id" id="x<?php echo $province_list->RowIndex ?>_province_id" value="<?php echo ew_HtmlEncode($province->province_id->CurrentValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_province_id" class="province_province_id">
 <span<?php echo $province->province_id->ViewAttributes() ?>>
 <?php echo $province->province_id->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->country_id->Visible) { // country_id ?>
 		<td data-name="country_id"<?php echo $province->country_id->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_country_id" class="form-group province_country_id">
+<input type="text" data-table="province" data-field="x_country_id" name="x<?php echo $province_list->RowIndex ?>_country_id" id="x<?php echo $province_list->RowIndex ?>_country_id" size="30" placeholder="<?php echo ew_HtmlEncode($province->country_id->getPlaceHolder()) ?>" value="<?php echo $province->country_id->EditValue ?>"<?php echo $province->country_id->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_country_id" name="o<?php echo $province_list->RowIndex ?>_country_id" id="o<?php echo $province_list->RowIndex ?>_country_id" value="<?php echo ew_HtmlEncode($province->country_id->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_country_id" class="form-group province_country_id">
+<span<?php echo $province->country_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->country_id->EditValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_country_id" name="x<?php echo $province_list->RowIndex ?>_country_id" id="x<?php echo $province_list->RowIndex ?>_country_id" value="<?php echo ew_HtmlEncode($province->country_id->CurrentValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_country_id" class="province_country_id">
 <span<?php echo $province->country_id->ViewAttributes() ?>>
 <?php echo $province->country_id->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->province_name_kh->Visible) { // province_name_kh ?>
 		<td data-name="province_name_kh"<?php echo $province->province_name_kh->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_name_kh" class="form-group province_province_name_kh">
+<input type="text" data-table="province" data-field="x_province_name_kh" name="x<?php echo $province_list->RowIndex ?>_province_name_kh" id="x<?php echo $province_list->RowIndex ?>_province_name_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_kh->getPlaceHolder()) ?>" value="<?php echo $province->province_name_kh->EditValue ?>"<?php echo $province->province_name_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_kh" name="o<?php echo $province_list->RowIndex ?>_province_name_kh" id="o<?php echo $province_list->RowIndex ?>_province_name_kh" value="<?php echo ew_HtmlEncode($province->province_name_kh->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_name_kh" class="form-group province_province_name_kh">
+<input type="text" data-table="province" data-field="x_province_name_kh" name="x<?php echo $province_list->RowIndex ?>_province_name_kh" id="x<?php echo $province_list->RowIndex ?>_province_name_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_kh->getPlaceHolder()) ?>" value="<?php echo $province->province_name_kh->EditValue ?>"<?php echo $province->province_name_kh->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_province_name_kh" class="province_province_name_kh">
 <span<?php echo $province->province_name_kh->ViewAttributes() ?>>
 <?php echo $province->province_name_kh->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->province_name_en->Visible) { // province_name_en ?>
 		<td data-name="province_name_en"<?php echo $province->province_name_en->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_name_en" class="form-group province_province_name_en">
+<input type="text" data-table="province" data-field="x_province_name_en" name="x<?php echo $province_list->RowIndex ?>_province_name_en" id="x<?php echo $province_list->RowIndex ?>_province_name_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_en->getPlaceHolder()) ?>" value="<?php echo $province->province_name_en->EditValue ?>"<?php echo $province->province_name_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_en" name="o<?php echo $province_list->RowIndex ?>_province_name_en" id="o<?php echo $province_list->RowIndex ?>_province_name_en" value="<?php echo ew_HtmlEncode($province->province_name_en->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_name_en" class="form-group province_province_name_en">
+<input type="text" data-table="province" data-field="x_province_name_en" name="x<?php echo $province_list->RowIndex ?>_province_name_en" id="x<?php echo $province_list->RowIndex ?>_province_name_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_en->getPlaceHolder()) ?>" value="<?php echo $province->province_name_en->EditValue ?>"<?php echo $province->province_name_en->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_province_name_en" class="province_province_name_en">
 <span<?php echo $province->province_name_en->ViewAttributes() ?>>
 <?php echo $province->province_name_en->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->capital_kh->Visible) { // capital_kh ?>
 		<td data-name="capital_kh"<?php echo $province->capital_kh->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_capital_kh" class="form-group province_capital_kh">
+<input type="text" data-table="province" data-field="x_capital_kh" name="x<?php echo $province_list->RowIndex ?>_capital_kh" id="x<?php echo $province_list->RowIndex ?>_capital_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_kh->getPlaceHolder()) ?>" value="<?php echo $province->capital_kh->EditValue ?>"<?php echo $province->capital_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_kh" name="o<?php echo $province_list->RowIndex ?>_capital_kh" id="o<?php echo $province_list->RowIndex ?>_capital_kh" value="<?php echo ew_HtmlEncode($province->capital_kh->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_capital_kh" class="form-group province_capital_kh">
+<input type="text" data-table="province" data-field="x_capital_kh" name="x<?php echo $province_list->RowIndex ?>_capital_kh" id="x<?php echo $province_list->RowIndex ?>_capital_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_kh->getPlaceHolder()) ?>" value="<?php echo $province->capital_kh->EditValue ?>"<?php echo $province->capital_kh->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_capital_kh" class="province_capital_kh">
 <span<?php echo $province->capital_kh->ViewAttributes() ?>>
 <?php echo $province->capital_kh->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->capital_en->Visible) { // capital_en ?>
 		<td data-name="capital_en"<?php echo $province->capital_en->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_capital_en" class="form-group province_capital_en">
+<input type="text" data-table="province" data-field="x_capital_en" name="x<?php echo $province_list->RowIndex ?>_capital_en" id="x<?php echo $province_list->RowIndex ?>_capital_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_en->getPlaceHolder()) ?>" value="<?php echo $province->capital_en->EditValue ?>"<?php echo $province->capital_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_en" name="o<?php echo $province_list->RowIndex ?>_capital_en" id="o<?php echo $province_list->RowIndex ?>_capital_en" value="<?php echo ew_HtmlEncode($province->capital_en->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_capital_en" class="form-group province_capital_en">
+<input type="text" data-table="province" data-field="x_capital_en" name="x<?php echo $province_list->RowIndex ?>_capital_en" id="x<?php echo $province_list->RowIndex ?>_capital_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_en->getPlaceHolder()) ?>" value="<?php echo $province->capital_en->EditValue ?>"<?php echo $province->capital_en->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_capital_en" class="province_capital_en">
 <span<?php echo $province->capital_en->ViewAttributes() ?>>
 <?php echo $province->capital_en->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->population_kh->Visible) { // population_kh ?>
 		<td data-name="population_kh"<?php echo $province->population_kh->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_population_kh" class="form-group province_population_kh">
+<input type="text" data-table="province" data-field="x_population_kh" name="x<?php echo $province_list->RowIndex ?>_population_kh" id="x<?php echo $province_list->RowIndex ?>_population_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_kh->getPlaceHolder()) ?>" value="<?php echo $province->population_kh->EditValue ?>"<?php echo $province->population_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_kh" name="o<?php echo $province_list->RowIndex ?>_population_kh" id="o<?php echo $province_list->RowIndex ?>_population_kh" value="<?php echo ew_HtmlEncode($province->population_kh->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_population_kh" class="form-group province_population_kh">
+<input type="text" data-table="province" data-field="x_population_kh" name="x<?php echo $province_list->RowIndex ?>_population_kh" id="x<?php echo $province_list->RowIndex ?>_population_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_kh->getPlaceHolder()) ?>" value="<?php echo $province->population_kh->EditValue ?>"<?php echo $province->population_kh->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_population_kh" class="province_population_kh">
 <span<?php echo $province->population_kh->ViewAttributes() ?>>
 <?php echo $province->population_kh->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->population_en->Visible) { // population_en ?>
 		<td data-name="population_en"<?php echo $province->population_en->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_population_en" class="form-group province_population_en">
+<input type="text" data-table="province" data-field="x_population_en" name="x<?php echo $province_list->RowIndex ?>_population_en" id="x<?php echo $province_list->RowIndex ?>_population_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_en->getPlaceHolder()) ?>" value="<?php echo $province->population_en->EditValue ?>"<?php echo $province->population_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_en" name="o<?php echo $province_list->RowIndex ?>_population_en" id="o<?php echo $province_list->RowIndex ?>_population_en" value="<?php echo ew_HtmlEncode($province->population_en->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_population_en" class="form-group province_population_en">
+<input type="text" data-table="province" data-field="x_population_en" name="x<?php echo $province_list->RowIndex ?>_population_en" id="x<?php echo $province_list->RowIndex ?>_population_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_en->getPlaceHolder()) ?>" value="<?php echo $province->population_en->EditValue ?>"<?php echo $province->population_en->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_population_en" class="province_population_en">
 <span<?php echo $province->population_en->ViewAttributes() ?>>
 <?php echo $province->population_en->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->area_kh->Visible) { // area_kh ?>
 		<td data-name="area_kh"<?php echo $province->area_kh->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_area_kh" class="form-group province_area_kh">
+<input type="text" data-table="province" data-field="x_area_kh" name="x<?php echo $province_list->RowIndex ?>_area_kh" id="x<?php echo $province_list->RowIndex ?>_area_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_kh->getPlaceHolder()) ?>" value="<?php echo $province->area_kh->EditValue ?>"<?php echo $province->area_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_kh" name="o<?php echo $province_list->RowIndex ?>_area_kh" id="o<?php echo $province_list->RowIndex ?>_area_kh" value="<?php echo ew_HtmlEncode($province->area_kh->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_area_kh" class="form-group province_area_kh">
+<input type="text" data-table="province" data-field="x_area_kh" name="x<?php echo $province_list->RowIndex ?>_area_kh" id="x<?php echo $province_list->RowIndex ?>_area_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_kh->getPlaceHolder()) ?>" value="<?php echo $province->area_kh->EditValue ?>"<?php echo $province->area_kh->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_area_kh" class="province_area_kh">
 <span<?php echo $province->area_kh->ViewAttributes() ?>>
 <?php echo $province->area_kh->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->area_en->Visible) { // area_en ?>
 		<td data-name="area_en"<?php echo $province->area_en->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_area_en" class="form-group province_area_en">
+<input type="text" data-table="province" data-field="x_area_en" name="x<?php echo $province_list->RowIndex ?>_area_en" id="x<?php echo $province_list->RowIndex ?>_area_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_en->getPlaceHolder()) ?>" value="<?php echo $province->area_en->EditValue ?>"<?php echo $province->area_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_en" name="o<?php echo $province_list->RowIndex ?>_area_en" id="o<?php echo $province_list->RowIndex ?>_area_en" value="<?php echo ew_HtmlEncode($province->area_en->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_area_en" class="form-group province_area_en">
+<input type="text" data-table="province" data-field="x_area_en" name="x<?php echo $province_list->RowIndex ?>_area_en" id="x<?php echo $province_list->RowIndex ?>_area_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_en->getPlaceHolder()) ?>" value="<?php echo $province->area_en->EditValue ?>"<?php echo $province->area_en->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_area_en" class="province_area_en">
 <span<?php echo $province->area_en->ViewAttributes() ?>>
 <?php echo $province->area_en->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->density_kh->Visible) { // density_kh ?>
 		<td data-name="density_kh"<?php echo $province->density_kh->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_density_kh" class="form-group province_density_kh">
+<input type="text" data-table="province" data-field="x_density_kh" name="x<?php echo $province_list->RowIndex ?>_density_kh" id="x<?php echo $province_list->RowIndex ?>_density_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_kh->getPlaceHolder()) ?>" value="<?php echo $province->density_kh->EditValue ?>"<?php echo $province->density_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_kh" name="o<?php echo $province_list->RowIndex ?>_density_kh" id="o<?php echo $province_list->RowIndex ?>_density_kh" value="<?php echo ew_HtmlEncode($province->density_kh->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_density_kh" class="form-group province_density_kh">
+<input type="text" data-table="province" data-field="x_density_kh" name="x<?php echo $province_list->RowIndex ?>_density_kh" id="x<?php echo $province_list->RowIndex ?>_density_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_kh->getPlaceHolder()) ?>" value="<?php echo $province->density_kh->EditValue ?>"<?php echo $province->density_kh->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_density_kh" class="province_density_kh">
 <span<?php echo $province->density_kh->ViewAttributes() ?>>
 <?php echo $province->density_kh->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->density_en->Visible) { // density_en ?>
 		<td data-name="density_en"<?php echo $province->density_en->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_density_en" class="form-group province_density_en">
+<input type="text" data-table="province" data-field="x_density_en" name="x<?php echo $province_list->RowIndex ?>_density_en" id="x<?php echo $province_list->RowIndex ?>_density_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_en->getPlaceHolder()) ?>" value="<?php echo $province->density_en->EditValue ?>"<?php echo $province->density_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_en" name="o<?php echo $province_list->RowIndex ?>_density_en" id="o<?php echo $province_list->RowIndex ?>_density_en" value="<?php echo ew_HtmlEncode($province->density_en->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_density_en" class="form-group province_density_en">
+<input type="text" data-table="province" data-field="x_density_en" name="x<?php echo $province_list->RowIndex ?>_density_en" id="x<?php echo $province_list->RowIndex ?>_density_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_en->getPlaceHolder()) ?>" value="<?php echo $province->density_en->EditValue ?>"<?php echo $province->density_en->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_density_en" class="province_density_en">
 <span<?php echo $province->density_en->ViewAttributes() ?>>
 <?php echo $province->density_en->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->province_code->Visible) { // province_code ?>
 		<td data-name="province_code"<?php echo $province->province_code->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_code" class="form-group province_province_code">
+<input type="text" data-table="province" data-field="x_province_code" name="x<?php echo $province_list->RowIndex ?>_province_code" id="x<?php echo $province_list->RowIndex ?>_province_code" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_code->getPlaceHolder()) ?>" value="<?php echo $province->province_code->EditValue ?>"<?php echo $province->province_code->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_code" name="o<?php echo $province_list->RowIndex ?>_province_code" id="o<?php echo $province_list->RowIndex ?>_province_code" value="<?php echo ew_HtmlEncode($province->province_code->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_province_code" class="form-group province_province_code">
+<input type="text" data-table="province" data-field="x_province_code" name="x<?php echo $province_list->RowIndex ?>_province_code" id="x<?php echo $province_list->RowIndex ?>_province_code" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_code->getPlaceHolder()) ?>" value="<?php echo $province->province_code->EditValue ?>"<?php echo $province->province_code->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_province_code" class="province_province_code">
 <span<?php echo $province->province_code->ViewAttributes() ?>>
 <?php echo $province->province_code->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($province->image->Visible) { // image ?>
 		<td data-name="image"<?php echo $province->image->CellAttributes() ?>>
+<?php if ($province->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_image" class="form-group province_image">
+<input type="text" data-table="province" data-field="x_image" name="x<?php echo $province_list->RowIndex ?>_image" id="x<?php echo $province_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->image->getPlaceHolder()) ?>" value="<?php echo $province->image->EditValue ?>"<?php echo $province->image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_image" name="o<?php echo $province_list->RowIndex ?>_image" id="o<?php echo $province_list->RowIndex ?>_image" value="<?php echo ew_HtmlEncode($province->image->OldValue) ?>">
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $province_list->RowCnt ?>_province_image" class="form-group province_image">
+<input type="text" data-table="province" data-field="x_image" name="x<?php echo $province_list->RowIndex ?>_image" id="x<?php echo $province_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->image->getPlaceHolder()) ?>" value="<?php echo $province->image->EditValue ?>"<?php echo $province->image->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($province->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $province_list->RowCnt ?>_province_image" class="province_image">
 <span<?php echo $province->image->ViewAttributes() ?>>
 <?php echo $province->image->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 <?php
@@ -2828,14 +4729,185 @@ $province_list->ListOptions->Render("body", "left", $province_list->RowCnt);
 $province_list->ListOptions->Render("body", "right", $province_list->RowCnt);
 ?>
 	</tr>
+<?php if ($province->RowType == EW_ROWTYPE_ADD || $province->RowType == EW_ROWTYPE_EDIT) { ?>
+<script type="text/javascript">
+fprovincelist.UpdateOpts(<?php echo $province_list->RowIndex ?>);
+</script>
+<?php } ?>
 <?php
 	}
+	} // End delete row checking
 	if ($province->CurrentAction <> "gridadd")
-		$province_list->Recordset->MoveNext();
+		if (!$province_list->Recordset->EOF) $province_list->Recordset->MoveNext();
+}
+?>
+<?php
+	if ($province->CurrentAction == "gridadd" || $province->CurrentAction == "gridedit") {
+		$province_list->RowIndex = '$rowindex$';
+		$province_list->LoadRowValues();
+
+		// Set row properties
+		$province->ResetAttrs();
+		$province->RowAttrs = array_merge($province->RowAttrs, array('data-rowindex'=>$province_list->RowIndex, 'id'=>'r0_province', 'data-rowtype'=>EW_ROWTYPE_ADD));
+		ew_AppendClass($province->RowAttrs["class"], "ewTemplate");
+		$province->RowType = EW_ROWTYPE_ADD;
+
+		// Render row
+		$province_list->RenderRow();
+
+		// Render list options
+		$province_list->RenderListOptions();
+		$province_list->StartRowCnt = 0;
+?>
+	<tr<?php echo $province->RowAttributes() ?>>
+<?php
+
+// Render list options (body, left)
+$province_list->ListOptions->Render("body", "left", $province_list->RowIndex);
+?>
+	<?php if ($province->province_id->Visible) { // province_id ?>
+		<td data-name="province_id">
+<input type="hidden" data-table="province" data-field="x_province_id" name="o<?php echo $province_list->RowIndex ?>_province_id" id="o<?php echo $province_list->RowIndex ?>_province_id" value="<?php echo ew_HtmlEncode($province->province_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->country_id->Visible) { // country_id ?>
+		<td data-name="country_id">
+<span id="el$rowindex$_province_country_id" class="form-group province_country_id">
+<input type="text" data-table="province" data-field="x_country_id" name="x<?php echo $province_list->RowIndex ?>_country_id" id="x<?php echo $province_list->RowIndex ?>_country_id" size="30" placeholder="<?php echo ew_HtmlEncode($province->country_id->getPlaceHolder()) ?>" value="<?php echo $province->country_id->EditValue ?>"<?php echo $province->country_id->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_country_id" name="o<?php echo $province_list->RowIndex ?>_country_id" id="o<?php echo $province_list->RowIndex ?>_country_id" value="<?php echo ew_HtmlEncode($province->country_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->province_name_kh->Visible) { // province_name_kh ?>
+		<td data-name="province_name_kh">
+<span id="el$rowindex$_province_province_name_kh" class="form-group province_province_name_kh">
+<input type="text" data-table="province" data-field="x_province_name_kh" name="x<?php echo $province_list->RowIndex ?>_province_name_kh" id="x<?php echo $province_list->RowIndex ?>_province_name_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_kh->getPlaceHolder()) ?>" value="<?php echo $province->province_name_kh->EditValue ?>"<?php echo $province->province_name_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_kh" name="o<?php echo $province_list->RowIndex ?>_province_name_kh" id="o<?php echo $province_list->RowIndex ?>_province_name_kh" value="<?php echo ew_HtmlEncode($province->province_name_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->province_name_en->Visible) { // province_name_en ?>
+		<td data-name="province_name_en">
+<span id="el$rowindex$_province_province_name_en" class="form-group province_province_name_en">
+<input type="text" data-table="province" data-field="x_province_name_en" name="x<?php echo $province_list->RowIndex ?>_province_name_en" id="x<?php echo $province_list->RowIndex ?>_province_name_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_en->getPlaceHolder()) ?>" value="<?php echo $province->province_name_en->EditValue ?>"<?php echo $province->province_name_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_en" name="o<?php echo $province_list->RowIndex ?>_province_name_en" id="o<?php echo $province_list->RowIndex ?>_province_name_en" value="<?php echo ew_HtmlEncode($province->province_name_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->capital_kh->Visible) { // capital_kh ?>
+		<td data-name="capital_kh">
+<span id="el$rowindex$_province_capital_kh" class="form-group province_capital_kh">
+<input type="text" data-table="province" data-field="x_capital_kh" name="x<?php echo $province_list->RowIndex ?>_capital_kh" id="x<?php echo $province_list->RowIndex ?>_capital_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_kh->getPlaceHolder()) ?>" value="<?php echo $province->capital_kh->EditValue ?>"<?php echo $province->capital_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_kh" name="o<?php echo $province_list->RowIndex ?>_capital_kh" id="o<?php echo $province_list->RowIndex ?>_capital_kh" value="<?php echo ew_HtmlEncode($province->capital_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->capital_en->Visible) { // capital_en ?>
+		<td data-name="capital_en">
+<span id="el$rowindex$_province_capital_en" class="form-group province_capital_en">
+<input type="text" data-table="province" data-field="x_capital_en" name="x<?php echo $province_list->RowIndex ?>_capital_en" id="x<?php echo $province_list->RowIndex ?>_capital_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_en->getPlaceHolder()) ?>" value="<?php echo $province->capital_en->EditValue ?>"<?php echo $province->capital_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_en" name="o<?php echo $province_list->RowIndex ?>_capital_en" id="o<?php echo $province_list->RowIndex ?>_capital_en" value="<?php echo ew_HtmlEncode($province->capital_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->population_kh->Visible) { // population_kh ?>
+		<td data-name="population_kh">
+<span id="el$rowindex$_province_population_kh" class="form-group province_population_kh">
+<input type="text" data-table="province" data-field="x_population_kh" name="x<?php echo $province_list->RowIndex ?>_population_kh" id="x<?php echo $province_list->RowIndex ?>_population_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_kh->getPlaceHolder()) ?>" value="<?php echo $province->population_kh->EditValue ?>"<?php echo $province->population_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_kh" name="o<?php echo $province_list->RowIndex ?>_population_kh" id="o<?php echo $province_list->RowIndex ?>_population_kh" value="<?php echo ew_HtmlEncode($province->population_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->population_en->Visible) { // population_en ?>
+		<td data-name="population_en">
+<span id="el$rowindex$_province_population_en" class="form-group province_population_en">
+<input type="text" data-table="province" data-field="x_population_en" name="x<?php echo $province_list->RowIndex ?>_population_en" id="x<?php echo $province_list->RowIndex ?>_population_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_en->getPlaceHolder()) ?>" value="<?php echo $province->population_en->EditValue ?>"<?php echo $province->population_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_en" name="o<?php echo $province_list->RowIndex ?>_population_en" id="o<?php echo $province_list->RowIndex ?>_population_en" value="<?php echo ew_HtmlEncode($province->population_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->area_kh->Visible) { // area_kh ?>
+		<td data-name="area_kh">
+<span id="el$rowindex$_province_area_kh" class="form-group province_area_kh">
+<input type="text" data-table="province" data-field="x_area_kh" name="x<?php echo $province_list->RowIndex ?>_area_kh" id="x<?php echo $province_list->RowIndex ?>_area_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_kh->getPlaceHolder()) ?>" value="<?php echo $province->area_kh->EditValue ?>"<?php echo $province->area_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_kh" name="o<?php echo $province_list->RowIndex ?>_area_kh" id="o<?php echo $province_list->RowIndex ?>_area_kh" value="<?php echo ew_HtmlEncode($province->area_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->area_en->Visible) { // area_en ?>
+		<td data-name="area_en">
+<span id="el$rowindex$_province_area_en" class="form-group province_area_en">
+<input type="text" data-table="province" data-field="x_area_en" name="x<?php echo $province_list->RowIndex ?>_area_en" id="x<?php echo $province_list->RowIndex ?>_area_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_en->getPlaceHolder()) ?>" value="<?php echo $province->area_en->EditValue ?>"<?php echo $province->area_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_en" name="o<?php echo $province_list->RowIndex ?>_area_en" id="o<?php echo $province_list->RowIndex ?>_area_en" value="<?php echo ew_HtmlEncode($province->area_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->density_kh->Visible) { // density_kh ?>
+		<td data-name="density_kh">
+<span id="el$rowindex$_province_density_kh" class="form-group province_density_kh">
+<input type="text" data-table="province" data-field="x_density_kh" name="x<?php echo $province_list->RowIndex ?>_density_kh" id="x<?php echo $province_list->RowIndex ?>_density_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_kh->getPlaceHolder()) ?>" value="<?php echo $province->density_kh->EditValue ?>"<?php echo $province->density_kh->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_kh" name="o<?php echo $province_list->RowIndex ?>_density_kh" id="o<?php echo $province_list->RowIndex ?>_density_kh" value="<?php echo ew_HtmlEncode($province->density_kh->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->density_en->Visible) { // density_en ?>
+		<td data-name="density_en">
+<span id="el$rowindex$_province_density_en" class="form-group province_density_en">
+<input type="text" data-table="province" data-field="x_density_en" name="x<?php echo $province_list->RowIndex ?>_density_en" id="x<?php echo $province_list->RowIndex ?>_density_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_en->getPlaceHolder()) ?>" value="<?php echo $province->density_en->EditValue ?>"<?php echo $province->density_en->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_en" name="o<?php echo $province_list->RowIndex ?>_density_en" id="o<?php echo $province_list->RowIndex ?>_density_en" value="<?php echo ew_HtmlEncode($province->density_en->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->province_code->Visible) { // province_code ?>
+		<td data-name="province_code">
+<span id="el$rowindex$_province_province_code" class="form-group province_province_code">
+<input type="text" data-table="province" data-field="x_province_code" name="x<?php echo $province_list->RowIndex ?>_province_code" id="x<?php echo $province_list->RowIndex ?>_province_code" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_code->getPlaceHolder()) ?>" value="<?php echo $province->province_code->EditValue ?>"<?php echo $province->province_code->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_code" name="o<?php echo $province_list->RowIndex ?>_province_code" id="o<?php echo $province_list->RowIndex ?>_province_code" value="<?php echo ew_HtmlEncode($province->province_code->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($province->image->Visible) { // image ?>
+		<td data-name="image">
+<span id="el$rowindex$_province_image" class="form-group province_image">
+<input type="text" data-table="province" data-field="x_image" name="x<?php echo $province_list->RowIndex ?>_image" id="x<?php echo $province_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->image->getPlaceHolder()) ?>" value="<?php echo $province->image->EditValue ?>"<?php echo $province->image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="province" data-field="x_image" name="o<?php echo $province_list->RowIndex ?>_image" id="o<?php echo $province_list->RowIndex ?>_image" value="<?php echo ew_HtmlEncode($province->image->OldValue) ?>">
+</td>
+	<?php } ?>
+<?php
+
+// Render list options (body, right)
+$province_list->ListOptions->Render("body", "right", $province_list->RowIndex);
+?>
+<script type="text/javascript">
+fprovincelist.UpdateOpts(<?php echo $province_list->RowIndex ?>);
+</script>
+	</tr>
+<?php
 }
 ?>
 </tbody>
 </table>
+<?php } ?>
+<?php if ($province->CurrentAction == "add" || $province->CurrentAction == "copy") { ?>
+<input type="hidden" name="<?php echo $province_list->FormKeyCountName ?>" id="<?php echo $province_list->FormKeyCountName ?>" value="<?php echo $province_list->KeyCount ?>">
+<?php } ?>
+<?php if ($province->CurrentAction == "gridadd") { ?>
+<input type="hidden" name="a_list" id="a_list" value="gridinsert">
+<input type="hidden" name="<?php echo $province_list->FormKeyCountName ?>" id="<?php echo $province_list->FormKeyCountName ?>" value="<?php echo $province_list->KeyCount ?>">
+<?php echo $province_list->MultiSelectKey ?>
+<?php } ?>
+<?php if ($province->CurrentAction == "edit") { ?>
+<input type="hidden" name="<?php echo $province_list->FormKeyCountName ?>" id="<?php echo $province_list->FormKeyCountName ?>" value="<?php echo $province_list->KeyCount ?>">
+<?php } ?>
+<?php if ($province->CurrentAction == "gridedit") { ?>
+<?php if ($province->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_list" id="a_list" value="gridoverwrite">
+<?php } else { ?>
+<input type="hidden" name="a_list" id="a_list" value="gridupdate">
+<?php } ?>
+<input type="hidden" name="<?php echo $province_list->FormKeyCountName ?>" id="<?php echo $province_list->FormKeyCountName ?>" value="<?php echo $province_list->KeyCount ?>">
+<?php echo $province_list->MultiSelectKey ?>
 <?php } ?>
 <?php if ($province->CurrentAction == "") { ?>
 <input type="hidden" name="a_list" id="a_list" value="">

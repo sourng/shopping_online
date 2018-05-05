@@ -424,6 +424,7 @@ class cbranch_edit extends cbranch {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -515,6 +516,12 @@ class cbranch_edit extends cbranch {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -535,6 +542,7 @@ class cbranch_edit extends cbranch {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("branchlist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -558,7 +566,11 @@ class cbranch_edit extends cbranch {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -625,6 +637,8 @@ class cbranch_edit extends cbranch {
 		if (!$this->lang->FldIsDetailKey) {
 			$this->lang->setFormValue($objForm->GetValue("x_lang"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -635,6 +649,8 @@ class cbranch_edit extends cbranch {
 		$this->image->CurrentValue = $this->image->FormValue;
 		$this->status->CurrentValue = $this->status->FormValue;
 		$this->lang->CurrentValue = $this->lang->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -680,6 +696,8 @@ class cbranch_edit extends cbranch {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -934,6 +952,19 @@ class cbranch_edit extends cbranch {
 			// lang
 			$this->lang->SetDbValueDef($rsnew, $this->lang->CurrentValue, NULL, $this->lang->ReadOnly);
 
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
 			if ($bUpdateRow) {
@@ -964,6 +995,31 @@ class cbranch_edit extends cbranch {
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('name')); // name
+		$sHash .= ew_GetFldHash($rs->fields('image')); // image
+		$sHash .= ew_GetFldHash($rs->fields('status')); // status
+		$sHash .= ew_GetFldHash($rs->fields('lang')); // lang
+		return md5($sHash);
 	}
 
 	// Set up Breadcrumb
@@ -1145,6 +1201,7 @@ fbranchedit.Lists["x_lang"].Options = <?php echo json_encode($branch_edit->lang-
 $branch_edit->ShowMessage();
 ?>
 <?php if (!$branch_edit->IsModal) { ?>
+<?php if ($branch->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($branch_edit->Pager)) $branch_edit->Pager = new cPrevNextPager($branch_edit->StartRec, $branch_edit->DisplayRecs, $branch_edit->TotalRecs, $branch_edit->AutoHidePager) ?>
 <?php if ($branch_edit->Pager->RecordCount > 0 && $branch_edit->Pager->Visible) { ?>
@@ -1189,23 +1246,41 @@ $branch_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="fbranchedit" id="fbranchedit" class="<?php echo $branch_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($branch_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $branch_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="branch">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $branch_edit->HashValue ?>">
+<?php if ($branch->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($branch->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($branch_edit->IsModal) ?>">
 <div class="ewEditDiv"><!-- page* -->
 <?php if ($branch->branch_id->Visible) { // branch_id ?>
 	<div id="r_branch_id" class="form-group">
 		<label id="elh_branch_branch_id" class="<?php echo $branch_edit->LeftColumnClass ?>"><?php echo $branch->branch_id->FldCaption() ?></label>
 		<div class="<?php echo $branch_edit->RightColumnClass ?>"><div<?php echo $branch->branch_id->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_branch_id">
 <span<?php echo $branch->branch_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $branch->branch_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="branch" data-field="x_branch_id" name="x_branch_id" id="x_branch_id" value="<?php echo ew_HtmlEncode($branch->branch_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_branch_branch_id">
+<span<?php echo $branch->branch_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->branch_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_branch_id" name="x_branch_id" id="x_branch_id" value="<?php echo ew_HtmlEncode($branch->branch_id->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->branch_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1213,9 +1288,17 @@ $branch_edit->ShowMessage();
 	<div id="r_name" class="form-group">
 		<label id="elh_branch_name" for="x_name" class="<?php echo $branch_edit->LeftColumnClass ?>"><?php echo $branch->name->FldCaption() ?></label>
 		<div class="<?php echo $branch_edit->RightColumnClass ?>"><div<?php echo $branch->name->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_name">
 <input type="text" data-table="branch" data-field="x_name" name="x_name" id="x_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->name->getPlaceHolder()) ?>" value="<?php echo $branch->name->EditValue ?>"<?php echo $branch->name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_branch_name">
+<span<?php echo $branch->name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_name" name="x_name" id="x_name" value="<?php echo ew_HtmlEncode($branch->name->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1223,9 +1306,17 @@ $branch_edit->ShowMessage();
 	<div id="r_image" class="form-group">
 		<label id="elh_branch_image" for="x_image" class="<?php echo $branch_edit->LeftColumnClass ?>"><?php echo $branch->image->FldCaption() ?></label>
 		<div class="<?php echo $branch_edit->RightColumnClass ?>"><div<?php echo $branch->image->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_image">
 <input type="text" data-table="branch" data-field="x_image" name="x_image" id="x_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->image->getPlaceHolder()) ?>" value="<?php echo $branch->image->EditValue ?>"<?php echo $branch->image->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_branch_image">
+<span<?php echo $branch->image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_image" name="x_image" id="x_image" value="<?php echo ew_HtmlEncode($branch->image->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1233,12 +1324,20 @@ $branch_edit->ShowMessage();
 	<div id="r_status" class="form-group">
 		<label id="elh_branch_status" class="<?php echo $branch_edit->LeftColumnClass ?>"><?php echo $branch->status->FldCaption() ?></label>
 		<div class="<?php echo $branch_edit->RightColumnClass ?>"><div<?php echo $branch->status->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_status">
 <div id="tp_x_status" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_status" data-value-separator="<?php echo $branch->status->DisplayValueSeparatorAttribute() ?>" name="x_status" id="x_status" value="{value}"<?php echo $branch->status->EditAttributes() ?>></div>
 <div id="dsl_x_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
 <?php echo $branch->status->RadioButtonListHtml(FALSE, "x_status") ?>
 </div></div>
 </span>
+<?php } else { ?>
+<span id="el_branch_status">
+<span<?php echo $branch->status->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->status->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_status" name="x_status" id="x_status" value="<?php echo ew_HtmlEncode($branch->status->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->status->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1246,6 +1345,7 @@ $branch_edit->ShowMessage();
 	<div id="r_lang" class="form-group">
 		<label id="elh_branch_lang" for="x_lang" class="<?php echo $branch_edit->LeftColumnClass ?>"><?php echo $branch->lang->FldCaption() ?></label>
 		<div class="<?php echo $branch_edit->RightColumnClass ?>"><div<?php echo $branch->lang->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_lang">
 <div class="ewDropdownList has-feedback">
 	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($branch->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
@@ -1263,6 +1363,13 @@ $branch_edit->ShowMessage();
 	<div id="tp_x_lang" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_lang" data-value-separator="<?php echo $branch->lang->DisplayValueSeparatorAttribute() ?>" name="x_lang" id="x_lang" value="{value}"<?php echo $branch->lang->EditAttributes() ?>></div>
 </div>
 </span>
+<?php } else { ?>
+<span id="el_branch_lang">
+<span<?php echo $branch->lang->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->lang->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_lang" name="x_lang" id="x_lang" value="<?php echo ew_HtmlEncode($branch->lang->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->lang->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1270,12 +1377,23 @@ $branch_edit->ShowMessage();
 <?php if (!$branch_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $branch_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($branch->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($branch->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $branch_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$branch_edit->IsModal) { ?>
+<?php if ($branch->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($branch_edit->Pager)) $branch_edit->Pager = new cPrevNextPager($branch_edit->StartRec, $branch_edit->DisplayRecs, $branch_edit->TotalRecs, $branch_edit->AutoHidePager) ?>
 <?php if ($branch_edit->Pager->RecordCount > 0 && $branch_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -1317,6 +1435,7 @@ $branch_edit->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

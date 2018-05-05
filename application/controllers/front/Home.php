@@ -15,11 +15,12 @@ class Home extends CI_Controller {
 	{		
 		$data=array();
 
-
-
-
-		$sql="SELECT * FROM categories";
+		$sql="SELECT cat.cat_id,cat.cat_name,cat.cat_ico_class,
+		count(cat.cat_name) as number from categories as cat inner join products as 
+		p ON cat.cat_id=p.cat_id group by cat.cat_id";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
+
+		
 		
 		$sql_product="SELECT p.*,c.cat_name FROM products as p INNER JOIN categories as c ON p.cat_id=c.cat_id;";
 		$data['getProducts']=$this->m_cat->get_by_sql($sql_product,FALSE);
@@ -43,16 +44,22 @@ class Home extends CI_Controller {
 	public function details($pro_id){	
 	$data=array();
 		$data['lang']=$this->session->userdata('site_lang');
-		$sql="SELECT * FROM categories";
+		$sql="SELECT cat.cat_id,cat.cat_name,cat.cat_ico_class,
+		count(cat.cat_name) as number from categories as cat inner join products as 
+		p ON cat.cat_id=p.cat_id group by cat.cat_id";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
 		
-		$sql_product="SELECT * FROM products WHERE product_id=".$pro_id;
+		$sql_product="SELECT * FROM products as p INNER JOIN model as m ON p.pro_model=m.model_id where p.product_id=".$pro_id;
 		$data['getItem']=$this->m_cat->get_by_sql($sql_product,FALSE);
+
+		$sql_galleries="SELECT * FROM product_gallery WHERE product_id=".$pro_id;
+		$data['galleries']=$this->m_crud->get_by_sql($sql_galleries,false);
 
 		// Recommended Ads for You
 
 		$sql_productRecommended="SELECT * FROM products WHERE product_id<>".$pro_id;
 		$data['getRecommendedAds']=$this->m_cat->get_by_sql($sql_productRecommended,FALSE);
+
 
 		
 		$data['title']="Trade Title";

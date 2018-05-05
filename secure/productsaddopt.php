@@ -349,6 +349,22 @@ class cproducts_addopt extends cproducts {
 
 		// Process auto fill
 		if (@$_POST["ajax"] == "autofill") {
+
+			// Get the keys for master table
+			$sDetailTblVar = $this->getCurrentDetailTable();
+			if ($sDetailTblVar <> "") {
+				$DetailTblVar = explode(",", $sDetailTblVar);
+				if (in_array("product_gallery", $DetailTblVar)) {
+
+					// Process auto fill for detail table 'product_gallery'
+					if (preg_match('/^fproduct_gallery(grid|add|addopt|edit|update|search)$/', @$_POST["form"])) {
+						if (!isset($GLOBALS["product_gallery_grid"])) $GLOBALS["product_gallery_grid"] = new cproduct_gallery_grid;
+						$GLOBALS["product_gallery_grid"]->Page_Init();
+						$this->Page_Terminate();
+						exit();
+					}
+				}
+			}
 			$results = $this->GetAutoFill(@$_POST["name"], @$_POST["q"]);
 			if ($results) {
 
@@ -554,7 +570,7 @@ class cproducts_addopt extends cproducts {
 		}
 		if (!$this->post_date->FldIsDetailKey) {
 			$this->post_date->setFormValue(ew_ConvertFromUtf8($objForm->GetValue("x_post_date")));
-			$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 0);
+			$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 1);
 		}
 		if (!$this->ads_id->FldIsDetailKey) {
 			$this->ads_id->setFormValue(ew_ConvertFromUtf8($objForm->GetValue("x_ads_id")));
@@ -590,7 +606,7 @@ class cproducts_addopt extends cproducts {
 		$this->pro_condition->CurrentValue = ew_ConvertToUtf8($this->pro_condition->FormValue);
 		$this->pro_features->CurrentValue = ew_ConvertToUtf8($this->pro_features->FormValue);
 		$this->post_date->CurrentValue = ew_ConvertToUtf8($this->post_date->FormValue);
-		$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 0);
+		$this->post_date->CurrentValue = ew_UnFormatDateTime($this->post_date->CurrentValue, 1);
 		$this->ads_id->CurrentValue = ew_ConvertToUtf8($this->ads_id->FormValue);
 		$this->pro_base_price->CurrentValue = ew_ConvertToUtf8($this->pro_base_price->FormValue);
 		$this->pro_sell_price->CurrentValue = ew_ConvertToUtf8($this->pro_sell_price->FormValue);
@@ -663,6 +679,11 @@ class cproducts_addopt extends cproducts {
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
+		if (array_key_exists('EV__folder_image', $rs->fields)) {
+			$this->folder_image->VirtualValue = $rs->fields('EV__folder_image'); // Set up virtual field value
+		} else {
+			$this->folder_image->VirtualValue = ""; // Clear value
+		}
 		$this->pro_status->setDbValue($row['pro_status']);
 		$this->branch_id->setDbValue($row['branch_id']);
 		$this->lang->setDbValue($row['lang']);
@@ -863,7 +884,7 @@ class cproducts_addopt extends cproducts {
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
-		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 0);
+		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 1);
 		$this->post_date->ViewCustomAttributes = "";
 
 		// ads_id
@@ -891,6 +912,9 @@ class cproducts_addopt extends cproducts {
 		$this->featured_image->ViewCustomAttributes = "";
 
 		// folder_image
+		if ($this->folder_image->VirtualValue <> "") {
+			$this->folder_image->ViewValue = $this->folder_image->VirtualValue;
+		} else {
 		if (strval($this->folder_image->CurrentValue) <> "") {
 			$arwrk = explode(",", $this->folder_image->CurrentValue);
 			$sFilterWrk = "";
@@ -898,7 +922,7 @@ class cproducts_addopt extends cproducts {
 				if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
 				$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
 			}
-		$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+		$sSqlWrk = "SELECT DISTINCT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
 		$sWhereWrk = "";
 		$this->folder_image->LookupFilters = array("dx1" => '`image`');
 		ew_AddFilter($sWhereWrk, $sFilterWrk);
@@ -922,6 +946,7 @@ class cproducts_addopt extends cproducts {
 			}
 		} else {
 			$this->folder_image->ViewValue = NULL;
+		}
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
@@ -1162,12 +1187,8 @@ class cproducts_addopt extends cproducts {
 			$this->pro_features->PlaceHolder = ew_RemoveHtml($this->pro_features->FldCaption());
 
 			// post_date
-			$this->post_date->EditAttrs["class"] = "form-control";
-			$this->post_date->EditCustomAttributes = "";
-			$this->post_date->EditValue = ew_HtmlEncode(ew_FormatDateTime($this->post_date->CurrentValue, 8));
-			$this->post_date->PlaceHolder = ew_RemoveHtml($this->post_date->FldCaption());
-
 			// ads_id
+
 			$this->ads_id->EditAttrs["class"] = "form-control";
 			$this->ads_id->EditCustomAttributes = "";
 			$this->ads_id->EditValue = ew_HtmlEncode($this->ads_id->CurrentValue);
@@ -1215,7 +1236,7 @@ class cproducts_addopt extends cproducts {
 					$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
 				}
 			}
-			$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `product_gallery`";
+			$sSqlWrk = "SELECT DISTINCT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld`, '' AS `SelectFilterFld`, '' AS `SelectFilterFld2`, '' AS `SelectFilterFld3`, '' AS `SelectFilterFld4` FROM `product_gallery`";
 			$sWhereWrk = "";
 			$this->folder_image->LookupFilters = array("dx1" => '`image`');
 			ew_AddFilter($sWhereWrk, $sFilterWrk);
@@ -1374,9 +1395,6 @@ class cproducts_addopt extends cproducts {
 		if (!$this->company_id->FldIsDetailKey && !is_null($this->company_id->FormValue) && $this->company_id->FormValue == "") {
 			ew_AddMessage($gsFormError, str_replace("%s", $this->company_id->FldCaption(), $this->company_id->ReqErrMsg));
 		}
-		if (!ew_CheckDateDef($this->post_date->FormValue)) {
-			ew_AddMessage($gsFormError, $this->post_date->FldErrMsg());
-		}
 		if (!ew_CheckNumber($this->pro_base_price->FormValue)) {
 			ew_AddMessage($gsFormError, $this->pro_base_price->FldErrMsg());
 		}
@@ -1437,7 +1455,8 @@ class cproducts_addopt extends cproducts {
 		$this->pro_features->SetDbValueDef($rsnew, $this->pro_features->CurrentValue, NULL, FALSE);
 
 		// post_date
-		$this->post_date->SetDbValueDef($rsnew, ew_UnFormatDateTime($this->post_date->CurrentValue, 0), NULL, FALSE);
+		$this->post_date->SetDbValueDef($rsnew, ew_CurrentDateTime(), NULL);
+		$rsnew['post_date'] = &$this->post_date->DbValue;
 
 		// ads_id
 		$this->ads_id->SetDbValueDef($rsnew, $this->ads_id->CurrentValue, NULL, FALSE);
@@ -1628,7 +1647,7 @@ class cproducts_addopt extends cproducts {
 			break;
 		case "x_folder_image":
 			$sSqlWrk = "";
-			$sSqlWrk = "SELECT `pro_gallery_id` AS `LinkFld`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+			$sSqlWrk = "SELECT DISTINCT `pro_gallery_id` AS `LinkFld`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
 			$sWhereWrk = "{filter}";
 			$fld->LookupFilters = array("dx1" => '`image`');
 			$fld->LookupFilters += array("s" => $sSqlWrk, "d" => "", "f0" => '`pro_gallery_id` IN ({filter_value})', "t0" => "3", "fn0" => "");
@@ -1775,9 +1794,6 @@ fproductsaddopt.Validate = function() {
 			elm = this.GetElements("x" + infix + "_company_id");
 			if (elm && !ew_IsHidden(elm) && !ew_HasValue(elm))
 				return this.OnError(elm, "<?php echo ew_JsEncode2(str_replace("%s", $products->company_id->FldCaption(), $products->company_id->ReqErrMsg)) ?>");
-			elm = this.GetElements("x" + infix + "_post_date");
-			if (elm && !ew_CheckDateDef(elm.value))
-				return this.OnError(elm, "<?php echo ew_JsEncode2($products->post_date->FldErrMsg()) ?>");
 			elm = this.GetElements("x" + infix + "_pro_base_price");
 			if (elm && !ew_CheckNumber(elm.value))
 				return this.OnError(elm, "<?php echo ew_JsEncode2($products->pro_base_price->FldErrMsg()) ?>");
@@ -1918,12 +1934,6 @@ ew_CreateEditor("fproductsaddopt", "x_pro_description", 45, 4, <?php echo ($prod
 	</div>
 <?php } ?>
 <?php if ($products->post_date->Visible) { // post_date ?>
-	<div class="form-group">
-		<label class="col-sm-2 control-label ewLabel" for="x_post_date"><?php echo $products->post_date->FldCaption() ?></label>
-		<div class="col-sm-10">
-<input type="text" data-table="products" data-field="x_post_date" name="x_post_date" id="x_post_date" placeholder="<?php echo ew_HtmlEncode($products->post_date->getPlaceHolder()) ?>" value="<?php echo $products->post_date->EditValue ?>"<?php echo $products->post_date->EditAttributes() ?>>
-</div>
-	</div>
 <?php } ?>
 <?php if ($products->ads_id->Visible) { // ads_id ?>
 	<div class="form-group">

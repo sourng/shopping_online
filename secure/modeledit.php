@@ -421,6 +421,7 @@ class cmodel_edit extends cmodel {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -512,6 +513,12 @@ class cmodel_edit extends cmodel {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -532,6 +539,7 @@ class cmodel_edit extends cmodel {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("modellist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -555,7 +563,11 @@ class cmodel_edit extends cmodel {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -613,6 +625,8 @@ class cmodel_edit extends cmodel {
 		if (!$this->name->FldIsDetailKey) {
 			$this->name->setFormValue($objForm->GetValue("x_name"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -620,6 +634,8 @@ class cmodel_edit extends cmodel {
 		global $objForm;
 		$this->model_id->CurrentValue = $this->model_id->FormValue;
 		$this->name->CurrentValue = $this->name->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -665,6 +681,8 @@ class cmodel_edit extends cmodel {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -837,6 +855,19 @@ class cmodel_edit extends cmodel {
 			// name
 			$this->name->SetDbValueDef($rsnew, $this->name->CurrentValue, NULL, $this->name->ReadOnly);
 
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
 			if ($bUpdateRow) {
@@ -867,6 +898,28 @@ class cmodel_edit extends cmodel {
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('name')); // name
+		return md5($sHash);
 	}
 
 	// Set up Breadcrumb
@@ -1044,6 +1097,7 @@ fmodeledit.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 $model_edit->ShowMessage();
 ?>
 <?php if (!$model_edit->IsModal) { ?>
+<?php if ($model->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($model_edit->Pager)) $model_edit->Pager = new cPrevNextPager($model_edit->StartRec, $model_edit->DisplayRecs, $model_edit->TotalRecs, $model_edit->AutoHidePager) ?>
 <?php if ($model_edit->Pager->RecordCount > 0 && $model_edit->Pager->Visible) { ?>
@@ -1088,23 +1142,41 @@ $model_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="fmodeledit" id="fmodeledit" class="<?php echo $model_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($model_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $model_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="model">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $model_edit->HashValue ?>">
+<?php if ($model->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($model->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($model_edit->IsModal) ?>">
 <div class="ewEditDiv"><!-- page* -->
 <?php if ($model->model_id->Visible) { // model_id ?>
 	<div id="r_model_id" class="form-group">
 		<label id="elh_model_model_id" class="<?php echo $model_edit->LeftColumnClass ?>"><?php echo $model->model_id->FldCaption() ?></label>
 		<div class="<?php echo $model_edit->RightColumnClass ?>"><div<?php echo $model->model_id->CellAttributes() ?>>
+<?php if ($model->CurrentAction <> "F") { ?>
 <span id="el_model_model_id">
 <span<?php echo $model->model_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $model->model_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="model" data-field="x_model_id" name="x_model_id" id="x_model_id" value="<?php echo ew_HtmlEncode($model->model_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_model_model_id">
+<span<?php echo $model->model_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $model->model_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="model" data-field="x_model_id" name="x_model_id" id="x_model_id" value="<?php echo ew_HtmlEncode($model->model_id->FormValue) ?>">
+<?php } ?>
 <?php echo $model->model_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1112,9 +1184,17 @@ $model_edit->ShowMessage();
 	<div id="r_name" class="form-group">
 		<label id="elh_model_name" for="x_name" class="<?php echo $model_edit->LeftColumnClass ?>"><?php echo $model->name->FldCaption() ?></label>
 		<div class="<?php echo $model_edit->RightColumnClass ?>"><div<?php echo $model->name->CellAttributes() ?>>
+<?php if ($model->CurrentAction <> "F") { ?>
 <span id="el_model_name">
 <input type="text" data-table="model" data-field="x_name" name="x_name" id="x_name" size="40" maxlength="250" placeholder="<?php echo ew_HtmlEncode($model->name->getPlaceHolder()) ?>" value="<?php echo $model->name->EditValue ?>"<?php echo $model->name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_model_name">
+<span<?php echo $model->name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $model->name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="model" data-field="x_name" name="x_name" id="x_name" value="<?php echo ew_HtmlEncode($model->name->FormValue) ?>">
+<?php } ?>
 <?php echo $model->name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1122,12 +1202,23 @@ $model_edit->ShowMessage();
 <?php if (!$model_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $model_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($model->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($model->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $model_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$model_edit->IsModal) { ?>
+<?php if ($model->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($model_edit->Pager)) $model_edit->Pager = new cPrevNextPager($model_edit->StartRec, $model_edit->DisplayRecs, $model_edit->TotalRecs, $model_edit->AutoHidePager) ?>
 <?php if ($model_edit->Pager->RecordCount > 0 && $model_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -1169,6 +1260,7 @@ $model_edit->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

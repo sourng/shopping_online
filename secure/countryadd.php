@@ -510,7 +510,11 @@ class ccountry_add extends ccountry {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -1047,16 +1051,29 @@ $country_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $country_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="country">
+<?php if ($country->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($country_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($country->country_name_kh->Visible) { // country_name_kh ?>
 	<div id="r_country_name_kh" class="form-group">
 		<label id="elh_country_country_name_kh" for="x_country_name_kh" class="<?php echo $country_add->LeftColumnClass ?>"><?php echo $country->country_name_kh->FldCaption() ?></label>
 		<div class="<?php echo $country_add->RightColumnClass ?>"><div<?php echo $country->country_name_kh->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_country_name_kh">
 <input type="text" data-table="country" data-field="x_country_name_kh" name="x_country_name_kh" id="x_country_name_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->country_name_kh->getPlaceHolder()) ?>" value="<?php echo $country->country_name_kh->EditValue ?>"<?php echo $country->country_name_kh->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_country_name_kh">
+<span<?php echo $country->country_name_kh->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->country_name_kh->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_country_name_kh" name="x_country_name_kh" id="x_country_name_kh" value="<?php echo ew_HtmlEncode($country->country_name_kh->FormValue) ?>">
+<?php } ?>
 <?php echo $country->country_name_kh->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1064,9 +1081,17 @@ $country_add->ShowMessage();
 	<div id="r_country_name_en" class="form-group">
 		<label id="elh_country_country_name_en" for="x_country_name_en" class="<?php echo $country_add->LeftColumnClass ?>"><?php echo $country->country_name_en->FldCaption() ?></label>
 		<div class="<?php echo $country_add->RightColumnClass ?>"><div<?php echo $country->country_name_en->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_country_name_en">
 <input type="text" data-table="country" data-field="x_country_name_en" name="x_country_name_en" id="x_country_name_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->country_name_en->getPlaceHolder()) ?>" value="<?php echo $country->country_name_en->EditValue ?>"<?php echo $country->country_name_en->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_country_name_en">
+<span<?php echo $country->country_name_en->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->country_name_en->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_country_name_en" name="x_country_name_en" id="x_country_name_en" value="<?php echo ew_HtmlEncode($country->country_name_en->FormValue) ?>">
+<?php } ?>
 <?php echo $country->country_name_en->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1074,9 +1099,17 @@ $country_add->ShowMessage();
 	<div id="r_country_code" class="form-group">
 		<label id="elh_country_country_code" for="x_country_code" class="<?php echo $country_add->LeftColumnClass ?>"><?php echo $country->country_code->FldCaption() ?></label>
 		<div class="<?php echo $country_add->RightColumnClass ?>"><div<?php echo $country->country_code->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_country_code">
 <input type="text" data-table="country" data-field="x_country_code" name="x_country_code" id="x_country_code" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->country_code->getPlaceHolder()) ?>" value="<?php echo $country->country_code->EditValue ?>"<?php echo $country->country_code->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_country_code">
+<span<?php echo $country->country_code->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->country_code->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_country_code" name="x_country_code" id="x_country_code" value="<?php echo ew_HtmlEncode($country->country_code->FormValue) ?>">
+<?php } ?>
 <?php echo $country->country_code->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1084,9 +1117,17 @@ $country_add->ShowMessage();
 	<div id="r_image" class="form-group">
 		<label id="elh_country_image" for="x_image" class="<?php echo $country_add->LeftColumnClass ?>"><?php echo $country->image->FldCaption() ?></label>
 		<div class="<?php echo $country_add->RightColumnClass ?>"><div<?php echo $country->image->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_image">
 <input type="text" data-table="country" data-field="x_image" name="x_image" id="x_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($country->image->getPlaceHolder()) ?>" value="<?php echo $country->image->EditValue ?>"<?php echo $country->image->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_country_image">
+<span<?php echo $country->image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_image" name="x_image" id="x_image" value="<?php echo ew_HtmlEncode($country->image->FormValue) ?>">
+<?php } ?>
 <?php echo $country->image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1094,9 +1135,17 @@ $country_add->ShowMessage();
 	<div id="r_deatil" class="form-group">
 		<label id="elh_country_deatil" for="x_deatil" class="<?php echo $country_add->LeftColumnClass ?>"><?php echo $country->deatil->FldCaption() ?></label>
 		<div class="<?php echo $country_add->RightColumnClass ?>"><div<?php echo $country->deatil->CellAttributes() ?>>
+<?php if ($country->CurrentAction <> "F") { ?>
 <span id="el_country_deatil">
 <textarea data-table="country" data-field="x_deatil" name="x_deatil" id="x_deatil" cols="35" rows="4" placeholder="<?php echo ew_HtmlEncode($country->deatil->getPlaceHolder()) ?>"<?php echo $country->deatil->EditAttributes() ?>><?php echo $country->deatil->EditValue ?></textarea>
 </span>
+<?php } else { ?>
+<span id="el_country_deatil">
+<span<?php echo $country->deatil->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $country->deatil->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="country" data-field="x_deatil" name="x_deatil" id="x_deatil" value="<?php echo ew_HtmlEncode($country->deatil->FormValue) ?>">
+<?php } ?>
 <?php echo $country->deatil->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1104,8 +1153,13 @@ $country_add->ShowMessage();
 <?php if (!$country_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $country_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($country->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $country_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

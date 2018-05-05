@@ -434,6 +434,7 @@ class ccompany_edit extends ccompany {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -543,6 +544,12 @@ class ccompany_edit extends ccompany {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -563,6 +570,7 @@ class ccompany_edit extends ccompany {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("companylist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -586,7 +594,11 @@ class ccompany_edit extends ccompany {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -697,6 +709,8 @@ class ccompany_edit extends ccompany {
 		if (!$this->province_id->FldIsDetailKey) {
 			$this->province_id->setFormValue($objForm->GetValue("x_province_id"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -721,6 +735,8 @@ class ccompany_edit extends ccompany {
 		$this->reg_date->CurrentValue = ew_UnFormatDateTime($this->reg_date->CurrentValue, 1);
 		$this->country_id->CurrentValue = $this->country_id->FormValue;
 		$this->province_id->CurrentValue = $this->province_id->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -766,6 +782,8 @@ class ccompany_edit extends ccompany {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -1545,7 +1563,19 @@ class ccompany_edit extends ccompany {
 
 			// country_id
 			// province_id
+			// Check hash value
 
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
 			if ($this->com_logo->Visible && !$this->com_logo->Upload->KeepFile) {
 				$this->com_logo->UploadPath = "../uploads/company";
 				$OldFiles = ew_Empty($this->com_logo->Upload->DbValue) ? array() : array($this->com_logo->Upload->DbValue);
@@ -1647,6 +1677,45 @@ class ccompany_edit extends ccompany {
 		// com_logo
 		ew_CleanUploadTempPath($this->com_logo, $this->com_logo->Upload->Index);
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('com_fname')); // com_fname
+		$sHash .= ew_GetFldHash($rs->fields('com_lname')); // com_lname
+		$sHash .= ew_GetFldHash($rs->fields('com_name')); // com_name
+		$sHash .= ew_GetFldHash($rs->fields('com_address')); // com_address
+		$sHash .= ew_GetFldHash($rs->fields('com_phone')); // com_phone
+		$sHash .= ew_GetFldHash($rs->fields('com_email')); // com_email
+		$sHash .= ew_GetFldHash($rs->fields('com_fb')); // com_fb
+		$sHash .= ew_GetFldHash($rs->fields('com_tw')); // com_tw
+		$sHash .= ew_GetFldHash($rs->fields('com_yt')); // com_yt
+		$sHash .= ew_GetFldHash($rs->fields('com_logo')); // com_logo
+		$sHash .= ew_GetFldHash($rs->fields('com_username')); // com_username
+		$sHash .= ew_GetFldHash($rs->fields('com_password')); // com_password
+		$sHash .= ew_GetFldHash($rs->fields('com_online')); // com_online
+		$sHash .= ew_GetFldHash($rs->fields('com_activation')); // com_activation
+		$sHash .= ew_GetFldHash($rs->fields('com_status')); // com_status
+		$sHash .= ew_GetFldHash($rs->fields('reg_date')); // reg_date
+		$sHash .= ew_GetFldHash($rs->fields('country_id')); // country_id
+		$sHash .= ew_GetFldHash($rs->fields('province_id')); // province_id
+		return md5($sHash);
 	}
 
 	// Set up Breadcrumb
@@ -1855,6 +1924,7 @@ fcompanyedit.Lists["x_province_id"].Data = "<?php echo $company_edit->province_i
 $company_edit->ShowMessage();
 ?>
 <?php if (!$company_edit->IsModal) { ?>
+<?php if ($company->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($company_edit->Pager)) $company_edit->Pager = new cPrevNextPager($company_edit->StartRec, $company_edit->DisplayRecs, $company_edit->TotalRecs, $company_edit->AutoHidePager) ?>
 <?php if ($company_edit->Pager->RecordCount > 0 && $company_edit->Pager->Visible) { ?>
@@ -1899,12 +1969,22 @@ $company_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="fcompanyedit" id="fcompanyedit" class="<?php echo $company_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($company_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $company_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="company">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $company_edit->HashValue ?>">
+<?php if ($company->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($company->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($company_edit->IsModal) ?>">
 <!-- Fields to prevent google autofill -->
 <input class="hidden" type="text" name="<?php echo ew_Encrypt(ew_Random()) ?>">
@@ -1914,11 +1994,19 @@ $company_edit->ShowMessage();
 	<div id="r_company_id" class="form-group">
 		<label id="elh_company_company_id" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->company_id->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->company_id->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_company_id">
 <span<?php echo $company->company_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $company->company_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="company" data-field="x_company_id" name="x_company_id" id="x_company_id" value="<?php echo ew_HtmlEncode($company->company_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_company_company_id">
+<span<?php echo $company->company_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->company_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_company_id" name="x_company_id" id="x_company_id" value="<?php echo ew_HtmlEncode($company->company_id->FormValue) ?>">
+<?php } ?>
 <?php echo $company->company_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1926,9 +2014,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_fname" class="form-group">
 		<label id="elh_company_com_fname" for="x_com_fname" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_fname->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_fname->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_fname">
 <input type="text" data-table="company" data-field="x_com_fname" name="x_com_fname" id="x_com_fname" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_fname->getPlaceHolder()) ?>" value="<?php echo $company->com_fname->EditValue ?>"<?php echo $company->com_fname->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_fname">
+<span<?php echo $company->com_fname->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_fname->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_fname" name="x_com_fname" id="x_com_fname" value="<?php echo ew_HtmlEncode($company->com_fname->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_fname->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1936,9 +2032,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_lname" class="form-group">
 		<label id="elh_company_com_lname" for="x_com_lname" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_lname->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_lname->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_lname">
 <input type="text" data-table="company" data-field="x_com_lname" name="x_com_lname" id="x_com_lname" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_lname->getPlaceHolder()) ?>" value="<?php echo $company->com_lname->EditValue ?>"<?php echo $company->com_lname->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_lname">
+<span<?php echo $company->com_lname->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_lname->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_lname" name="x_com_lname" id="x_com_lname" value="<?php echo ew_HtmlEncode($company->com_lname->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_lname->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1946,9 +2050,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_name" class="form-group">
 		<label id="elh_company_com_name" for="x_com_name" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_name->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_name->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_name">
 <input type="text" data-table="company" data-field="x_com_name" name="x_com_name" id="x_com_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_name->getPlaceHolder()) ?>" value="<?php echo $company->com_name->EditValue ?>"<?php echo $company->com_name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_name">
+<span<?php echo $company->com_name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_name" name="x_com_name" id="x_com_name" value="<?php echo ew_HtmlEncode($company->com_name->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1956,9 +2068,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_address" class="form-group">
 		<label id="elh_company_com_address" for="x_com_address" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_address->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_address->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_address">
 <input type="text" data-table="company" data-field="x_com_address" name="x_com_address" id="x_com_address" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_address->getPlaceHolder()) ?>" value="<?php echo $company->com_address->EditValue ?>"<?php echo $company->com_address->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_address">
+<span<?php echo $company->com_address->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_address->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_address" name="x_com_address" id="x_com_address" value="<?php echo ew_HtmlEncode($company->com_address->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_address->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1966,9 +2086,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_phone" class="form-group">
 		<label id="elh_company_com_phone" for="x_com_phone" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_phone->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_phone->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_phone">
 <input type="text" data-table="company" data-field="x_com_phone" name="x_com_phone" id="x_com_phone" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_phone->getPlaceHolder()) ?>" value="<?php echo $company->com_phone->EditValue ?>"<?php echo $company->com_phone->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_phone">
+<span<?php echo $company->com_phone->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_phone->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_phone" name="x_com_phone" id="x_com_phone" value="<?php echo ew_HtmlEncode($company->com_phone->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_phone->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1976,9 +2104,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_email" class="form-group">
 		<label id="elh_company_com_email" for="x_com_email" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_email->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_email->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_email">
 <input type="text" data-table="company" data-field="x_com_email" name="x_com_email" id="x_com_email" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_email->getPlaceHolder()) ?>" value="<?php echo $company->com_email->EditValue ?>"<?php echo $company->com_email->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_email">
+<span<?php echo $company->com_email->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_email->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_email" name="x_com_email" id="x_com_email" value="<?php echo ew_HtmlEncode($company->com_email->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_email->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1986,9 +2122,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_fb" class="form-group">
 		<label id="elh_company_com_fb" for="x_com_fb" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_fb->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_fb->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_fb">
 <input type="text" data-table="company" data-field="x_com_fb" name="x_com_fb" id="x_com_fb" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_fb->getPlaceHolder()) ?>" value="<?php echo $company->com_fb->EditValue ?>"<?php echo $company->com_fb->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_fb">
+<span<?php echo $company->com_fb->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_fb->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_fb" name="x_com_fb" id="x_com_fb" value="<?php echo ew_HtmlEncode($company->com_fb->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_fb->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1996,9 +2140,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_tw" class="form-group">
 		<label id="elh_company_com_tw" for="x_com_tw" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_tw->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_tw->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_tw">
 <input type="text" data-table="company" data-field="x_com_tw" name="x_com_tw" id="x_com_tw" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_tw->getPlaceHolder()) ?>" value="<?php echo $company->com_tw->EditValue ?>"<?php echo $company->com_tw->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_tw">
+<span<?php echo $company->com_tw->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_tw->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_tw" name="x_com_tw" id="x_com_tw" value="<?php echo ew_HtmlEncode($company->com_tw->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_tw->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2006,9 +2158,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_yt" class="form-group">
 		<label id="elh_company_com_yt" for="x_com_yt" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_yt->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_yt->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_yt">
 <input type="text" data-table="company" data-field="x_com_yt" name="x_com_yt" id="x_com_yt" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_yt->getPlaceHolder()) ?>" value="<?php echo $company->com_yt->EditValue ?>"<?php echo $company->com_yt->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_yt">
+<span<?php echo $company->com_yt->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_yt->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_yt" name="x_com_yt" id="x_com_yt" value="<?php echo ew_HtmlEncode($company->com_yt->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_yt->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2041,9 +2201,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_username" class="form-group">
 		<label id="elh_company_com_username" for="x_com_username" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_username->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_username->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_username">
 <input type="text" data-table="company" data-field="x_com_username" name="x_com_username" id="x_com_username" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_username->getPlaceHolder()) ?>" value="<?php echo $company->com_username->EditValue ?>"<?php echo $company->com_username->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_username">
+<span<?php echo $company->com_username->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_username->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_username" name="x_com_username" id="x_com_username" value="<?php echo ew_HtmlEncode($company->com_username->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_username->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2051,9 +2219,17 @@ $company_edit->ShowMessage();
 	<div id="r_com_password" class="form-group">
 		<label id="elh_company_com_password" for="x_com_password" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_password->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_password->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_password">
 <input type="text" data-table="company" data-field="x_com_password" name="x_com_password" id="x_com_password" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($company->com_password->getPlaceHolder()) ?>" value="<?php echo $company->com_password->EditValue ?>"<?php echo $company->com_password->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_company_com_password">
+<span<?php echo $company->com_password->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_password->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_password" name="x_com_password" id="x_com_password" value="<?php echo ew_HtmlEncode($company->com_password->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_password->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2061,12 +2237,20 @@ $company_edit->ShowMessage();
 	<div id="r_com_online" class="form-group">
 		<label id="elh_company_com_online" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_online->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_online->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_online">
 <div id="tp_x_com_online" class="ewTemplate"><input type="radio" data-table="company" data-field="x_com_online" data-value-separator="<?php echo $company->com_online->DisplayValueSeparatorAttribute() ?>" name="x_com_online" id="x_com_online" value="{value}"<?php echo $company->com_online->EditAttributes() ?>></div>
 <div id="dsl_x_com_online" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
 <?php echo $company->com_online->RadioButtonListHtml(FALSE, "x_com_online") ?>
 </div></div>
 </span>
+<?php } else { ?>
+<span id="el_company_com_online">
+<span<?php echo $company->com_online->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_online->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_online" name="x_com_online" id="x_com_online" value="<?php echo ew_HtmlEncode($company->com_online->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_online->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2074,6 +2258,7 @@ $company_edit->ShowMessage();
 	<div id="r_com_activation" class="form-group">
 		<label id="elh_company_com_activation" for="x_com_activation" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_activation->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_activation->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_activation">
 <div class="ewDropdownList has-feedback">
 	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($company->com_activation->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
@@ -2091,6 +2276,13 @@ $company_edit->ShowMessage();
 	<div id="tp_x_com_activation" class="ewTemplate"><input type="radio" data-table="company" data-field="x_com_activation" data-value-separator="<?php echo $company->com_activation->DisplayValueSeparatorAttribute() ?>" name="x_com_activation" id="x_com_activation" value="{value}"<?php echo $company->com_activation->EditAttributes() ?>></div>
 </div>
 </span>
+<?php } else { ?>
+<span id="el_company_com_activation">
+<span<?php echo $company->com_activation->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_activation->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_activation" name="x_com_activation" id="x_com_activation" value="<?php echo ew_HtmlEncode($company->com_activation->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_activation->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2098,12 +2290,20 @@ $company_edit->ShowMessage();
 	<div id="r_com_status" class="form-group">
 		<label id="elh_company_com_status" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->com_status->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->com_status->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_com_status">
 <div id="tp_x_com_status" class="ewTemplate"><input type="radio" data-table="company" data-field="x_com_status" data-value-separator="<?php echo $company->com_status->DisplayValueSeparatorAttribute() ?>" name="x_com_status" id="x_com_status" value="{value}"<?php echo $company->com_status->EditAttributes() ?>></div>
 <div id="dsl_x_com_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
 <?php echo $company->com_status->RadioButtonListHtml(FALSE, "x_com_status") ?>
 </div></div>
 </span>
+<?php } else { ?>
+<span id="el_company_com_status">
+<span<?php echo $company->com_status->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->com_status->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_com_status" name="x_com_status" id="x_com_status" value="<?php echo ew_HtmlEncode($company->com_status->FormValue) ?>">
+<?php } ?>
 <?php echo $company->com_status->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2111,9 +2311,22 @@ $company_edit->ShowMessage();
 	<div id="r_reg_date" class="form-group">
 		<label id="elh_company_reg_date" for="x_reg_date" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->reg_date->FldCaption() ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->reg_date->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_reg_date">
 <input type="text" data-table="company" data-field="x_reg_date" data-format="1" name="x_reg_date" id="x_reg_date" placeholder="<?php echo ew_HtmlEncode($company->reg_date->getPlaceHolder()) ?>" value="<?php echo $company->reg_date->EditValue ?>"<?php echo $company->reg_date->EditAttributes() ?>>
+<?php if (!$company->reg_date->ReadOnly && !$company->reg_date->Disabled && !isset($company->reg_date->EditAttrs["readonly"]) && !isset($company->reg_date->EditAttrs["disabled"])) { ?>
+<script type="text/javascript">
+ew_CreateDateTimePicker("fcompanyedit", "x_reg_date", {"ignoreReadonly":true,"useCurrent":false,"format":1});
+</script>
+<?php } ?>
 </span>
+<?php } else { ?>
+<span id="el_company_reg_date">
+<span<?php echo $company->reg_date->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->reg_date->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_reg_date" name="x_reg_date" id="x_reg_date" value="<?php echo ew_HtmlEncode($company->reg_date->FormValue) ?>">
+<?php } ?>
 <?php echo $company->reg_date->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2121,11 +2334,19 @@ $company_edit->ShowMessage();
 	<div id="r_country_id" class="form-group">
 		<label id="elh_company_country_id" for="x_country_id" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->country_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->country_id->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_country_id">
 <span<?php echo $company->country_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $company->country_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="company" data-field="x_country_id" name="x_country_id" id="x_country_id" value="<?php echo ew_HtmlEncode($company->country_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_company_country_id">
+<span<?php echo $company->country_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->country_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_country_id" name="x_country_id" id="x_country_id" value="<?php echo ew_HtmlEncode($company->country_id->FormValue) ?>">
+<?php } ?>
 <?php echo $company->country_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2133,11 +2354,19 @@ $company_edit->ShowMessage();
 	<div id="r_province_id" class="form-group">
 		<label id="elh_company_province_id" for="x_province_id" class="<?php echo $company_edit->LeftColumnClass ?>"><?php echo $company->province_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $company_edit->RightColumnClass ?>"><div<?php echo $company->province_id->CellAttributes() ?>>
+<?php if ($company->CurrentAction <> "F") { ?>
 <span id="el_company_province_id">
 <span<?php echo $company->province_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $company->province_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="company" data-field="x_province_id" name="x_province_id" id="x_province_id" value="<?php echo ew_HtmlEncode($company->province_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_company_province_id">
+<span<?php echo $company->province_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $company->province_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="company" data-field="x_province_id" name="x_province_id" id="x_province_id" value="<?php echo ew_HtmlEncode($company->province_id->FormValue) ?>">
+<?php } ?>
 <?php echo $company->province_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -2145,12 +2374,23 @@ $company_edit->ShowMessage();
 <?php if (!$company_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $company_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($company->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($company->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $company_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$company_edit->IsModal) { ?>
+<?php if ($company->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($company_edit->Pager)) $company_edit->Pager = new cPrevNextPager($company_edit->StartRec, $company_edit->DisplayRecs, $company_edit->TotalRecs, $company_edit->AutoHidePager) ?>
 <?php if ($company_edit->Pager->RecordCount > 0 && $company_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -2192,6 +2432,7 @@ $company_edit->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

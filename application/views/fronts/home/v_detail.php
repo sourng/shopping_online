@@ -1,14 +1,13 @@
-<!-- main -->
 	<section id="main" class="clearfix details-page">
 		<div class="container">
 			<div class="breadcrumb-section">
 				<!-- breadcrumb -->
 				<ol class="breadcrumb">
-					<li><a href="index.html">Home</a></li>
-					<li><a href="#">Electronics & Gedget</a></li>
-					<li>Mobile Phone</li>
+					<li><a href="<?php echo site_url(); ?>">Home</a></li>
+					<li><a href="<?php echo site_url(); ?>categories/find.html/<?php echo $getItem[0]['cat_id']; ?>"><?php echo $this->m_crud->getFieldName('cat_name','categories','cat_id',$getItem[0]['cat_id']); ?></a></li>
+					<li><?php echo $this->m_crud->getFieldName('pro_name','products','product_id',$getItem[0]['product_id']); ?></li>
 				</ol><!-- breadcrumb -->						
-				<h2 class="title">Mobile Phones</h2>
+				<h2 class="title"><?php echo $this->m_crud->getFieldName('cat_name','categories','cat_id',$getItem[0]['cat_id']); ?></h2>
 			</div>
 						
 			<div class="section banner">				
@@ -19,11 +18,14 @@
 						<div class="dropdown category-dropdown">						
 							<a data-toggle="dropdown" href="#"><span class="change-text">Select Category</span> <i class="fa fa-angle-down"></i></a>
 							<ul class="dropdown-menu category-change">
-								<li><a href="#">Fashion & Beauty</a></li>
-								<li><a href="#">Cars & Vehicles</a></li>
-								<li><a href="#">Electronics & Gedgets</a></li>
-								<li><a href="#">Real Estate</a></li>
-								<li><a href="#">Sports & Games</a></li>
+								<?php
+								foreach($categories as $cat){
+									?>
+								<li><a href="<?php echo site_url(); ?>categories/find.html/<?php echo $cat['cat_id']; ?>">
+								<?php echo $cat['cat_name']; ?>( <span style="color:red;"><?php echo $cat['number']; ?></span>)</a></li>
+								<?php
+								}  
+								?>
 							</ul>								
 						</div><!-- category-change -->
 
@@ -45,71 +47,79 @@
 			</div><!-- banner -->
 	
 
-			<div class="section slider">					
+			<div class="section slider" style="padding: 33px 30px 10%;">					
 				<div class="row">
 					<!-- carousel -->
 					<div class="col-md-7">
 						<div id="product-carousel" class="carousel slide" data-ride="carousel">
 							<!-- Indicators -->
 							<ol class="carousel-indicators">
-								<li data-target="#product-carousel" data-slide-to="0" class="active">
-									<img src="<?php echo base_url(); ?>public/images/slider/list-1.jpg" alt="Carousel Thumb" class="img-responsive">
-								</li>
-								<li data-target="#product-carousel" data-slide-to="1">
-									<img src="<?php echo base_url(); ?>public/images/slider/list-2.jpg" alt="Carousel Thumb" class="img-responsive">
-								</li>
-								<li data-target="#product-carousel" data-slide-to="2">
-									<img src="<?php echo base_url(); ?>public/images/slider/list-3.jpg" alt="Carousel Thumb" class="img-responsive">
-								</li>
-								<li data-target="#product-carousel" data-slide-to="3">
-									<img src="<?php echo base_url(); ?>public/images/slider/list-4.jpg" alt="Carousel Thumb" class="img-responsive">
-								</li>
-								<li data-target="#product-carousel" data-slide-to="4">
-									<img src="<?php echo base_url(); ?>public/images/slider/list-5.jpg" alt="Carousel Thumb" class="img-responsive">
-								</li>
+								
+								<?php 
+								$i=0;
+								foreach ($galleries as $row) {								
+									
+										if($i==0){
+											?>
+											
+											<li data-target="#product-carousel" data-slide-to="<?php echo $i; ?>" class="active">
+												<img src="<?php echo base_url(); ?>uploads/product/thumnail/<?php echo  $row['thumnail'] ?>" alt="Carousel Thumb" class="img-responsive">
+											</li>
+										<?php
+										$i=$i+1;
+										}else{
+											?>
+											<li data-target="#product-carousel" data-slide-to="<?php echo $i; ?>" >
+												<img src="<?php echo base_url(); ?>uploads/product/thumnail/<?php echo  $row['thumnail'] ?>" alt="Carousel Thumb" class="img-responsive">
+											</li>
+										<?php
+										$i=$i+1;
+										}
+										
+								}												
+									
+								?>
+
+								
 							</ol>
 
 							<!-- Wrapper for slides -->
 							<div class="carousel-inner" role="listbox">
-								<!-- item -->
-								<div class="item active">
-									<div class="carousel-image">
-										<!-- image-wrapper -->
-										<img src="<?php echo base_url(); ?>public/images/slider/1.jpg" alt="Featured Image" class="img-responsive">
-									</div>
-								</div><!-- item -->
+								<?php 
+								$j=0;
+								foreach ($galleries as $row) {									
+									if($j==0){
+										?>
+										<!-- item -->
+											<div class="item active">
+												<div class="carousel-image">
+													<!-- image-wrapper -->
+													<img src="<?php echo base_url(); ?>uploads/product/<?php echo $row['image']; ?>" alt="Featured Image" class="img-responsive">
+												</div>
+											</div><!-- item -->	
+										<?php
+										$j=$j+1;
+									}else{
+										?>
+										<!-- item -->
+										<div class="item">
+											<div class="carousel-image">
+												<!-- image-wrapper -->
+												<img src="<?php echo base_url(); ?>uploads/product/<?php echo $row['image']; ?>" alt="Featured Image" class="img-responsive">
+											</div>
+										</div><!-- item -->
+										<?php
+										$j=$j+1;
+									}
 
-								<!-- item -->
-								<div class="item">
-									<div class="carousel-image">
-										<!-- image-wrapper -->
-										<img src="<?php echo base_url(); ?>public/images/slider/2.jpg" alt="Featured Image" class="img-responsive">
-									</div>
-								</div><!-- item -->
+								}
+								?>
 
-								<!-- item -->
-								<div class="item">
-									<div class="carousel-image">
-										<!-- image-wrapper -->
-										<img src="<?php echo base_url(); ?>public/images/slider/3.jpg" alt="Featured Image" class="img-responsive">
-									</div>
-								</div><!-- item -->
+															
 
-								<!-- item -->
-								<div class="item">
-									<div class="carousel-image">
-										<!-- image-wrapper -->
-										<img src="<?php echo base_url(); ?>public/images/slider/4.jpg" alt="Featured Image" class="img-responsive">
-									</div>
-								</div><!-- item -->
+								
 
-								<!-- item -->
-								<div class="item">
-									<div class="carousel-image">
-										<!-- image-wrapper -->
-										<img src="<?php echo base_url(); ?>public/images/slider/5.jpg" alt="Featured Image" class="img-responsive">
-									</div>
-								</div><!-- item -->
+
 							</div><!-- carousel-inner -->
 
 							<!-- Controls -->
@@ -138,8 +148,19 @@
 								<h4><?php echo $this->m_crud->get_langs('short_info',$lang); ?></h4>
 								<p><strong><?php echo $this->m_crud->get_langs('Condition',$lang); ?>: </strong><a href="#">New</a> </p>
 								<p><strong><?php echo $this->m_crud->get_langs('Brand',$lang); ?>: </strong><a href="#">Apple</a> </p>
-								<p><strong><?php echo $this->m_crud->get_langs('Features',$lang); ?>: </strong><a href="#">Camera,</a> <a href="#">Dual SIM,</a> <a href="#">GSM,</a> <a href="#">Touch screen</a> </p>
-								<p><strong><?php echo $this->m_crud->get_langs('Model',$lang); ?>: </strong><a href="#">iPhone 6</a></p>
+								<p><strong><?php echo $this->m_crud->get_langs('Features',$lang); ?>: </strong>
+									<!-- <a href="#">Camera,</a> 
+									<a href="#">Dual SIM,</a> 
+									<a href="#">GSM,</a> 
+									<a href="#">Touch screen</a> --> 
+									<?php 
+										echo $getItem[0]['pro_features']; 
+									?>
+								</p>
+								<p><strong><?php echo $this->m_crud->get_langs('Model',$lang); ?>: </strong>
+								<a href="<?php echo site_url(); ?>categories.html/<?php echo $getItem[0]['model_id']; ?>"><?php 
+										echo $getItem[0]['name']; 
+									?></a></p>
 							</div><!-- short-info -->
 							
 							<!-- contact-with -->
@@ -157,12 +178,12 @@
 							<div class="social-links">
 								<h4>Share this ad</h4>
 								<ul class="list-inline">
-									<li><a href="#"><i class="fa fa-facebook-square"></i></a></li>
-									<li><a href="#"><i class="fa fa-twitter-square"></i></a></li>
-									<li><a href="#"><i class="fa fa-google-plus-square"></i></a></li>
-									<li><a href="#"><i class="fa fa-linkedin-square"></i></a></li>
-									<li><a href="#"><i class="fa fa-pinterest-square"></i></a></li>
-									<li><a href="#"><i class="fa fa-tumblr-square"></i></a></li>
+									<li><a href="<?php echo site_url(); ?>"><i class="fa fa-facebook-square"></i></a></li>
+									<li><a href="<?php echo site_url(); ?>"><i class="fa fa-twitter-square"></i></a></li>
+									<li><a href="<?php echo site_url(); ?>"><i class="fa fa-google-plus-square"></i></a></li>
+									<li><a href="<?php echo site_url(); ?>"><i class="fa fa-linkedin-square"></i></a></li>
+									<li><a href="<?php echo site_url(); ?>"><i class="fa fa-pinterest-square"></i></a></li>
+									<li><a href="<?php echo site_url(); ?>"><i class="fa fa-tumblr-square"></i></a></li>
 								</ul>
 							</div><!-- social-links -->						
 						</div>
@@ -188,12 +209,12 @@
 							<h4>Short Info</h4>
 							<!-- social-icon -->
 							<ul>
-								<li><i class="fa fa-shopping-cart"></i><a href="#">Delivery: Meet in person</a></li>
-								<li><i class="fa fa-user-plus"></i><a href="#">More ads by <span>Yury Corporation</span></a></li>
-								<li><i class="fa fa-print"></i><a href="#">Print this ad</a></li>
-								<li><i class="fa fa-reply"></i><a href="#">Send to a friend</a></li>
-								<li><i class="fa fa-heart-o"></i><a href="#">Save ad as Favorite</a></li>
-								<li><i class="fa fa-exclamation-triangle"></i><a href="#">Report this ad</a></li>
+								<li><i class="fa fa-shopping-cart"></i><a href="<?php echo site_url(); ?>#">Delivery: Meet in person</a></li>
+								<li><i class="fa fa-user-plus"></i><a href="<?php echo site_url(); ?>#">More ads by <span>Yury Corporation</span></a></li>
+								<li><i class="fa fa-print"></i><a href="<?php echo site_url(); ?>#">Print this ad</a></li>
+								<li><i class="fa fa-reply"></i><a href="<?php echo site_url(); ?>#">Send to a friend</a></li>
+								<li><i class="fa fa-heart-o"></i><a href="<?php echo site_url(); ?>#">Save ad as Favorite</a></li>
+								<li><i class="fa fa-exclamation-triangle"></i><a href="<?php echo site_url(); ?>#">Report this ad</a></li>
 							</ul><!-- social-icon -->
 						</div>
 					</div>
@@ -211,12 +232,12 @@
 							<?php 
 								foreach ($getRecommendedAds as $rows) {
 									?>
-<!-- ad-item -->
+					<!-- ad-item -->
 							<div class="ad-item row">
 								<div class="item-image-box col-sm-4">
 									<!-- item-image -->
 									<div class="item-image">
-										<a href="<?php echo site_url(); ?>categories/details"><img src="<?php echo base_url(); ?>uploads/product/<?php echo $rows['featured_image']; ?>" alt="Image" class="img-responsive"></a>
+										<a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><img src="<?php echo base_url(); ?>uploads/product/<?php echo $rows['featured_image']; ?>" alt="Image" class="img-responsive"></a>
 									</div><!-- item-image -->
 								</div><!-- item-image-box -->
 								
@@ -224,24 +245,26 @@
 								<div class="item-info col-sm-8">
 									<!-- ad-info -->
 									<div class="ad-info">
-										<h3 class="item-price">$<?php echo $rows['pro_sell_price']; ?><span>(Negotiable)</span></h3>
+										<h3 class="item-price">$<?php echo $rows['pro_base_price']; ?><span>(<?php echo $rows['pro_sell_price'] ?>)</span></h3>
 										<h4 class="item-title"><a href="<?php echo site_url(); ?>home/details/<?php echo $rows['product_id']; ?>"><?php echo $rows['pro_name']; ?></a></h4>
 										<div class="item-cat">
-											<span><a href="#"><?php echo $rows['pro_sell_price']; ?></a></span> /
-											<span><a href="#">Sofa</a></span>
+											<span><a href="<?php echo site_url(); ?>categories/find.html/<?php echo $rows['cat_id']; ?>">
+											<?php echo $this->m_crud->getFieldName('cat_name','categories','cat_id',$rows['cat_id']); ?>
+											</a></span> /
+											<span><a href="<?php echo site_url(); ?>#"><?php echo $this->m_crud->getFieldName('name','model','model_id',$rows['pro_model']); ?></a></span>
 										</div>										
 									</div><!-- ad-info -->
 									
 									<!-- ad-meta -->
 									<div class="ad-meta">
 										<div class="meta-content">
-											<span class="dated"><a href="#">7 Jan, 16  10:10 pm </a></span>
-											<a href="#" class="tag"><i class="fa fa-tags"></i> Used</a>
+											<span class="dated"><a href="<?php echo site_url(); ?>#"><?php echo $rows['post_date']; ?></a></span>
+											<a href="<?php echo site_url(); ?>#" class="tag"><i class="fa fa-tags"></i> <?php echo $rows['pro_condition']; ?></a>
 										</div>									
 										<!-- item-info-right -->
 										<div class="user-option pull-right">
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Los Angeles, USA"><i class="fa fa-map-marker"></i> </a>
-											<a href="#" data-toggle="tooltip" data-placement="top" title="Individual"><i class="fa fa-user"></i> </a>
+											<a href="<?php echo site_url(); ?>#" data-toggle="tooltip" data-placement="top" title="Address: <?php echo $this->m_crud->getFieldName('com_address','company','company_id',$rows['company_id']); ?>"><i class="fa fa-map-marker"></i> </a>
+											<a class="online" href="<?php echo site_url(); ?>#" data-toggle="tooltip" data-placement="top" title="Dealer: <?php echo $this->m_crud->getFieldName('com_lname','company','company_id',$rows['company_id']); ?>"><i class="fa fa-suitcase"></i> </a>											
 										</div><!-- item-info-right -->
 									</div><!-- ad-meta -->
 								</div><!-- item-info -->
@@ -267,7 +290,7 @@
 									</div><!-- cta-icon -->
 
 									<h4>Secure Trading</h4>
-									<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit</p>
+									<p>Modern and secure for selling your products!</p>
 								</div><!-- single-cta -->
 								
 								<!-- single-cta -->
@@ -278,7 +301,7 @@
 									</div><!-- cta-icon -->
 
 									<h4>24/7 Support</h4>
-									<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit</p>
+									<p>Contact us at anytime you want for more!</p>
 								</div><!-- single-cta -->
 							
 
@@ -296,7 +319,7 @@
 								<!-- single-cta -->
 								<div class="single-cta">
 									<h5>Need Help?</h5>
-									<p><span>Give a call on</span><a href="tellto:08048100000"> 08048100000</a></p>
+									<p><span>Give a call on</span><a href="tellto:092771244"> 092771244</a></p>
 								</div><!-- single-cta -->
 							</div>
 						</div><!-- cta -->
@@ -304,4 +327,4 @@
 				</div><!-- row -->
 			</div><!-- recommended-info -->
 		</div><!-- container -->
-	</section><!-- main -->
+	</section><!-- main

@@ -512,7 +512,11 @@ class ctbl_pages_add extends ctbl_pages {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -1114,16 +1118,29 @@ $tbl_pages_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $tbl_pages_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="tbl_pages">
+<?php if ($tbl_pages->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($tbl_pages_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($tbl_pages->page_name->Visible) { // page_name ?>
 	<div id="r_page_name" class="form-group">
 		<label id="elh_tbl_pages_page_name" for="x_page_name" class="<?php echo $tbl_pages_add->LeftColumnClass ?>"><?php echo $tbl_pages->page_name->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_add->RightColumnClass ?>"><div<?php echo $tbl_pages->page_name->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_name">
 <input type="text" data-table="tbl_pages" data-field="x_page_name" name="x_page_name" id="x_page_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_name->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_name->EditValue ?>"<?php echo $tbl_pages->page_name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_name">
+<span<?php echo $tbl_pages->page_name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_name" name="x_page_name" id="x_page_name" value="<?php echo ew_HtmlEncode($tbl_pages->page_name->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1131,9 +1148,17 @@ $tbl_pages_add->ShowMessage();
 	<div id="r_page_title" class="form-group">
 		<label id="elh_tbl_pages_page_title" for="x_page_title" class="<?php echo $tbl_pages_add->LeftColumnClass ?>"><?php echo $tbl_pages->page_title->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_add->RightColumnClass ?>"><div<?php echo $tbl_pages->page_title->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_title">
 <input type="text" data-table="tbl_pages" data-field="x_page_title" name="x_page_title" id="x_page_title" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_title->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_title->EditValue ?>"<?php echo $tbl_pages->page_title->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_title">
+<span<?php echo $tbl_pages->page_title->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_title->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_title" name="x_page_title" id="x_page_title" value="<?php echo ew_HtmlEncode($tbl_pages->page_title->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_title->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1141,9 +1166,17 @@ $tbl_pages_add->ShowMessage();
 	<div id="r_page_url" class="form-group">
 		<label id="elh_tbl_pages_page_url" for="x_page_url" class="<?php echo $tbl_pages_add->LeftColumnClass ?>"><?php echo $tbl_pages->page_url->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_add->RightColumnClass ?>"><div<?php echo $tbl_pages->page_url->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_url">
 <input type="text" data-table="tbl_pages" data-field="x_page_url" name="x_page_url" id="x_page_url" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_url->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_url->EditValue ?>"<?php echo $tbl_pages->page_url->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_url">
+<span<?php echo $tbl_pages->page_url->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_url->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_url" name="x_page_url" id="x_page_url" value="<?php echo ew_HtmlEncode($tbl_pages->page_url->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_url->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1151,9 +1184,17 @@ $tbl_pages_add->ShowMessage();
 	<div id="r_page_description" class="form-group">
 		<label id="elh_tbl_pages_page_description" for="x_page_description" class="<?php echo $tbl_pages_add->LeftColumnClass ?>"><?php echo $tbl_pages->page_description->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_add->RightColumnClass ?>"><div<?php echo $tbl_pages->page_description->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_description">
 <input type="text" data-table="tbl_pages" data-field="x_page_description" name="x_page_description" id="x_page_description" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_description->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_description->EditValue ?>"<?php echo $tbl_pages->page_description->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_description">
+<span<?php echo $tbl_pages->page_description->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_description->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_description" name="x_page_description" id="x_page_description" value="<?php echo ew_HtmlEncode($tbl_pages->page_description->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_description->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1161,9 +1202,17 @@ $tbl_pages_add->ShowMessage();
 	<div id="r_page_detail" class="form-group">
 		<label id="elh_tbl_pages_page_detail" for="x_page_detail" class="<?php echo $tbl_pages_add->LeftColumnClass ?>"><?php echo $tbl_pages->page_detail->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_add->RightColumnClass ?>"><div<?php echo $tbl_pages->page_detail->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_detail">
 <textarea data-table="tbl_pages" data-field="x_page_detail" name="x_page_detail" id="x_page_detail" cols="35" rows="4" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_detail->getPlaceHolder()) ?>"<?php echo $tbl_pages->page_detail->EditAttributes() ?>><?php echo $tbl_pages->page_detail->EditValue ?></textarea>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_detail">
+<span<?php echo $tbl_pages->page_detail->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_detail->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_detail" name="x_page_detail" id="x_page_detail" value="<?php echo ew_HtmlEncode($tbl_pages->page_detail->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_detail->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1171,9 +1220,17 @@ $tbl_pages_add->ShowMessage();
 	<div id="r_page_icon" class="form-group">
 		<label id="elh_tbl_pages_page_icon" for="x_page_icon" class="<?php echo $tbl_pages_add->LeftColumnClass ?>"><?php echo $tbl_pages->page_icon->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_add->RightColumnClass ?>"><div<?php echo $tbl_pages->page_icon->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_icon">
 <input type="text" data-table="tbl_pages" data-field="x_page_icon" name="x_page_icon" id="x_page_icon" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_icon->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_icon->EditValue ?>"<?php echo $tbl_pages->page_icon->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_icon">
+<span<?php echo $tbl_pages->page_icon->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_icon->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_icon" name="x_page_icon" id="x_page_icon" value="<?php echo ew_HtmlEncode($tbl_pages->page_icon->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_icon->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1181,9 +1238,17 @@ $tbl_pages_add->ShowMessage();
 	<div id="r_lang" class="form-group">
 		<label id="elh_tbl_pages_lang" for="x_lang" class="<?php echo $tbl_pages_add->LeftColumnClass ?>"><?php echo $tbl_pages->lang->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_add->RightColumnClass ?>"><div<?php echo $tbl_pages->lang->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_lang">
 <input type="text" data-table="tbl_pages" data-field="x_lang" name="x_lang" id="x_lang" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->lang->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->lang->EditValue ?>"<?php echo $tbl_pages->lang->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_lang">
+<span<?php echo $tbl_pages->lang->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->lang->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_lang" name="x_lang" id="x_lang" value="<?php echo ew_HtmlEncode($tbl_pages->lang->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->lang->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1191,8 +1256,13 @@ $tbl_pages_add->ShowMessage();
 <?php if (!$tbl_pages_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $tbl_pages_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($tbl_pages->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $tbl_pages_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

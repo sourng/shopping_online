@@ -525,7 +525,11 @@ class cprovince_add extends cprovince {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -1341,16 +1345,29 @@ $province_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $province_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="province">
+<?php if ($province->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($province_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($province->country_id->Visible) { // country_id ?>
 	<div id="r_country_id" class="form-group">
 		<label id="elh_province_country_id" for="x_country_id" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->country_id->FldCaption() ?><?php echo $Language->Phrase("FieldRequiredIndicator") ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->country_id->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_country_id">
 <input type="text" data-table="province" data-field="x_country_id" name="x_country_id" id="x_country_id" size="30" placeholder="<?php echo ew_HtmlEncode($province->country_id->getPlaceHolder()) ?>" value="<?php echo $province->country_id->EditValue ?>"<?php echo $province->country_id->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_country_id">
+<span<?php echo $province->country_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->country_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_country_id" name="x_country_id" id="x_country_id" value="<?php echo ew_HtmlEncode($province->country_id->FormValue) ?>">
+<?php } ?>
 <?php echo $province->country_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1358,9 +1375,17 @@ $province_add->ShowMessage();
 	<div id="r_province_name_kh" class="form-group">
 		<label id="elh_province_province_name_kh" for="x_province_name_kh" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->province_name_kh->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->province_name_kh->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_province_name_kh">
 <input type="text" data-table="province" data-field="x_province_name_kh" name="x_province_name_kh" id="x_province_name_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_kh->getPlaceHolder()) ?>" value="<?php echo $province->province_name_kh->EditValue ?>"<?php echo $province->province_name_kh->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_province_name_kh">
+<span<?php echo $province->province_name_kh->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->province_name_kh->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_kh" name="x_province_name_kh" id="x_province_name_kh" value="<?php echo ew_HtmlEncode($province->province_name_kh->FormValue) ?>">
+<?php } ?>
 <?php echo $province->province_name_kh->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1368,9 +1393,17 @@ $province_add->ShowMessage();
 	<div id="r_province_name_en" class="form-group">
 		<label id="elh_province_province_name_en" for="x_province_name_en" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->province_name_en->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->province_name_en->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_province_name_en">
 <input type="text" data-table="province" data-field="x_province_name_en" name="x_province_name_en" id="x_province_name_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_name_en->getPlaceHolder()) ?>" value="<?php echo $province->province_name_en->EditValue ?>"<?php echo $province->province_name_en->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_province_name_en">
+<span<?php echo $province->province_name_en->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->province_name_en->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_name_en" name="x_province_name_en" id="x_province_name_en" value="<?php echo ew_HtmlEncode($province->province_name_en->FormValue) ?>">
+<?php } ?>
 <?php echo $province->province_name_en->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1378,9 +1411,17 @@ $province_add->ShowMessage();
 	<div id="r_capital_kh" class="form-group">
 		<label id="elh_province_capital_kh" for="x_capital_kh" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->capital_kh->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->capital_kh->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_capital_kh">
 <input type="text" data-table="province" data-field="x_capital_kh" name="x_capital_kh" id="x_capital_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_kh->getPlaceHolder()) ?>" value="<?php echo $province->capital_kh->EditValue ?>"<?php echo $province->capital_kh->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_capital_kh">
+<span<?php echo $province->capital_kh->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->capital_kh->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_kh" name="x_capital_kh" id="x_capital_kh" value="<?php echo ew_HtmlEncode($province->capital_kh->FormValue) ?>">
+<?php } ?>
 <?php echo $province->capital_kh->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1388,9 +1429,17 @@ $province_add->ShowMessage();
 	<div id="r_capital_en" class="form-group">
 		<label id="elh_province_capital_en" for="x_capital_en" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->capital_en->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->capital_en->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_capital_en">
 <input type="text" data-table="province" data-field="x_capital_en" name="x_capital_en" id="x_capital_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->capital_en->getPlaceHolder()) ?>" value="<?php echo $province->capital_en->EditValue ?>"<?php echo $province->capital_en->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_capital_en">
+<span<?php echo $province->capital_en->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->capital_en->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_capital_en" name="x_capital_en" id="x_capital_en" value="<?php echo ew_HtmlEncode($province->capital_en->FormValue) ?>">
+<?php } ?>
 <?php echo $province->capital_en->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1398,9 +1447,17 @@ $province_add->ShowMessage();
 	<div id="r_population_kh" class="form-group">
 		<label id="elh_province_population_kh" for="x_population_kh" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->population_kh->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->population_kh->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_population_kh">
 <input type="text" data-table="province" data-field="x_population_kh" name="x_population_kh" id="x_population_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_kh->getPlaceHolder()) ?>" value="<?php echo $province->population_kh->EditValue ?>"<?php echo $province->population_kh->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_population_kh">
+<span<?php echo $province->population_kh->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->population_kh->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_kh" name="x_population_kh" id="x_population_kh" value="<?php echo ew_HtmlEncode($province->population_kh->FormValue) ?>">
+<?php } ?>
 <?php echo $province->population_kh->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1408,9 +1465,17 @@ $province_add->ShowMessage();
 	<div id="r_population_en" class="form-group">
 		<label id="elh_province_population_en" for="x_population_en" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->population_en->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->population_en->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_population_en">
 <input type="text" data-table="province" data-field="x_population_en" name="x_population_en" id="x_population_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->population_en->getPlaceHolder()) ?>" value="<?php echo $province->population_en->EditValue ?>"<?php echo $province->population_en->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_population_en">
+<span<?php echo $province->population_en->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->population_en->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_population_en" name="x_population_en" id="x_population_en" value="<?php echo ew_HtmlEncode($province->population_en->FormValue) ?>">
+<?php } ?>
 <?php echo $province->population_en->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1418,9 +1483,17 @@ $province_add->ShowMessage();
 	<div id="r_area_kh" class="form-group">
 		<label id="elh_province_area_kh" for="x_area_kh" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->area_kh->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->area_kh->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_area_kh">
 <input type="text" data-table="province" data-field="x_area_kh" name="x_area_kh" id="x_area_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_kh->getPlaceHolder()) ?>" value="<?php echo $province->area_kh->EditValue ?>"<?php echo $province->area_kh->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_area_kh">
+<span<?php echo $province->area_kh->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->area_kh->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_kh" name="x_area_kh" id="x_area_kh" value="<?php echo ew_HtmlEncode($province->area_kh->FormValue) ?>">
+<?php } ?>
 <?php echo $province->area_kh->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1428,9 +1501,17 @@ $province_add->ShowMessage();
 	<div id="r_area_en" class="form-group">
 		<label id="elh_province_area_en" for="x_area_en" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->area_en->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->area_en->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_area_en">
 <input type="text" data-table="province" data-field="x_area_en" name="x_area_en" id="x_area_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->area_en->getPlaceHolder()) ?>" value="<?php echo $province->area_en->EditValue ?>"<?php echo $province->area_en->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_area_en">
+<span<?php echo $province->area_en->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->area_en->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_area_en" name="x_area_en" id="x_area_en" value="<?php echo ew_HtmlEncode($province->area_en->FormValue) ?>">
+<?php } ?>
 <?php echo $province->area_en->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1438,9 +1519,17 @@ $province_add->ShowMessage();
 	<div id="r_density_kh" class="form-group">
 		<label id="elh_province_density_kh" for="x_density_kh" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->density_kh->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->density_kh->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_density_kh">
 <input type="text" data-table="province" data-field="x_density_kh" name="x_density_kh" id="x_density_kh" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_kh->getPlaceHolder()) ?>" value="<?php echo $province->density_kh->EditValue ?>"<?php echo $province->density_kh->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_density_kh">
+<span<?php echo $province->density_kh->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->density_kh->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_kh" name="x_density_kh" id="x_density_kh" value="<?php echo ew_HtmlEncode($province->density_kh->FormValue) ?>">
+<?php } ?>
 <?php echo $province->density_kh->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1448,9 +1537,17 @@ $province_add->ShowMessage();
 	<div id="r_density_en" class="form-group">
 		<label id="elh_province_density_en" for="x_density_en" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->density_en->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->density_en->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_density_en">
 <input type="text" data-table="province" data-field="x_density_en" name="x_density_en" id="x_density_en" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->density_en->getPlaceHolder()) ?>" value="<?php echo $province->density_en->EditValue ?>"<?php echo $province->density_en->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_density_en">
+<span<?php echo $province->density_en->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->density_en->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_density_en" name="x_density_en" id="x_density_en" value="<?php echo ew_HtmlEncode($province->density_en->FormValue) ?>">
+<?php } ?>
 <?php echo $province->density_en->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1458,9 +1555,17 @@ $province_add->ShowMessage();
 	<div id="r_province_code" class="form-group">
 		<label id="elh_province_province_code" for="x_province_code" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->province_code->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->province_code->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_province_code">
 <input type="text" data-table="province" data-field="x_province_code" name="x_province_code" id="x_province_code" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->province_code->getPlaceHolder()) ?>" value="<?php echo $province->province_code->EditValue ?>"<?php echo $province->province_code->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_province_code">
+<span<?php echo $province->province_code->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->province_code->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_province_code" name="x_province_code" id="x_province_code" value="<?php echo ew_HtmlEncode($province->province_code->FormValue) ?>">
+<?php } ?>
 <?php echo $province->province_code->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1468,9 +1573,17 @@ $province_add->ShowMessage();
 	<div id="r_image" class="form-group">
 		<label id="elh_province_image" for="x_image" class="<?php echo $province_add->LeftColumnClass ?>"><?php echo $province->image->FldCaption() ?></label>
 		<div class="<?php echo $province_add->RightColumnClass ?>"><div<?php echo $province->image->CellAttributes() ?>>
+<?php if ($province->CurrentAction <> "F") { ?>
 <span id="el_province_image">
 <input type="text" data-table="province" data-field="x_image" name="x_image" id="x_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($province->image->getPlaceHolder()) ?>" value="<?php echo $province->image->EditValue ?>"<?php echo $province->image->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_province_image">
+<span<?php echo $province->image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $province->image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="province" data-field="x_image" name="x_image" id="x_image" value="<?php echo ew_HtmlEncode($province->image->FormValue) ?>">
+<?php } ?>
 <?php echo $province->image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1478,8 +1591,13 @@ $province_add->ShowMessage();
 <?php if (!$province_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $province_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($province->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $province_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

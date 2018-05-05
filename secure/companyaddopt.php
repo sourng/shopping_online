@@ -1834,6 +1834,11 @@ $company_addopt->ShowMessage();
 		<label class="col-sm-2 control-label ewLabel" for="x_reg_date"><?php echo $company->reg_date->FldCaption() ?></label>
 		<div class="col-sm-10">
 <input type="text" data-table="company" data-field="x_reg_date" data-format="1" name="x_reg_date" id="x_reg_date" placeholder="<?php echo ew_HtmlEncode($company->reg_date->getPlaceHolder()) ?>" value="<?php echo $company->reg_date->EditValue ?>"<?php echo $company->reg_date->EditAttributes() ?>>
+<?php if (!$company->reg_date->ReadOnly && !$company->reg_date->Disabled && !isset($company->reg_date->EditAttrs["readonly"]) && !isset($company->reg_date->EditAttrs["disabled"])) { ?>
+<script type="text/javascript">
+ew_CreateDateTimePicker("fcompanyaddopt", "x_reg_date", {"ignoreReadonly":true,"useCurrent":false,"format":1});
+</script>
+<?php } ?>
 </div>
 	</div>
 <?php } ?>

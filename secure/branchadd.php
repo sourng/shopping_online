@@ -509,7 +509,11 @@ class cbranch_add extends cbranch {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -1022,16 +1026,29 @@ $branch_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $branch_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="branch">
+<?php if ($branch->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($branch_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($branch->name->Visible) { // name ?>
 	<div id="r_name" class="form-group">
 		<label id="elh_branch_name" for="x_name" class="<?php echo $branch_add->LeftColumnClass ?>"><?php echo $branch->name->FldCaption() ?></label>
 		<div class="<?php echo $branch_add->RightColumnClass ?>"><div<?php echo $branch->name->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_name">
 <input type="text" data-table="branch" data-field="x_name" name="x_name" id="x_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->name->getPlaceHolder()) ?>" value="<?php echo $branch->name->EditValue ?>"<?php echo $branch->name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_branch_name">
+<span<?php echo $branch->name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_name" name="x_name" id="x_name" value="<?php echo ew_HtmlEncode($branch->name->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1039,9 +1056,17 @@ $branch_add->ShowMessage();
 	<div id="r_image" class="form-group">
 		<label id="elh_branch_image" for="x_image" class="<?php echo $branch_add->LeftColumnClass ?>"><?php echo $branch->image->FldCaption() ?></label>
 		<div class="<?php echo $branch_add->RightColumnClass ?>"><div<?php echo $branch->image->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_image">
 <input type="text" data-table="branch" data-field="x_image" name="x_image" id="x_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->image->getPlaceHolder()) ?>" value="<?php echo $branch->image->EditValue ?>"<?php echo $branch->image->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_branch_image">
+<span<?php echo $branch->image->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->image->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_image" name="x_image" id="x_image" value="<?php echo ew_HtmlEncode($branch->image->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->image->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1049,12 +1074,20 @@ $branch_add->ShowMessage();
 	<div id="r_status" class="form-group">
 		<label id="elh_branch_status" class="<?php echo $branch_add->LeftColumnClass ?>"><?php echo $branch->status->FldCaption() ?></label>
 		<div class="<?php echo $branch_add->RightColumnClass ?>"><div<?php echo $branch->status->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_status">
 <div id="tp_x_status" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_status" data-value-separator="<?php echo $branch->status->DisplayValueSeparatorAttribute() ?>" name="x_status" id="x_status" value="{value}"<?php echo $branch->status->EditAttributes() ?>></div>
 <div id="dsl_x_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
 <?php echo $branch->status->RadioButtonListHtml(FALSE, "x_status") ?>
 </div></div>
 </span>
+<?php } else { ?>
+<span id="el_branch_status">
+<span<?php echo $branch->status->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->status->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_status" name="x_status" id="x_status" value="<?php echo ew_HtmlEncode($branch->status->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->status->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1062,6 +1095,7 @@ $branch_add->ShowMessage();
 	<div id="r_lang" class="form-group">
 		<label id="elh_branch_lang" for="x_lang" class="<?php echo $branch_add->LeftColumnClass ?>"><?php echo $branch->lang->FldCaption() ?></label>
 		<div class="<?php echo $branch_add->RightColumnClass ?>"><div<?php echo $branch->lang->CellAttributes() ?>>
+<?php if ($branch->CurrentAction <> "F") { ?>
 <span id="el_branch_lang">
 <div class="ewDropdownList has-feedback">
 	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($branch->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
@@ -1079,6 +1113,13 @@ $branch_add->ShowMessage();
 	<div id="tp_x_lang" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_lang" data-value-separator="<?php echo $branch->lang->DisplayValueSeparatorAttribute() ?>" name="x_lang" id="x_lang" value="{value}"<?php echo $branch->lang->EditAttributes() ?>></div>
 </div>
 </span>
+<?php } else { ?>
+<span id="el_branch_lang">
+<span<?php echo $branch->lang->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->lang->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_lang" name="x_lang" id="x_lang" value="<?php echo ew_HtmlEncode($branch->lang->FormValue) ?>">
+<?php } ?>
 <?php echo $branch->lang->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1086,8 +1127,13 @@ $branch_add->ShowMessage();
 <?php if (!$branch_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $branch_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($branch->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $branch_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

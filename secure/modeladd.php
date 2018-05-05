@@ -506,7 +506,11 @@ class cmodel_add extends cmodel {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -916,16 +920,29 @@ $model_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $model_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="model">
+<?php if ($model->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($model_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($model->name->Visible) { // name ?>
 	<div id="r_name" class="form-group">
 		<label id="elh_model_name" for="x_name" class="<?php echo $model_add->LeftColumnClass ?>"><?php echo $model->name->FldCaption() ?></label>
 		<div class="<?php echo $model_add->RightColumnClass ?>"><div<?php echo $model->name->CellAttributes() ?>>
+<?php if ($model->CurrentAction <> "F") { ?>
 <span id="el_model_name">
 <input type="text" data-table="model" data-field="x_name" name="x_name" id="x_name" size="40" maxlength="250" placeholder="<?php echo ew_HtmlEncode($model->name->getPlaceHolder()) ?>" value="<?php echo $model->name->EditValue ?>"<?php echo $model->name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_model_name">
+<span<?php echo $model->name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $model->name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="model" data-field="x_name" name="x_name" id="x_name" value="<?php echo ew_HtmlEncode($model->name->FormValue) ?>">
+<?php } ?>
 <?php echo $model->name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -933,8 +950,13 @@ $model_add->ShowMessage();
 <?php if (!$model_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $model_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($model->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $model_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

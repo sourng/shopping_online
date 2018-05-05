@@ -393,8 +393,11 @@ class ccategories_list extends ccategories {
 		// 
 		// Security = null;
 		// 
-		// Get export parameters
+		// Create form object
 
+		$objForm = new cFormObj();
+
+		// Get export parameters
 		$custom = "";
 		if (@$_GET["export"] <> "") {
 			$this->Export = $_GET["export"];
@@ -551,7 +554,7 @@ class ccategories_list extends ccategories {
 	var $ListActions; // List actions
 	var $SelectedCount = 0;
 	var $SelectedIndex = 0;
-	var $DisplayRecs = 20;
+	var $DisplayRecs = 10;
 	var $StartRec;
 	var $StopRec;
 	var $TotalRecs = 0;
@@ -583,6 +586,7 @@ class ccategories_list extends ccategories {
 	var $MultiSelectKey;
 	var $Command;
 	var $RestoreSearch = FALSE;
+	var $HashValue; // Hash value
 	var $DetailPages;
 	var $Recordset;
 	var $OldRecordset;
@@ -613,6 +617,71 @@ class ccategories_list extends ccategories {
 			if ($this->Export == "")
 				$this->SetupBreadcrumb();
 
+			// Check QueryString parameters
+			if (@$_GET["a"] <> "") {
+				$this->CurrentAction = $_GET["a"];
+
+				// Clear inline mode
+				if ($this->CurrentAction == "cancel")
+					$this->ClearInlineMode();
+
+				// Switch to grid edit mode
+				if ($this->CurrentAction == "gridedit")
+					$this->GridEditMode();
+
+				// Switch to inline edit mode
+				if ($this->CurrentAction == "edit")
+					$this->InlineEditMode();
+
+				// Switch to inline add mode
+				if ($this->CurrentAction == "add" || $this->CurrentAction == "copy")
+					$this->InlineAddMode();
+
+				// Switch to grid add mode
+				if ($this->CurrentAction == "gridadd")
+					$this->GridAddMode();
+			} else {
+				if (@$_POST["a_list"] <> "") {
+					$this->CurrentAction = $_POST["a_list"]; // Get action
+
+					// Grid Update
+					if (($this->CurrentAction == "gridupdate" || $this->CurrentAction == "gridoverwrite") && @$_SESSION[EW_SESSION_INLINE_MODE] == "gridedit") {
+						if ($this->ValidateGridForm()) {
+							$bGridUpdate = $this->GridUpdate();
+						} else {
+							$bGridUpdate = FALSE;
+							$this->setFailureMessage($gsFormError);
+						}
+						if (!$bGridUpdate) {
+							$this->EventCancelled = TRUE;
+							$this->CurrentAction = "gridedit"; // Stay in Grid Edit mode
+						}
+					}
+
+					// Inline Update
+					if (($this->CurrentAction == "update" || $this->CurrentAction == "overwrite") && @$_SESSION[EW_SESSION_INLINE_MODE] == "edit")
+						$this->InlineUpdate();
+
+					// Insert Inline
+					if ($this->CurrentAction == "insert" && @$_SESSION[EW_SESSION_INLINE_MODE] == "add")
+						$this->InlineInsert();
+
+					// Grid Insert
+					if ($this->CurrentAction == "gridinsert" && @$_SESSION[EW_SESSION_INLINE_MODE] == "gridadd") {
+						if ($this->ValidateGridForm()) {
+							$bGridInsert = $this->GridInsert();
+						} else {
+							$bGridInsert = FALSE;
+							$this->setFailureMessage($gsFormError);
+						}
+						if (!$bGridInsert) {
+							$this->EventCancelled = TRUE;
+							$this->CurrentAction = "gridadd"; // Stay in Grid Add mode
+						}
+					}
+				}
+			}
+
 			// Hide list options
 			if ($this->Export <> "") {
 				$this->ListOptions->HideAllOptions(array("sequence"));
@@ -634,6 +703,14 @@ class ccategories_list extends ccategories {
 			if ($this->Export <> "") {
 				foreach ($this->OtherOptions as &$option)
 					$option->HideAllOptions();
+			}
+
+			// Show grid delete link for grid add / grid edit
+			if ($this->AllowAddDeleteRow) {
+				if ($this->CurrentAction == "gridadd" || $this->CurrentAction == "gridedit") {
+					$item = $this->ListOptions->GetItem("griddelete");
+					if ($item) $item->Visible = TRUE;
+				}
 			}
 
 			// Get default search criteria
@@ -674,7 +751,7 @@ class ccategories_list extends ccategories {
 		if ($this->Command <> "json" && $this->getRecordsPerPage() <> "") {
 			$this->DisplayRecs = $this->getRecordsPerPage(); // Restore from Session
 		} else {
-			$this->DisplayRecs = 20; // Load default
+			$this->DisplayRecs = 10; // Load default
 		}
 
 		// Load Sorting Order
@@ -753,6 +830,231 @@ class ccategories_list extends ccategories {
 		$this->SetupSearchOptions();
 	}
 
+	// Exit inline mode
+	function ClearInlineMode() {
+		$this->setKey("cat_id", ""); // Clear inline edit key
+		$this->LastAction = $this->CurrentAction; // Save last action
+		$this->CurrentAction = ""; // Clear action
+		$_SESSION[EW_SESSION_INLINE_MODE] = ""; // Clear inline mode
+	}
+
+	// Switch to Grid Add mode
+	function GridAddMode() {
+		$_SESSION[EW_SESSION_INLINE_MODE] = "gridadd"; // Enabled grid add
+	}
+
+	// Switch to Grid Edit mode
+	function GridEditMode() {
+		$_SESSION[EW_SESSION_INLINE_MODE] = "gridedit"; // Enable grid edit
+	}
+
+	// Switch to Inline Edit mode
+	function InlineEditMode() {
+		global $Security, $Language;
+		if (!$Security->CanEdit())
+			$this->Page_Terminate("login.php"); // Go to login page
+		$bInlineEdit = TRUE;
+		if (isset($_GET["cat_id"])) {
+			$this->cat_id->setQueryStringValue($_GET["cat_id"]);
+		} else {
+			$bInlineEdit = FALSE;
+		}
+		if ($bInlineEdit) {
+			if ($this->LoadRow()) {
+				$this->setKey("cat_id", $this->cat_id->CurrentValue); // Set up inline edit key
+				$_SESSION[EW_SESSION_INLINE_MODE] = "edit"; // Enable inline edit
+			}
+		}
+	}
+
+	// Perform update to Inline Edit record
+	function InlineUpdate() {
+		global $Language, $objForm, $gsFormError;
+		$objForm->Index = 1;
+		$this->LoadFormValues(); // Get form values
+
+		// Validate form
+		$bInlineUpdate = TRUE;
+		if (!$this->ValidateForm()) {
+			$bInlineUpdate = FALSE; // Form error, reset action
+			$this->setFailureMessage($gsFormError);
+		} else {
+
+			// Overwrite record, just reload hash value
+			if ($this->CurrentAction == "overwrite")
+				$this->LoadRowHash();
+			$bInlineUpdate = FALSE;
+			$rowkey = strval($objForm->GetValue($this->FormKeyName));
+			if ($this->SetupKeyValues($rowkey)) { // Set up key values
+				if ($this->CheckInlineEditKey()) { // Check key
+					$this->SendEmail = TRUE; // Send email on update success
+					$bInlineUpdate = $this->EditRow(); // Update record
+				} else {
+					$bInlineUpdate = FALSE;
+				}
+			}
+		}
+		if ($bInlineUpdate) { // Update success
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("UpdateSuccess")); // Set up success message
+			$this->ClearInlineMode(); // Clear inline edit mode
+		} else {
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("UpdateFailed")); // Set update failed message
+			$this->EventCancelled = TRUE; // Cancel event
+			$this->CurrentAction = "edit"; // Stay in edit mode
+		}
+	}
+
+	// Check Inline Edit key
+	function CheckInlineEditKey() {
+
+		//CheckInlineEditKey = True
+		if (strval($this->getKey("cat_id")) <> strval($this->cat_id->CurrentValue))
+			return FALSE;
+		return TRUE;
+	}
+
+	// Switch to Inline Add mode
+	function InlineAddMode() {
+		global $Security, $Language;
+		if (!$Security->CanAdd())
+			$this->Page_Terminate("login.php"); // Return to login page
+		$this->CurrentAction = "add";
+		$_SESSION[EW_SESSION_INLINE_MODE] = "add"; // Enable inline add
+	}
+
+	// Perform update to Inline Add/Copy record
+	function InlineInsert() {
+		global $Language, $objForm, $gsFormError;
+		$this->LoadOldRecord(); // Load old record
+		$objForm->Index = 0;
+		$this->LoadFormValues(); // Get form values
+
+		// Validate form
+		if (!$this->ValidateForm()) {
+			$this->setFailureMessage($gsFormError); // Set validation error message
+			$this->EventCancelled = TRUE; // Set event cancelled
+			$this->CurrentAction = "add"; // Stay in add mode
+			return;
+		}
+		$this->SendEmail = TRUE; // Send email on add success
+		if ($this->AddRow($this->OldRecordset)) { // Add record
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("AddSuccess")); // Set up add success message
+			$this->ClearInlineMode(); // Clear inline add mode
+		} else { // Add failed
+			$this->EventCancelled = TRUE; // Set event cancelled
+			$this->CurrentAction = "add"; // Stay in add mode
+		}
+	}
+
+	// Perform update to grid
+	function GridUpdate() {
+		global $Language, $objForm, $gsFormError;
+		$bGridUpdate = TRUE;
+
+		// Get old recordset
+		$this->CurrentFilter = $this->BuildKeyFilter();
+		if ($this->CurrentFilter == "")
+			$this->CurrentFilter = "0=1";
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		if ($rs = $conn->Execute($sSql)) {
+			$rsold = $rs->GetRows();
+			$rs->Close();
+		}
+
+		// Call Grid Updating event
+		if (!$this->Grid_Updating($rsold)) {
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("GridEditCancelled")); // Set grid edit cancelled message
+			return FALSE;
+		}
+
+		// Begin transaction
+		$conn->BeginTrans();
+		$sKey = "";
+
+		// Update row index and get row key
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Update all rows based on key
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+			$objForm->Index = $rowindex;
+			$rowkey = strval($objForm->GetValue($this->FormKeyName));
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+
+			// Load all values and keys
+			if ($rowaction <> "insertdelete") { // Skip insert then deleted rows
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "" || $rowaction == "edit" || $rowaction == "delete") {
+					$bGridUpdate = $this->SetupKeyValues($rowkey); // Set up key values
+				} else {
+					$bGridUpdate = TRUE;
+				}
+
+				// Skip empty row
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// No action required
+				// Validate form and insert/update/delete record
+
+				} elseif ($bGridUpdate) {
+					if ($rowaction == "delete") {
+						$this->CurrentFilter = $this->KeyFilter();
+						$bGridUpdate = $this->DeleteRows(); // Delete this row
+					} else if (!$this->ValidateForm()) {
+						$bGridUpdate = FALSE; // Form error, reset action
+						$this->setFailureMessage($gsFormError);
+					} else {
+						if ($rowaction == "insert") {
+							$bGridUpdate = $this->AddRow(); // Insert this row
+						} else {
+							if ($rowkey <> "") {
+
+								// Overwrite record, just reload hash value
+								if ($this->CurrentAction == "gridoverwrite")
+									$this->LoadRowHash();
+								$this->SendEmail = FALSE; // Do not send email on update success
+								$bGridUpdate = $this->EditRow(); // Update this row
+							}
+						} // End update
+					}
+				}
+				if ($bGridUpdate) {
+					if ($sKey <> "") $sKey .= ", ";
+					$sKey .= $rowkey;
+				} else {
+					break;
+				}
+			}
+		}
+		if ($bGridUpdate) {
+			$conn->CommitTrans(); // Commit transaction
+
+			// Get new recordset
+			if ($rs = $conn->Execute($sSql)) {
+				$rsnew = $rs->GetRows();
+				$rs->Close();
+			}
+
+			// Call Grid_Updated event
+			$this->Grid_Updated($rsold, $rsnew);
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("UpdateSuccess")); // Set up update success message
+			$this->ClearInlineMode(); // Clear inline edit mode
+		} else {
+			$conn->RollbackTrans(); // Rollback transaction
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("UpdateFailed")); // Set update failed message
+		}
+		return $bGridUpdate;
+	}
+
 	// Build filter for all keys
 	function BuildKeyFilter() {
 		global $objForm;
@@ -789,6 +1091,179 @@ class ccategories_list extends ccategories {
 				return FALSE;
 		}
 		return TRUE;
+	}
+
+	// Perform Grid Add
+	function GridInsert() {
+		global $Language, $objForm, $gsFormError;
+		$rowindex = 1;
+		$bGridInsert = FALSE;
+		$conn = &$this->Connection();
+
+		// Call Grid Inserting event
+		if (!$this->Grid_Inserting()) {
+			if ($this->getFailureMessage() == "") {
+				$this->setFailureMessage($Language->Phrase("GridAddCancelled")); // Set grid add cancelled message
+			}
+			return FALSE;
+		}
+
+		// Begin transaction
+		$conn->BeginTrans();
+
+		// Init key filter
+		$sWrkFilter = "";
+		$addcnt = 0;
+		$sKey = "";
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Insert all rows
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "" && $rowaction <> "insert")
+				continue; // Skip
+			$this->LoadFormValues(); // Get form values
+			if (!$this->EmptyRow()) {
+				$addcnt++;
+				$this->SendEmail = FALSE; // Do not send email on insert success
+
+				// Validate form
+				if (!$this->ValidateForm()) {
+					$bGridInsert = FALSE; // Form error, reset action
+					$this->setFailureMessage($gsFormError);
+				} else {
+					$bGridInsert = $this->AddRow($this->OldRecordset); // Insert this row
+				}
+				if ($bGridInsert) {
+					if ($sKey <> "") $sKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+					$sKey .= $this->cat_id->CurrentValue;
+
+					// Add filter for this record
+					$sFilter = $this->KeyFilter();
+					if ($sWrkFilter <> "") $sWrkFilter .= " OR ";
+					$sWrkFilter .= $sFilter;
+				} else {
+					break;
+				}
+			}
+		}
+		if ($addcnt == 0) { // No record inserted
+			$this->setFailureMessage($Language->Phrase("NoAddRecord"));
+			$bGridInsert = FALSE;
+		}
+		if ($bGridInsert) {
+			$conn->CommitTrans(); // Commit transaction
+
+			// Get new recordset
+			$this->CurrentFilter = $sWrkFilter;
+			$sSql = $this->SQL();
+			if ($rs = $conn->Execute($sSql)) {
+				$rsnew = $rs->GetRows();
+				$rs->Close();
+			}
+
+			// Call Grid_Inserted event
+			$this->Grid_Inserted($rsnew);
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("InsertSuccess")); // Set up insert success message
+			$this->ClearInlineMode(); // Clear grid add mode
+		} else {
+			$conn->RollbackTrans(); // Rollback transaction
+			if ($this->getFailureMessage() == "") {
+				$this->setFailureMessage($Language->Phrase("InsertFailed")); // Set insert failed message
+			}
+		}
+		return $bGridInsert;
+	}
+
+	// Check if empty row
+	function EmptyRow() {
+		global $objForm;
+		if ($objForm->HasValue("x_cat_name") && $objForm->HasValue("o_cat_name") && $this->cat_name->CurrentValue <> $this->cat_name->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_cat_ico_class") && $objForm->HasValue("o_cat_ico_class") && $this->cat_ico_class->CurrentValue <> $this->cat_ico_class->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_cat_ico_image") && $objForm->HasValue("o_cat_ico_image") && $this->cat_ico_image->CurrentValue <> $this->cat_ico_image->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_cat_home") && $objForm->HasValue("o_cat_home") && ew_ConvertToBool($this->cat_home->CurrentValue) <> ew_ConvertToBool($this->cat_home->OldValue))
+			return FALSE;
+		return TRUE;
+	}
+
+	// Validate grid form
+	function ValidateGridForm() {
+		global $objForm;
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Validate all records
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "delete" && $rowaction <> "insertdelete") {
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// Ignore
+				} else if (!$this->ValidateForm()) {
+					return FALSE;
+				}
+			}
+		}
+		return TRUE;
+	}
+
+	// Get all form values of the grid
+	function GetGridFormValues() {
+		global $objForm;
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+		$rows = array();
+
+		// Loop through all records
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "delete" && $rowaction <> "insertdelete") {
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// Ignore
+				} else {
+					$rows[] = $this->GetFieldValues("FormValue"); // Return row as array
+				}
+			}
+		}
+		return $rows; // Return as array of array
+	}
+
+	// Restore form values for current row
+	function RestoreCurrentRowFormValues($idx) {
+		global $objForm;
+
+		// Get row based on current index
+		$objForm->Index = $idx;
+		$this->LoadFormValues(); // Load form values
 	}
 
 	// Get list of filters
@@ -1197,6 +1672,14 @@ class ccategories_list extends ccategories {
 	function SetupListOptions() {
 		global $Security, $Language;
 
+		// "griddelete"
+		if ($this->AllowAddDeleteRow) {
+			$item = &$this->ListOptions->Add("griddelete");
+			$item->CssClass = "text-nowrap";
+			$item->OnLeft = TRUE;
+			$item->Visible = FALSE; // Default hidden
+		}
+
 		// Add group option item
 		$item = &$this->ListOptions->Add($this->ListOptions->GroupOptionName);
 		$item->Body = "";
@@ -1262,11 +1745,81 @@ class ccategories_list extends ccategories {
 		// Call ListOptions_Rendering event
 		$this->ListOptions_Rendering();
 
+		// Set up row action and key
+		if (is_numeric($this->RowIndex) && $this->CurrentMode <> "view") {
+			$objForm->Index = $this->RowIndex;
+			$ActionName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormActionName);
+			$OldKeyName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormOldKeyName);
+			$KeyName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormKeyName);
+			$BlankRowName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormBlankRowName);
+			if ($this->RowAction <> "")
+				$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $ActionName . "\" id=\"" . $ActionName . "\" value=\"" . $this->RowAction . "\">";
+			if ($this->RowAction == "delete") {
+				$rowkey = $objForm->GetValue($this->FormKeyName);
+				$this->SetupKeyValues($rowkey);
+			}
+			if ($this->RowAction == "insert" && $this->CurrentAction == "F" && $this->EmptyRow())
+				$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $BlankRowName . "\" id=\"" . $BlankRowName . "\" value=\"1\">";
+		}
+
+		// "delete"
+		if ($this->AllowAddDeleteRow) {
+			if ($this->CurrentAction == "gridadd" || $this->CurrentAction == "gridedit") {
+				$option = &$this->ListOptions;
+				$option->UseButtonGroup = TRUE; // Use button group for grid delete button
+				$option->UseImageAndText = TRUE; // Use image and text for grid delete button
+				$oListOpt = &$option->Items["griddelete"];
+				if (!$Security->CanDelete() && is_numeric($this->RowIndex) && ($this->RowAction == "" || $this->RowAction == "edit")) { // Do not allow delete existing record
+					$oListOpt->Body = "&nbsp;";
+				} else {
+					$oListOpt->Body = "<a class=\"ewGridLink ewGridDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" onclick=\"return ew_DeleteGridRow(this, " . $this->RowIndex . ");\">" . $Language->Phrase("DeleteLink") . "</a>";
+				}
+			}
+		}
+
+		// "copy"
+		$oListOpt = &$this->ListOptions->Items["copy"];
+		if (($this->CurrentAction == "add" || $this->CurrentAction == "copy") && $this->RowType == EW_ROWTYPE_ADD) { // Inline Add/Copy
+			$this->ListOptions->CustomItem = "copy"; // Show copy column only
+			$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+			$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+				"<a class=\"ewGridLink ewInlineInsert\" title=\"" . ew_HtmlTitle($Language->Phrase("InsertLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InsertLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("InsertLink") . "</a>&nbsp;" .
+				"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("CancelLink") . "</a>" .
+				"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"insert\"></div>";
+			return;
+		}
+
+		// "edit"
+		$oListOpt = &$this->ListOptions->Items["edit"];
+		if ($this->CurrentAction == "edit" && $this->RowType == EW_ROWTYPE_EDIT) { // Inline-Edit
+			$this->ListOptions->CustomItem = "edit"; // Show edit column only
+			$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+			if ($this->UpdateConflict == "U") {
+				$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+					"<a class=\"ewGridLink ewInlineReload\" title=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" href=\"" . ew_HtmlEncode(ew_UrlAddHash($this->InlineEditUrl, "r" . $this->RowCnt . "_" . $this->TableVar)) . "\">" .
+					$Language->Phrase("ReloadLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineOverwrite\" title=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . ew_UrlAddHash($this->PageName(), "r" . $this->RowCnt . "_" . $this->TableVar) . "');\">" . $Language->Phrase("OverwriteLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("ConflictCancelLink") . "</a>" .
+					"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"overwrite\"></div>";
+			} else {
+				$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+					"<a class=\"ewGridLink ewInlineUpdate\" title=\"" . ew_HtmlTitle($Language->Phrase("UpdateLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("UpdateLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . ew_UrlAddHash($this->PageName(), "r" . $this->RowCnt . "_" . $this->TableVar) . "');\">" . $Language->Phrase("UpdateLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("CancelLink") . "</a>" .
+					"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"update\"></div>";
+			}
+			$oListOpt->Body .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_hash\" id=\"k" . $this->RowIndex . "_hash\" value=\"" . $this->HashValue . "\">";
+			$oListOpt->Body .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_key\" id=\"k" . $this->RowIndex . "_key\" value=\"" . ew_HtmlEncode($this->cat_id->CurrentValue) . "\">";
+			return;
+		}
+
 		// "view"
 		$oListOpt = &$this->ListOptions->Items["view"];
 		$viewcaption = ew_HtmlTitle($Language->Phrase("ViewLink"));
 		if ($Security->CanView()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-caption=\"" . $viewcaption . "\" href=\"" . ew_HtmlEncode($this->ViewUrl) . "\">" . $Language->Phrase("ViewLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-caption=\"" . $viewcaption . "\" href=\"" . ew_HtmlEncode($this->ViewUrl) . "\">" . $Language->Phrase("ViewLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-table=\"categories\" data-caption=\"" . $viewcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,url:'" . ew_HtmlEncode($this->ViewUrl) . "',btn:null});\">" . $Language->Phrase("ViewLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1275,7 +1828,11 @@ class ccategories_list extends ccategories {
 		$oListOpt = &$this->ListOptions->Items["edit"];
 		$editcaption = ew_HtmlTitle($Language->Phrase("EditLink"));
 		if ($Security->CanEdit()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("EditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("EditLink")) . "\" href=\"" . ew_HtmlEncode($this->EditUrl) . "\">" . $Language->Phrase("EditLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . $editcaption . "\" data-caption=\"" . $editcaption . "\" href=\"" . ew_HtmlEncode($this->EditUrl) . "\">" . $Language->Phrase("EditLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . $editcaption . "\" data-table=\"categories\" data-caption=\"" . $editcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'SaveBtn',url:'" . ew_HtmlEncode($this->EditUrl) . "'});\">" . $Language->Phrase("EditLink") . "</a>";
+			$oListOpt->Body .= "<a class=\"ewRowLink ewInlineEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("InlineEditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InlineEditLink")) . "\" href=\"" . ew_HtmlEncode(ew_UrlAddHash($this->InlineEditUrl, "r" . $this->RowCnt . "_" . $this->TableVar)) . "\">" . $Language->Phrase("InlineEditLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1284,7 +1841,10 @@ class ccategories_list extends ccategories {
 		$oListOpt = &$this->ListOptions->Items["copy"];
 		$copycaption = ew_HtmlTitle($Language->Phrase("CopyLink"));
 		if ($Security->CanAdd()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-caption=\"" . $copycaption . "\" href=\"" . ew_HtmlEncode($this->CopyUrl) . "\">" . $Language->Phrase("CopyLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-caption=\"" . $copycaption . "\" href=\"" . ew_HtmlEncode($this->CopyUrl) . "\">" . $Language->Phrase("CopyLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-table=\"categories\" data-caption=\"" . $copycaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'AddBtn',url:'" . ew_HtmlEncode($this->CopyUrl) . "'});\">" . $Language->Phrase("CopyLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1321,6 +1881,10 @@ class ccategories_list extends ccategories {
 		// "checkbox"
 		$oListOpt = &$this->ListOptions->Items["checkbox"];
 		$oListOpt->Body = "<input type=\"checkbox\" name=\"key_m[]\" class=\"ewMultiSelect\" value=\"" . ew_HtmlEncode($this->cat_id->CurrentValue) . "\" onclick=\"ew_ClickMultiCheckbox(event);\">";
+		if ($this->CurrentAction == "gridedit" && is_numeric($this->RowIndex)) {
+			$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $KeyName . "\" id=\"" . $KeyName . "\" value=\"" . $this->cat_id->CurrentValue . "\">";
+			$this->MultiSelectKey .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_hash\" id=\"k" . $this->RowIndex . "_hash\" value=\"" . $this->HashValue . "\">";
+		}
 		$this->RenderListOptionsExt();
 
 		// Call ListOptions_Rendered event
@@ -1336,14 +1900,36 @@ class ccategories_list extends ccategories {
 		// Add
 		$item = &$option->Add("add");
 		$addcaption = ew_HtmlTitle($Language->Phrase("AddLink"));
-		$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-caption=\"" . $addcaption . "\" href=\"" . ew_HtmlEncode($this->AddUrl) . "\">" . $Language->Phrase("AddLink") . "</a>";
+		if (ew_IsMobile())
+			$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-caption=\"" . $addcaption . "\" href=\"" . ew_HtmlEncode($this->AddUrl) . "\">" . $Language->Phrase("AddLink") . "</a>";
+		else
+			$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-table=\"categories\" data-caption=\"" . $addcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'AddBtn',url:'" . ew_HtmlEncode($this->AddUrl) . "'});\">" . $Language->Phrase("AddLink") . "</a>";
 		$item->Visible = ($this->AddUrl <> "" && $Security->CanAdd());
+
+		// Inline Add
+		$item = &$option->Add("inlineadd");
+		$item->Body = "<a class=\"ewAddEdit ewInlineAdd\" title=\"" . ew_HtmlTitle($Language->Phrase("InlineAddLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InlineAddLink")) . "\" href=\"" . ew_HtmlEncode($this->InlineAddUrl) . "\">" .$Language->Phrase("InlineAddLink") . "</a>";
+		$item->Visible = ($this->InlineAddUrl <> "" && $Security->CanAdd());
+		$item = &$option->Add("gridadd");
+		$item->Body = "<a class=\"ewAddEdit ewGridAdd\" title=\"" . ew_HtmlTitle($Language->Phrase("GridAddLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridAddLink")) . "\" href=\"" . ew_HtmlEncode($this->GridAddUrl) . "\">" . $Language->Phrase("GridAddLink") . "</a>";
+		$item->Visible = ($this->GridAddUrl <> "" && $Security->CanAdd());
+
+		// Add grid edit
+		$option = $options["addedit"];
+		$item = &$option->Add("gridedit");
+		$item->Body = "<a class=\"ewAddEdit ewGridEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("GridEditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridEditLink")) . "\" href=\"" . ew_HtmlEncode($this->GridEditUrl) . "\">" . $Language->Phrase("GridEditLink") . "</a>";
+		$item->Visible = ($this->GridEditUrl <> "" && $Security->CanEdit());
 		$option = $options["action"];
 
 		// Add multi delete
 		$item = &$option->Add("multidelete");
-		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fcategorieslist,url:'" . $this->MultiDeleteUrl . "'});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
+		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fcategorieslist,url:'" . $this->MultiDeleteUrl . "',msg:ewLanguage.Phrase('DeleteConfirmMsg')});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
 		$item->Visible = ($Security->CanDelete());
+
+		// Add multi update
+		$item = &$option->Add("multiupdate");
+		$item->Body = "<a class=\"ewAction ewMultiUpdate\" title=\"" . ew_HtmlTitle($Language->Phrase("UpdateSelectedLink")) . "\" data-table=\"categories\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("UpdateSelectedLink")) . "\" href=\"\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'UpdateBtn',f:document.fcategorieslist,url:'" . $this->MultiUpdateUrl . "'});return false;\">" . $Language->Phrase("UpdateSelectedLink") . "</a>";
+		$item->Visible = ($Security->CanEdit());
 
 		// Set up options default
 		foreach ($options as &$option) {
@@ -1380,6 +1966,7 @@ class ccategories_list extends ccategories {
 	function RenderOtherOptions() {
 		global $Language, $Security;
 		$options = &$this->OtherOptions;
+		if ($this->CurrentAction <> "gridadd" && $this->CurrentAction <> "gridedit") { // Not grid add/edit mode
 			$option = &$options["action"];
 
 			// Set up list action buttons
@@ -1401,6 +1988,66 @@ class ccategories_list extends ccategories {
 				$option = &$options["action"];
 				$option->HideAllOptions();
 			}
+		} else { // Grid add/edit mode
+
+			// Hide all options first
+			foreach ($options as &$option)
+				$option->HideAllOptions();
+			if ($this->CurrentAction == "gridadd") {
+				if ($this->AllowAddDeleteRow) {
+
+					// Add add blank row
+					$option = &$options["addedit"];
+					$option->UseDropDownButton = FALSE;
+					$option->UseImageAndText = TRUE;
+					$item = &$option->Add("addblankrow");
+					$item->Body = "<a class=\"ewAddEdit ewAddBlankRow\" title=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" href=\"javascript:void(0);\" onclick=\"ew_AddGridRow(this);\">" . $Language->Phrase("AddBlankRow") . "</a>";
+					$item->Visible = $Security->CanAdd();
+				}
+				$option = &$options["action"];
+				$option->UseDropDownButton = FALSE;
+				$option->UseImageAndText = TRUE;
+
+				// Add grid insert
+				$item = &$option->Add("gridinsert");
+				$item->Body = "<a class=\"ewAction ewGridInsert\" title=\"" . ew_HtmlTitle($Language->Phrase("GridInsertLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridInsertLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("GridInsertLink") . "</a>";
+
+				// Add grid cancel
+				$item = &$option->Add("gridcancel");
+				$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+				$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("GridCancelLink") . "</a>";
+			}
+			if ($this->CurrentAction == "gridedit") {
+				if ($this->AllowAddDeleteRow) {
+
+					// Add add blank row
+					$option = &$options["addedit"];
+					$option->UseDropDownButton = FALSE;
+					$option->UseImageAndText = TRUE;
+					$item = &$option->Add("addblankrow");
+					$item->Body = "<a class=\"ewAddEdit ewAddBlankRow\" title=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" href=\"javascript:void(0);\" onclick=\"ew_AddGridRow(this);\">" . $Language->Phrase("AddBlankRow") . "</a>";
+					$item->Visible = $Security->CanAdd();
+				}
+				$option = &$options["action"];
+				$option->UseDropDownButton = FALSE;
+				$option->UseImageAndText = TRUE;
+				if ($this->UpdateConflict == "U") { // Record already updated by other user
+					$item = &$option->Add("reload");
+					$item->Body = "<a class=\"ewAction ewGridReload\" title=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" href=\"" . ew_HtmlEncode($this->GridEditUrl) . "\">" . $Language->Phrase("ReloadLink") . "</a>";
+					$item = &$option->Add("overwrite");
+					$item->Body = "<a class=\"ewAction ewGridOverwrite\" title=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("OverwriteLink") . "</a>";
+					$item = &$option->Add("cancel");
+					$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+					$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("ConflictCancelLink") . "</a>";
+				} else {
+					$item = &$option->Add("gridsave");
+					$item->Body = "<a class=\"ewAction ewGridSave\" title=\"" . ew_HtmlTitle($Language->Phrase("GridSaveLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridSaveLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("GridSaveLink") . "</a>";
+					$item = &$option->Add("gridcancel");
+					$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+					$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("GridCancelLink") . "</a>";
+				}
+			}
+		}
 	}
 
 	// Process list action
@@ -1500,6 +2147,11 @@ class ccategories_list extends ccategories {
 		$item->Body = "<a class=\"btn btn-default ewShowAll\" title=\"" . $Language->Phrase("ShowAll") . "\" data-caption=\"" . $Language->Phrase("ShowAll") . "\" href=\"" . $this->PageUrl() . "cmd=reset\">" . $Language->Phrase("ShowAllBtn") . "</a>";
 		$item->Visible = ($this->SearchWhere <> $this->DefaultSearchWhere && $this->SearchWhere <> "0=101");
 
+		// Search highlight button
+		$item = &$this->SearchOptions->Add("searchhighlight");
+		$item->Body = "<button type=\"button\" class=\"btn btn-default ewHighlight active\" title=\"" . $Language->Phrase("Highlight") . "\" data-caption=\"" . $Language->Phrase("Highlight") . "\" data-toggle=\"button\" data-form=\"fcategorieslistsrch\" data-name=\"" . $this->HighlightName() . "\">" . $Language->Phrase("HighlightBtn") . "</button>";
+		$item->Visible = ($this->SearchWhere <> "" && $this->TotalRecs > 0);
+
 		// Button group for search
 		$this->SearchOptions->UseDropDownButton = FALSE;
 		$this->SearchOptions->UseImageAndText = TRUE;
@@ -1565,6 +2217,20 @@ class ccategories_list extends ccategories {
 		}
 	}
 
+	// Load default values
+	function LoadDefaultValues() {
+		$this->cat_id->CurrentValue = NULL;
+		$this->cat_id->OldValue = $this->cat_id->CurrentValue;
+		$this->cat_name->CurrentValue = NULL;
+		$this->cat_name->OldValue = $this->cat_name->CurrentValue;
+		$this->cat_ico_class->CurrentValue = NULL;
+		$this->cat_ico_class->OldValue = $this->cat_ico_class->CurrentValue;
+		$this->cat_ico_image->CurrentValue = NULL;
+		$this->cat_ico_image->OldValue = $this->cat_ico_image->CurrentValue;
+		$this->cat_home->CurrentValue = NULL;
+		$this->cat_home->OldValue = $this->cat_home->CurrentValue;
+	}
+
 	// Load basic search values
 	function LoadBasicSearchValues() {
 		$this->BasicSearch->Keyword = @$_GET[EW_TABLE_BASIC_SEARCH];
@@ -1604,6 +2270,46 @@ class ccategories_list extends ccategories {
 		$this->cat_home->AdvancedSearch->SearchOperator = @$_GET["z_cat_home"];
 		if (is_array($this->cat_home->AdvancedSearch->SearchValue)) $this->cat_home->AdvancedSearch->SearchValue = implode(",", $this->cat_home->AdvancedSearch->SearchValue);
 		if (is_array($this->cat_home->AdvancedSearch->SearchValue2)) $this->cat_home->AdvancedSearch->SearchValue2 = implode(",", $this->cat_home->AdvancedSearch->SearchValue2);
+	}
+
+	// Load form values
+	function LoadFormValues() {
+
+		// Load from form
+		global $objForm;
+		if (!$this->cat_id->FldIsDetailKey && $this->CurrentAction <> "gridadd" && $this->CurrentAction <> "add")
+			$this->cat_id->setFormValue($objForm->GetValue("x_cat_id"));
+		if (!$this->cat_name->FldIsDetailKey) {
+			$this->cat_name->setFormValue($objForm->GetValue("x_cat_name"));
+		}
+		$this->cat_name->setOldValue($objForm->GetValue("o_cat_name"));
+		if (!$this->cat_ico_class->FldIsDetailKey) {
+			$this->cat_ico_class->setFormValue($objForm->GetValue("x_cat_ico_class"));
+		}
+		$this->cat_ico_class->setOldValue($objForm->GetValue("o_cat_ico_class"));
+		if (!$this->cat_ico_image->FldIsDetailKey) {
+			$this->cat_ico_image->setFormValue($objForm->GetValue("x_cat_ico_image"));
+		}
+		$this->cat_ico_image->setOldValue($objForm->GetValue("o_cat_ico_image"));
+		if (!$this->cat_home->FldIsDetailKey) {
+			$this->cat_home->setFormValue($objForm->GetValue("x_cat_home"));
+		}
+		$this->cat_home->setOldValue($objForm->GetValue("o_cat_home"));
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
+	}
+
+	// Restore form values
+	function RestoreFormValues() {
+		global $objForm;
+		if ($this->CurrentAction <> "gridadd" && $this->CurrentAction <> "add")
+			$this->cat_id->CurrentValue = $this->cat_id->FormValue;
+		$this->cat_name->CurrentValue = $this->cat_name->FormValue;
+		$this->cat_ico_class->CurrentValue = $this->cat_ico_class->FormValue;
+		$this->cat_ico_image->CurrentValue = $this->cat_ico_image->FormValue;
+		$this->cat_home->CurrentValue = $this->cat_home->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -1649,6 +2355,8 @@ class ccategories_list extends ccategories {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -1674,12 +2382,13 @@ class ccategories_list extends ccategories {
 
 	// Return a row with default values
 	function NewRow() {
+		$this->LoadDefaultValues();
 		$row = array();
-		$row['cat_id'] = NULL;
-		$row['cat_name'] = NULL;
-		$row['cat_ico_class'] = NULL;
-		$row['cat_ico_image'] = NULL;
-		$row['cat_home'] = NULL;
+		$row['cat_id'] = $this->cat_id->CurrentValue;
+		$row['cat_name'] = $this->cat_name->CurrentValue;
+		$row['cat_ico_class'] = $this->cat_ico_class->CurrentValue;
+		$row['cat_ico_image'] = $this->cat_ico_image->CurrentValue;
+		$row['cat_home'] = $this->cat_home->CurrentValue;
 		return $row;
 	}
 
@@ -1774,21 +2483,125 @@ class ccategories_list extends ccategories {
 			$this->cat_name->LinkCustomAttributes = "";
 			$this->cat_name->HrefValue = "";
 			$this->cat_name->TooltipValue = "";
+			if ($this->Export == "")
+				$this->cat_name->ViewValue = $this->HighlightValue($this->cat_name);
 
 			// cat_ico_class
 			$this->cat_ico_class->LinkCustomAttributes = "";
 			$this->cat_ico_class->HrefValue = "";
 			$this->cat_ico_class->TooltipValue = "";
+			if ($this->Export == "")
+				$this->cat_ico_class->ViewValue = $this->HighlightValue($this->cat_ico_class);
 
 			// cat_ico_image
 			$this->cat_ico_image->LinkCustomAttributes = "";
 			$this->cat_ico_image->HrefValue = "";
 			$this->cat_ico_image->TooltipValue = "";
+			if ($this->Export == "")
+				$this->cat_ico_image->ViewValue = $this->HighlightValue($this->cat_ico_image);
 
 			// cat_home
 			$this->cat_home->LinkCustomAttributes = "";
 			$this->cat_home->HrefValue = "";
 			$this->cat_home->TooltipValue = "";
+		} elseif ($this->RowType == EW_ROWTYPE_ADD) { // Add row
+
+			// cat_id
+			// cat_name
+
+			$this->cat_name->EditAttrs["class"] = "form-control";
+			$this->cat_name->EditCustomAttributes = "";
+			$this->cat_name->EditValue = ew_HtmlEncode($this->cat_name->CurrentValue);
+			$this->cat_name->PlaceHolder = ew_RemoveHtml($this->cat_name->FldCaption());
+
+			// cat_ico_class
+			$this->cat_ico_class->EditAttrs["class"] = "form-control";
+			$this->cat_ico_class->EditCustomAttributes = "";
+			$this->cat_ico_class->EditValue = ew_HtmlEncode($this->cat_ico_class->CurrentValue);
+			$this->cat_ico_class->PlaceHolder = ew_RemoveHtml($this->cat_ico_class->FldCaption());
+
+			// cat_ico_image
+			$this->cat_ico_image->EditAttrs["class"] = "form-control";
+			$this->cat_ico_image->EditCustomAttributes = "";
+			$this->cat_ico_image->EditValue = ew_HtmlEncode($this->cat_ico_image->CurrentValue);
+			$this->cat_ico_image->PlaceHolder = ew_RemoveHtml($this->cat_ico_image->FldCaption());
+
+			// cat_home
+			$this->cat_home->EditCustomAttributes = "";
+			$this->cat_home->EditValue = $this->cat_home->Options(FALSE);
+
+			// Add refer script
+			// cat_id
+
+			$this->cat_id->LinkCustomAttributes = "";
+			$this->cat_id->HrefValue = "";
+
+			// cat_name
+			$this->cat_name->LinkCustomAttributes = "";
+			$this->cat_name->HrefValue = "";
+
+			// cat_ico_class
+			$this->cat_ico_class->LinkCustomAttributes = "";
+			$this->cat_ico_class->HrefValue = "";
+
+			// cat_ico_image
+			$this->cat_ico_image->LinkCustomAttributes = "";
+			$this->cat_ico_image->HrefValue = "";
+
+			// cat_home
+			$this->cat_home->LinkCustomAttributes = "";
+			$this->cat_home->HrefValue = "";
+		} elseif ($this->RowType == EW_ROWTYPE_EDIT) { // Edit row
+
+			// cat_id
+			$this->cat_id->EditAttrs["class"] = "form-control";
+			$this->cat_id->EditCustomAttributes = "";
+			$this->cat_id->EditValue = $this->cat_id->CurrentValue;
+			$this->cat_id->ViewCustomAttributes = "";
+
+			// cat_name
+			$this->cat_name->EditAttrs["class"] = "form-control";
+			$this->cat_name->EditCustomAttributes = "";
+			$this->cat_name->EditValue = ew_HtmlEncode($this->cat_name->CurrentValue);
+			$this->cat_name->PlaceHolder = ew_RemoveHtml($this->cat_name->FldCaption());
+
+			// cat_ico_class
+			$this->cat_ico_class->EditAttrs["class"] = "form-control";
+			$this->cat_ico_class->EditCustomAttributes = "";
+			$this->cat_ico_class->EditValue = ew_HtmlEncode($this->cat_ico_class->CurrentValue);
+			$this->cat_ico_class->PlaceHolder = ew_RemoveHtml($this->cat_ico_class->FldCaption());
+
+			// cat_ico_image
+			$this->cat_ico_image->EditAttrs["class"] = "form-control";
+			$this->cat_ico_image->EditCustomAttributes = "";
+			$this->cat_ico_image->EditValue = ew_HtmlEncode($this->cat_ico_image->CurrentValue);
+			$this->cat_ico_image->PlaceHolder = ew_RemoveHtml($this->cat_ico_image->FldCaption());
+
+			// cat_home
+			$this->cat_home->EditCustomAttributes = "";
+			$this->cat_home->EditValue = $this->cat_home->Options(FALSE);
+
+			// Edit refer script
+			// cat_id
+
+			$this->cat_id->LinkCustomAttributes = "";
+			$this->cat_id->HrefValue = "";
+
+			// cat_name
+			$this->cat_name->LinkCustomAttributes = "";
+			$this->cat_name->HrefValue = "";
+
+			// cat_ico_class
+			$this->cat_ico_class->LinkCustomAttributes = "";
+			$this->cat_ico_class->HrefValue = "";
+
+			// cat_ico_image
+			$this->cat_ico_image->LinkCustomAttributes = "";
+			$this->cat_ico_image->HrefValue = "";
+
+			// cat_home
+			$this->cat_home->LinkCustomAttributes = "";
+			$this->cat_home->HrefValue = "";
 		} elseif ($this->RowType == EW_ROWTYPE_SEARCH) { // Search row
 
 			// cat_id
@@ -1848,6 +2661,273 @@ class ccategories_list extends ccategories {
 			ew_AddMessage($gsSearchError, $sFormCustomError);
 		}
 		return $ValidateSearch;
+	}
+
+	// Validate form
+	function ValidateForm() {
+		global $Language, $gsFormError;
+
+		// Initialize form error message
+		$gsFormError = "";
+
+		// Check if validation required
+		if (!EW_SERVER_VALIDATE)
+			return ($gsFormError == "");
+
+		// Return validate result
+		$ValidateForm = ($gsFormError == "");
+
+		// Call Form_CustomValidate event
+		$sFormCustomError = "";
+		$ValidateForm = $ValidateForm && $this->Form_CustomValidate($sFormCustomError);
+		if ($sFormCustomError <> "") {
+			ew_AddMessage($gsFormError, $sFormCustomError);
+		}
+		return $ValidateForm;
+	}
+
+	//
+	// Delete records based on current filter
+	//
+	function DeleteRows() {
+		global $Language, $Security;
+		if (!$Security->CanDelete()) {
+			$this->setFailureMessage($Language->Phrase("NoDeletePermission")); // No delete permission
+			return FALSE;
+		}
+		$DeleteRows = TRUE;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+		$rs = $conn->Execute($sSql);
+		$conn->raiseErrorFn = '';
+		if ($rs === FALSE) {
+			return FALSE;
+		} elseif ($rs->EOF) {
+			$this->setFailureMessage($Language->Phrase("NoRecord")); // No record found
+			$rs->Close();
+			return FALSE;
+		}
+		$rows = ($rs) ? $rs->GetRows() : array();
+
+		// Clone old rows
+		$rsold = $rows;
+		if ($rs)
+			$rs->Close();
+
+		// Call row deleting event
+		if ($DeleteRows) {
+			foreach ($rsold as $row) {
+				$DeleteRows = $this->Row_Deleting($row);
+				if (!$DeleteRows) break;
+			}
+		}
+		if ($DeleteRows) {
+			$sKey = "";
+			foreach ($rsold as $row) {
+				$sThisKey = "";
+				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+				$sThisKey .= $row['cat_id'];
+
+				// Delete old files
+				$this->LoadDbValues($row);
+				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+				$DeleteRows = $this->Delete($row); // Delete
+				$conn->raiseErrorFn = '';
+				if ($DeleteRows === FALSE)
+					break;
+				if ($sKey <> "") $sKey .= ", ";
+				$sKey .= $sThisKey;
+			}
+		}
+		if (!$DeleteRows) {
+
+			// Set up error message
+			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+				// Use the message, do nothing
+			} elseif ($this->CancelMessage <> "") {
+				$this->setFailureMessage($this->CancelMessage);
+				$this->CancelMessage = "";
+			} else {
+				$this->setFailureMessage($Language->Phrase("DeleteCancelled"));
+			}
+		}
+		if ($DeleteRows) {
+		} else {
+		}
+
+		// Call Row Deleted event
+		if ($DeleteRows) {
+			foreach ($rsold as $row) {
+				$this->Row_Deleted($row);
+			}
+		}
+		return $DeleteRows;
+	}
+
+	// Update record based on key values
+	function EditRow() {
+		global $Security, $Language;
+		$sFilter = $this->KeyFilter();
+		$sFilter = $this->ApplyUserIDFilters($sFilter);
+		$conn = &$this->Connection();
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+		$rs = $conn->Execute($sSql);
+		$conn->raiseErrorFn = '';
+		if ($rs === FALSE)
+			return FALSE;
+		if ($rs->EOF) {
+			$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
+			$EditRow = FALSE; // Update Failed
+		} else {
+
+			// Save old values
+			$rsold = &$rs->fields;
+			$this->LoadDbValues($rsold);
+			$rsnew = array();
+
+			// cat_name
+			$this->cat_name->SetDbValueDef($rsnew, $this->cat_name->CurrentValue, NULL, $this->cat_name->ReadOnly);
+
+			// cat_ico_class
+			$this->cat_ico_class->SetDbValueDef($rsnew, $this->cat_ico_class->CurrentValue, NULL, $this->cat_ico_class->ReadOnly);
+
+			// cat_ico_image
+			$this->cat_ico_image->SetDbValueDef($rsnew, $this->cat_ico_image->CurrentValue, NULL, $this->cat_ico_image->ReadOnly);
+
+			// cat_home
+			$tmpBool = $this->cat_home->CurrentValue;
+			if ($tmpBool <> "Y" && $tmpBool <> "N")
+				$tmpBool = (!empty($tmpBool)) ? "Y" : "N";
+			$this->cat_home->SetDbValueDef($rsnew, $tmpBool, NULL, $this->cat_home->ReadOnly);
+
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
+			// Call Row Updating event
+			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
+			if ($bUpdateRow) {
+				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+				if (count($rsnew) > 0)
+					$EditRow = $this->Update($rsnew, "", $rsold);
+				else
+					$EditRow = TRUE; // No field to update
+				$conn->raiseErrorFn = '';
+				if ($EditRow) {
+				}
+			} else {
+				if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+					// Use the message, do nothing
+				} elseif ($this->CancelMessage <> "") {
+					$this->setFailureMessage($this->CancelMessage);
+					$this->CancelMessage = "";
+				} else {
+					$this->setFailureMessage($Language->Phrase("UpdateCancelled"));
+				}
+				$EditRow = FALSE;
+			}
+		}
+
+		// Call Row_Updated event
+		if ($EditRow)
+			$this->Row_Updated($rsold, $rsnew);
+		$rs->Close();
+		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('cat_name')); // cat_name
+		$sHash .= ew_GetFldHash($rs->fields('cat_ico_class')); // cat_ico_class
+		$sHash .= ew_GetFldHash($rs->fields('cat_ico_image')); // cat_ico_image
+		$sHash .= ew_GetFldHash($rs->fields('cat_home')); // cat_home
+		return md5($sHash);
+	}
+
+	// Add record
+	function AddRow($rsold = NULL) {
+		global $Language, $Security;
+		$conn = &$this->Connection();
+
+		// Load db values from rsold
+		$this->LoadDbValues($rsold);
+		if ($rsold) {
+		}
+		$rsnew = array();
+
+		// cat_name
+		$this->cat_name->SetDbValueDef($rsnew, $this->cat_name->CurrentValue, NULL, FALSE);
+
+		// cat_ico_class
+		$this->cat_ico_class->SetDbValueDef($rsnew, $this->cat_ico_class->CurrentValue, NULL, FALSE);
+
+		// cat_ico_image
+		$this->cat_ico_image->SetDbValueDef($rsnew, $this->cat_ico_image->CurrentValue, NULL, FALSE);
+
+		// cat_home
+		$tmpBool = $this->cat_home->CurrentValue;
+		if ($tmpBool <> "Y" && $tmpBool <> "N")
+			$tmpBool = (!empty($tmpBool)) ? "Y" : "N";
+		$this->cat_home->SetDbValueDef($rsnew, $tmpBool, NULL, FALSE);
+
+		// Call Row Inserting event
+		$rs = ($rsold == NULL) ? NULL : $rsold->fields;
+		$bInsertRow = $this->Row_Inserting($rs, $rsnew);
+		if ($bInsertRow) {
+			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+			$AddRow = $this->Insert($rsnew);
+			$conn->raiseErrorFn = '';
+			if ($AddRow) {
+			}
+		} else {
+			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+				// Use the message, do nothing
+			} elseif ($this->CancelMessage <> "") {
+				$this->setFailureMessage($this->CancelMessage);
+				$this->CancelMessage = "";
+			} else {
+				$this->setFailureMessage($Language->Phrase("InsertCancelled"));
+			}
+			$AddRow = FALSE;
+		}
+		if ($AddRow) {
+
+			// Call Row Inserted event
+			$rs = ($rsold == NULL) ? NULL : $rsold->fields;
+			$this->Row_Inserted($rs, $rsnew);
+		}
+		return $AddRow;
 	}
 
 	// Load advanced search
@@ -1917,7 +2997,7 @@ class ccategories_list extends ccategories {
 		// Drop down button for export
 		$this->ExportOptions->UseButtonGroup = TRUE;
 		$this->ExportOptions->UseImageAndText = TRUE;
-		$this->ExportOptions->UseDropDownButton = TRUE;
+		$this->ExportOptions->UseDropDownButton = FALSE;
 		if ($this->ExportOptions->UseButtonGroup && ew_IsMobile())
 			$this->ExportOptions->UseDropDownButton = TRUE;
 		$this->ExportOptions->DropDownButtonPhrase = $Language->Phrase("ButtonExport");
@@ -2322,6 +3402,47 @@ var CurrentPageID = EW_PAGE_ID = "list";
 var CurrentForm = fcategorieslist = new ew_Form("fcategorieslist", "list");
 fcategorieslist.FormKeyCountName = '<?php echo $categories_list->FormKeyCountName ?>';
 
+// Validate form
+fcategorieslist.Validate = function() {
+	if (!this.ValidateRequired)
+		return true; // Ignore validation
+	var $ = jQuery, fobj = this.GetForm(), $fobj = $(fobj);
+	if ($fobj.find("#a_confirm").val() == "F")
+		return true;
+	var elm, felm, uelm, addcnt = 0;
+	var $k = $fobj.find("#" + this.FormKeyCountName); // Get key_count
+	var rowcnt = ($k[0]) ? parseInt($k.val(), 10) : 1;
+	var startcnt = (rowcnt == 0) ? 0 : 1; // Check rowcnt == 0 => Inline-Add
+	var gridinsert = $fobj.find("#a_list").val() == "gridinsert";
+	for (var i = startcnt; i <= rowcnt; i++) {
+		var infix = ($k[0]) ? String(i) : "";
+		$fobj.data("rowindex", infix);
+		var checkrow = (gridinsert) ? !this.EmptyRow(infix) : true;
+		if (checkrow) {
+			addcnt++;
+
+			// Fire Form_CustomValidate event
+			if (!this.Form_CustomValidate(fobj))
+				return false;
+		} // End Grid Add checking
+	}
+	if (gridinsert && addcnt == 0) { // No row added
+		ew_Alert(ewLanguage.Phrase("NoAddRecord"));
+		return false;
+	}
+	return true;
+}
+
+// Check empty row
+fcategorieslist.EmptyRow = function(infix) {
+	var fobj = this.Form;
+	if (ew_ValueChanged(fobj, infix, "cat_name", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "cat_ico_class", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "cat_ico_image", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "cat_home[]", true)) return false;
+	return true;
+}
+
 // Form_CustomValidate event
 fcategorieslist.Form_CustomValidate = 
  function(fobj) { // DO NOT CHANGE THIS LINE!
@@ -2388,6 +3509,13 @@ fcategorieslistsrch.Lists["x_cat_home[]"].Options = <?php echo json_encode($cate
 </div>
 <?php } ?>
 <?php
+if ($categories->CurrentAction == "gridadd") {
+	$categories->CurrentFilter = "0=1";
+	$categories_list->StartRec = 1;
+	$categories_list->DisplayRecs = $categories->GridAddRowCount;
+	$categories_list->TotalRecs = $categories_list->DisplayRecs;
+	$categories_list->StopRec = $categories_list->DisplayRecs;
+} else {
 	$bSelectLimit = $categories_list->UseSelectLimit;
 	if ($bSelectLimit) {
 		if ($categories_list->TotalRecs <= 0)
@@ -2413,6 +3541,7 @@ fcategorieslistsrch.Lists["x_cat_home[]"].Options = <?php echo json_encode($cate
 		else
 			$categories_list->setWarningMessage($Language->Phrase("NoRecord"));
 	}
+}
 $categories_list->RenderOtherOptions();
 ?>
 <?php if ($Security->CanSearch()) { ?>
@@ -2542,7 +3671,7 @@ $categories_list->ShowMessage();
 <input type="hidden" name="t" value="categories">
 <input type="hidden" name="exporttype" id="exporttype" value="">
 <div id="gmp_categories" class="<?php if (ew_IsResponsiveLayout()) { ?>table-responsive <?php } ?>ewGridMiddlePanel">
-<?php if ($categories_list->TotalRecs > 0 || $categories->CurrentAction == "gridedit") { ?>
+<?php if ($categories_list->TotalRecs > 0 || $categories->CurrentAction == "add" || $categories->CurrentAction == "copy" || $categories->CurrentAction == "gridedit") { ?>
 <table id="tbl_categorieslist" class="table ewTable">
 <thead>
 	<tr class="ewTableHeader">
@@ -2611,6 +3740,85 @@ $categories_list->ListOptions->Render("header", "right");
 </thead>
 <tbody>
 <?php
+	if ($categories->CurrentAction == "add" || $categories->CurrentAction == "copy") {
+		$categories_list->RowIndex = 0;
+		$categories_list->KeyCount = $categories_list->RowIndex;
+		if ($categories->CurrentAction == "add")
+			$categories_list->LoadRowValues();
+		if ($categories->EventCancelled) // Insert failed
+			$categories_list->RestoreFormValues(); // Restore form values
+
+		// Set row properties
+		$categories->ResetAttrs();
+		$categories->RowAttrs = array_merge($categories->RowAttrs, array('data-rowindex'=>0, 'id'=>'r0_categories', 'data-rowtype'=>EW_ROWTYPE_ADD));
+		$categories->RowType = EW_ROWTYPE_ADD;
+
+		// Render row
+		$categories_list->RenderRow();
+
+		// Render list options
+		$categories_list->RenderListOptions();
+		$categories_list->StartRowCnt = 0;
+?>
+	<tr<?php echo $categories->RowAttributes() ?>>
+<?php
+
+// Render list options (body, left)
+$categories_list->ListOptions->Render("body", "left", $categories_list->RowCnt);
+?>
+	<?php if ($categories->cat_id->Visible) { // cat_id ?>
+		<td data-name="cat_id">
+<input type="hidden" data-table="categories" data-field="x_cat_id" name="o<?php echo $categories_list->RowIndex ?>_cat_id" id="o<?php echo $categories_list->RowIndex ?>_cat_id" value="<?php echo ew_HtmlEncode($categories->cat_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_name->Visible) { // cat_name ?>
+		<td data-name="cat_name">
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_name" class="form-group categories_cat_name">
+<input type="text" data-table="categories" data-field="x_cat_name" name="x<?php echo $categories_list->RowIndex ?>_cat_name" id="x<?php echo $categories_list->RowIndex ?>_cat_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_name->getPlaceHolder()) ?>" value="<?php echo $categories->cat_name->EditValue ?>"<?php echo $categories->cat_name->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_name" name="o<?php echo $categories_list->RowIndex ?>_cat_name" id="o<?php echo $categories_list->RowIndex ?>_cat_name" value="<?php echo ew_HtmlEncode($categories->cat_name->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_ico_class->Visible) { // cat_ico_class ?>
+		<td data-name="cat_ico_class">
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_class" class="form-group categories_cat_ico_class">
+<input type="text" data-table="categories" data-field="x_cat_ico_class" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_class->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_class->EditValue ?>"<?php echo $categories->cat_ico_class->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_class" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_class" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_class" value="<?php echo ew_HtmlEncode($categories->cat_ico_class->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_ico_image->Visible) { // cat_ico_image ?>
+		<td data-name="cat_ico_image">
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="form-group categories_cat_ico_image">
+<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_home->Visible) { // cat_home ?>
+		<td data-name="cat_home">
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_home" class="form-group categories_cat_home">
+<?php
+$selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" : "";
+?>
+<input type="checkbox" data-table="categories" data-field="x_cat_home" name="x<?php echo $categories_list->RowIndex ?>_cat_home[]" id="x<?php echo $categories_list->RowIndex ?>_cat_home[]" value="1"<?php echo $selwrk ?><?php echo $categories->cat_home->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_home" name="o<?php echo $categories_list->RowIndex ?>_cat_home[]" id="o<?php echo $categories_list->RowIndex ?>_cat_home[]" value="<?php echo ew_HtmlEncode($categories->cat_home->OldValue) ?>">
+</td>
+	<?php } ?>
+<?php
+
+// Render list options (body, right)
+$categories_list->ListOptions->Render("body", "right", $categories_list->RowCnt);
+?>
+<script type="text/javascript">
+fcategorieslist.UpdateOpts(<?php echo $categories_list->RowIndex ?>);
+</script>
+	</tr>
+<?php
+}
+?>
+<?php
 if ($categories->ExportAll && $categories->Export <> "") {
 	$categories_list->StopRec = $categories_list->TotalRecs;
 } else {
@@ -2620,6 +3828,15 @@ if ($categories->ExportAll && $categories->Export <> "") {
 		$categories_list->StopRec = $categories_list->StartRec + $categories_list->DisplayRecs - 1;
 	else
 		$categories_list->StopRec = $categories_list->TotalRecs;
+}
+
+// Restore number of post back records
+if ($objForm) {
+	$objForm->Index = -1;
+	if ($objForm->HasValue($categories_list->FormKeyCountName) && ($categories->CurrentAction == "gridadd" || $categories->CurrentAction == "gridedit" || $categories->CurrentAction == "F")) {
+		$categories_list->KeyCount = $objForm->GetValue($categories_list->FormKeyCountName);
+		$categories_list->StopRec = $categories_list->StartRec + $categories_list->KeyCount - 1;
+	}
 }
 $categories_list->RecCnt = $categories_list->StartRec - 1;
 if ($categories_list->Recordset && !$categories_list->Recordset->EOF) {
@@ -2635,10 +3852,27 @@ if ($categories_list->Recordset && !$categories_list->Recordset->EOF) {
 $categories->RowType = EW_ROWTYPE_AGGREGATEINIT;
 $categories->ResetAttrs();
 $categories_list->RenderRow();
+$categories_list->EditRowCnt = 0;
+if ($categories->CurrentAction == "edit")
+	$categories_list->RowIndex = 1;
+if ($categories->CurrentAction == "gridadd")
+	$categories_list->RowIndex = 0;
+if ($categories->CurrentAction == "gridedit")
+	$categories_list->RowIndex = 0;
 while ($categories_list->RecCnt < $categories_list->StopRec) {
 	$categories_list->RecCnt++;
 	if (intval($categories_list->RecCnt) >= intval($categories_list->StartRec)) {
 		$categories_list->RowCnt++;
+		if ($categories->CurrentAction == "gridadd" || $categories->CurrentAction == "gridedit" || $categories->CurrentAction == "F") {
+			$categories_list->RowIndex++;
+			$objForm->Index = $categories_list->RowIndex;
+			if ($objForm->HasValue($categories_list->FormActionName))
+				$categories_list->RowAction = strval($objForm->GetValue($categories_list->FormActionName));
+			elseif ($categories->CurrentAction == "gridadd")
+				$categories_list->RowAction = "insert";
+			else
+				$categories_list->RowAction = "";
+		}
 
 		// Set up key count
 		$categories_list->KeyCount = $categories_list->RowIndex;
@@ -2647,10 +3881,41 @@ while ($categories_list->RecCnt < $categories_list->StopRec) {
 		$categories->ResetAttrs();
 		$categories->CssClass = "";
 		if ($categories->CurrentAction == "gridadd") {
+			$categories_list->LoadRowValues(); // Load default values
 		} else {
 			$categories_list->LoadRowValues($categories_list->Recordset); // Load row values
 		}
 		$categories->RowType = EW_ROWTYPE_VIEW; // Render view
+		if ($categories->CurrentAction == "gridadd") // Grid add
+			$categories->RowType = EW_ROWTYPE_ADD; // Render add
+		if ($categories->CurrentAction == "gridadd" && $categories->EventCancelled && !$objForm->HasValue("k_blankrow")) // Insert failed
+			$categories_list->RestoreCurrentRowFormValues($categories_list->RowIndex); // Restore form values
+		if ($categories->CurrentAction == "edit") {
+			if ($categories_list->CheckInlineEditKey() && $categories_list->EditRowCnt == 0) { // Inline edit
+				$categories->RowType = EW_ROWTYPE_EDIT; // Render edit
+				if (!$categories->EventCancelled)
+					$categories_list->HashValue = $categories_list->GetRowHash($categories_list->Recordset); // Get hash value for record
+			}
+		}
+		if ($categories->CurrentAction == "gridedit") { // Grid edit
+			if ($categories->EventCancelled) {
+				$categories_list->RestoreCurrentRowFormValues($categories_list->RowIndex); // Restore form values
+			}
+			if ($categories_list->RowAction == "insert")
+				$categories->RowType = EW_ROWTYPE_ADD; // Render add
+			else
+				$categories->RowType = EW_ROWTYPE_EDIT; // Render edit
+			if (!$categories->EventCancelled)
+				$categories_list->HashValue = $categories_list->GetRowHash($categories_list->Recordset); // Get hash value for record
+		}
+		if ($categories->CurrentAction == "edit" && $categories->RowType == EW_ROWTYPE_EDIT && $categories->EventCancelled) { // Update failed
+			$objForm->Index = 1;
+			$categories_list->RestoreFormValues(); // Restore form values
+		}
+		if ($categories->CurrentAction == "gridedit" && ($categories->RowType == EW_ROWTYPE_EDIT || $categories->RowType == EW_ROWTYPE_ADD) && $categories->EventCancelled) // Update failed
+			$categories_list->RestoreCurrentRowFormValues($categories_list->RowIndex); // Restore form values
+		if ($categories->RowType == EW_ROWTYPE_EDIT) // Edit row
+			$categories_list->EditRowCnt++;
 
 		// Set up row id / data-rowindex
 		$categories->RowAttrs = array_merge($categories->RowAttrs, array('data-rowindex'=>$categories_list->RowCnt, 'id'=>'r' . $categories_list->RowCnt . '_categories', 'data-rowtype'=>$categories->RowType));
@@ -2660,6 +3925,9 @@ while ($categories_list->RecCnt < $categories_list->StopRec) {
 
 		// Render list options
 		$categories_list->RenderListOptions();
+
+		// Skip delete row / empty row for confirm page
+		if ($categories_list->RowAction <> "delete" && $categories_list->RowAction <> "insertdelete" && !($categories_list->RowAction == "insert" && $categories->CurrentAction == "F" && $categories_list->EmptyRow())) {
 ?>
 	<tr<?php echo $categories->RowAttributes() ?>>
 <?php
@@ -2669,38 +3937,107 @@ $categories_list->ListOptions->Render("body", "left", $categories_list->RowCnt);
 ?>
 	<?php if ($categories->cat_id->Visible) { // cat_id ?>
 		<td data-name="cat_id"<?php echo $categories->cat_id->CellAttributes() ?>>
+<?php if ($categories->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<input type="hidden" data-table="categories" data-field="x_cat_id" name="o<?php echo $categories_list->RowIndex ?>_cat_id" id="o<?php echo $categories_list->RowIndex ?>_cat_id" value="<?php echo ew_HtmlEncode($categories->cat_id->OldValue) ?>">
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_id" class="form-group categories_cat_id">
+<span<?php echo $categories->cat_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $categories->cat_id->EditValue ?></p></span>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_id" name="x<?php echo $categories_list->RowIndex ?>_cat_id" id="x<?php echo $categories_list->RowIndex ?>_cat_id" value="<?php echo ew_HtmlEncode($categories->cat_id->CurrentValue) ?>">
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_id" class="categories_cat_id">
 <span<?php echo $categories->cat_id->ViewAttributes() ?>>
 <?php echo $categories->cat_id->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($categories->cat_name->Visible) { // cat_name ?>
 		<td data-name="cat_name"<?php echo $categories->cat_name->CellAttributes() ?>>
+<?php if ($categories->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_name" class="form-group categories_cat_name">
+<input type="text" data-table="categories" data-field="x_cat_name" name="x<?php echo $categories_list->RowIndex ?>_cat_name" id="x<?php echo $categories_list->RowIndex ?>_cat_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_name->getPlaceHolder()) ?>" value="<?php echo $categories->cat_name->EditValue ?>"<?php echo $categories->cat_name->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_name" name="o<?php echo $categories_list->RowIndex ?>_cat_name" id="o<?php echo $categories_list->RowIndex ?>_cat_name" value="<?php echo ew_HtmlEncode($categories->cat_name->OldValue) ?>">
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_name" class="form-group categories_cat_name">
+<input type="text" data-table="categories" data-field="x_cat_name" name="x<?php echo $categories_list->RowIndex ?>_cat_name" id="x<?php echo $categories_list->RowIndex ?>_cat_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_name->getPlaceHolder()) ?>" value="<?php echo $categories->cat_name->EditValue ?>"<?php echo $categories->cat_name->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_name" class="categories_cat_name">
 <span<?php echo $categories->cat_name->ViewAttributes() ?>>
 <?php echo $categories->cat_name->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($categories->cat_ico_class->Visible) { // cat_ico_class ?>
 		<td data-name="cat_ico_class"<?php echo $categories->cat_ico_class->CellAttributes() ?>>
+<?php if ($categories->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_class" class="form-group categories_cat_ico_class">
+<input type="text" data-table="categories" data-field="x_cat_ico_class" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_class->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_class->EditValue ?>"<?php echo $categories->cat_ico_class->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_class" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_class" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_class" value="<?php echo ew_HtmlEncode($categories->cat_ico_class->OldValue) ?>">
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_class" class="form-group categories_cat_ico_class">
+<input type="text" data-table="categories" data-field="x_cat_ico_class" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_class->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_class->EditValue ?>"<?php echo $categories->cat_ico_class->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_class" class="categories_cat_ico_class">
 <span<?php echo $categories->cat_ico_class->ViewAttributes() ?>>
 <?php echo $categories->cat_ico_class->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($categories->cat_ico_image->Visible) { // cat_ico_image ?>
 		<td data-name="cat_ico_image"<?php echo $categories->cat_ico_image->CellAttributes() ?>>
+<?php if ($categories->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="form-group categories_cat_ico_image">
+<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->OldValue) ?>">
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="form-group categories_cat_ico_image">
+<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_ico_image" class="categories_cat_ico_image">
 <span<?php echo $categories->cat_ico_image->ViewAttributes() ?>>
 <?php echo $categories->cat_ico_image->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($categories->cat_home->Visible) { // cat_home ?>
 		<td data-name="cat_home"<?php echo $categories->cat_home->CellAttributes() ?>>
+<?php if ($categories->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_home" class="form-group categories_cat_home">
+<?php
+$selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" : "";
+?>
+<input type="checkbox" data-table="categories" data-field="x_cat_home" name="x<?php echo $categories_list->RowIndex ?>_cat_home[]" id="x<?php echo $categories_list->RowIndex ?>_cat_home[]" value="1"<?php echo $selwrk ?><?php echo $categories->cat_home->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_home" name="o<?php echo $categories_list->RowIndex ?>_cat_home[]" id="o<?php echo $categories_list->RowIndex ?>_cat_home[]" value="<?php echo ew_HtmlEncode($categories->cat_home->OldValue) ?>">
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_home" class="form-group categories_cat_home">
+<?php
+$selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" : "";
+?>
+<input type="checkbox" data-table="categories" data-field="x_cat_home" name="x<?php echo $categories_list->RowIndex ?>_cat_home[]" id="x<?php echo $categories_list->RowIndex ?>_cat_home[]" value="1"<?php echo $selwrk ?><?php echo $categories->cat_home->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($categories->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $categories_list->RowCnt ?>_categories_cat_home" class="categories_cat_home">
 <span<?php echo $categories->cat_home->ViewAttributes() ?>>
 <?php if (ew_ConvertToBool($categories->cat_home->CurrentValue)) { ?>
@@ -2710,6 +4047,7 @@ $categories_list->ListOptions->Render("body", "left", $categories_list->RowCnt);
 <?php } ?>
 </span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 <?php
@@ -2718,14 +4056,116 @@ $categories_list->ListOptions->Render("body", "left", $categories_list->RowCnt);
 $categories_list->ListOptions->Render("body", "right", $categories_list->RowCnt);
 ?>
 	</tr>
+<?php if ($categories->RowType == EW_ROWTYPE_ADD || $categories->RowType == EW_ROWTYPE_EDIT) { ?>
+<script type="text/javascript">
+fcategorieslist.UpdateOpts(<?php echo $categories_list->RowIndex ?>);
+</script>
+<?php } ?>
 <?php
 	}
+	} // End delete row checking
 	if ($categories->CurrentAction <> "gridadd")
-		$categories_list->Recordset->MoveNext();
+		if (!$categories_list->Recordset->EOF) $categories_list->Recordset->MoveNext();
+}
+?>
+<?php
+	if ($categories->CurrentAction == "gridadd" || $categories->CurrentAction == "gridedit") {
+		$categories_list->RowIndex = '$rowindex$';
+		$categories_list->LoadRowValues();
+
+		// Set row properties
+		$categories->ResetAttrs();
+		$categories->RowAttrs = array_merge($categories->RowAttrs, array('data-rowindex'=>$categories_list->RowIndex, 'id'=>'r0_categories', 'data-rowtype'=>EW_ROWTYPE_ADD));
+		ew_AppendClass($categories->RowAttrs["class"], "ewTemplate");
+		$categories->RowType = EW_ROWTYPE_ADD;
+
+		// Render row
+		$categories_list->RenderRow();
+
+		// Render list options
+		$categories_list->RenderListOptions();
+		$categories_list->StartRowCnt = 0;
+?>
+	<tr<?php echo $categories->RowAttributes() ?>>
+<?php
+
+// Render list options (body, left)
+$categories_list->ListOptions->Render("body", "left", $categories_list->RowIndex);
+?>
+	<?php if ($categories->cat_id->Visible) { // cat_id ?>
+		<td data-name="cat_id">
+<input type="hidden" data-table="categories" data-field="x_cat_id" name="o<?php echo $categories_list->RowIndex ?>_cat_id" id="o<?php echo $categories_list->RowIndex ?>_cat_id" value="<?php echo ew_HtmlEncode($categories->cat_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_name->Visible) { // cat_name ?>
+		<td data-name="cat_name">
+<span id="el$rowindex$_categories_cat_name" class="form-group categories_cat_name">
+<input type="text" data-table="categories" data-field="x_cat_name" name="x<?php echo $categories_list->RowIndex ?>_cat_name" id="x<?php echo $categories_list->RowIndex ?>_cat_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_name->getPlaceHolder()) ?>" value="<?php echo $categories->cat_name->EditValue ?>"<?php echo $categories->cat_name->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_name" name="o<?php echo $categories_list->RowIndex ?>_cat_name" id="o<?php echo $categories_list->RowIndex ?>_cat_name" value="<?php echo ew_HtmlEncode($categories->cat_name->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_ico_class->Visible) { // cat_ico_class ?>
+		<td data-name="cat_ico_class">
+<span id="el$rowindex$_categories_cat_ico_class" class="form-group categories_cat_ico_class">
+<input type="text" data-table="categories" data-field="x_cat_ico_class" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_class" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_class->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_class->EditValue ?>"<?php echo $categories->cat_ico_class->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_class" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_class" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_class" value="<?php echo ew_HtmlEncode($categories->cat_ico_class->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_ico_image->Visible) { // cat_ico_image ?>
+		<td data-name="cat_ico_image">
+<span id="el$rowindex$_categories_cat_ico_image" class="form-group categories_cat_ico_image">
+<input type="text" data-table="categories" data-field="x_cat_ico_image" name="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="x<?php echo $categories_list->RowIndex ?>_cat_ico_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($categories->cat_ico_image->getPlaceHolder()) ?>" value="<?php echo $categories->cat_ico_image->EditValue ?>"<?php echo $categories->cat_ico_image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_ico_image" name="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" id="o<?php echo $categories_list->RowIndex ?>_cat_ico_image" value="<?php echo ew_HtmlEncode($categories->cat_ico_image->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($categories->cat_home->Visible) { // cat_home ?>
+		<td data-name="cat_home">
+<span id="el$rowindex$_categories_cat_home" class="form-group categories_cat_home">
+<?php
+$selwrk = (ew_ConvertToBool($categories->cat_home->CurrentValue)) ? " checked" : "";
+?>
+<input type="checkbox" data-table="categories" data-field="x_cat_home" name="x<?php echo $categories_list->RowIndex ?>_cat_home[]" id="x<?php echo $categories_list->RowIndex ?>_cat_home[]" value="1"<?php echo $selwrk ?><?php echo $categories->cat_home->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="categories" data-field="x_cat_home" name="o<?php echo $categories_list->RowIndex ?>_cat_home[]" id="o<?php echo $categories_list->RowIndex ?>_cat_home[]" value="<?php echo ew_HtmlEncode($categories->cat_home->OldValue) ?>">
+</td>
+	<?php } ?>
+<?php
+
+// Render list options (body, right)
+$categories_list->ListOptions->Render("body", "right", $categories_list->RowIndex);
+?>
+<script type="text/javascript">
+fcategorieslist.UpdateOpts(<?php echo $categories_list->RowIndex ?>);
+</script>
+	</tr>
+<?php
 }
 ?>
 </tbody>
 </table>
+<?php } ?>
+<?php if ($categories->CurrentAction == "add" || $categories->CurrentAction == "copy") { ?>
+<input type="hidden" name="<?php echo $categories_list->FormKeyCountName ?>" id="<?php echo $categories_list->FormKeyCountName ?>" value="<?php echo $categories_list->KeyCount ?>">
+<?php } ?>
+<?php if ($categories->CurrentAction == "gridadd") { ?>
+<input type="hidden" name="a_list" id="a_list" value="gridinsert">
+<input type="hidden" name="<?php echo $categories_list->FormKeyCountName ?>" id="<?php echo $categories_list->FormKeyCountName ?>" value="<?php echo $categories_list->KeyCount ?>">
+<?php echo $categories_list->MultiSelectKey ?>
+<?php } ?>
+<?php if ($categories->CurrentAction == "edit") { ?>
+<input type="hidden" name="<?php echo $categories_list->FormKeyCountName ?>" id="<?php echo $categories_list->FormKeyCountName ?>" value="<?php echo $categories_list->KeyCount ?>">
+<?php } ?>
+<?php if ($categories->CurrentAction == "gridedit") { ?>
+<?php if ($categories->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_list" id="a_list" value="gridoverwrite">
+<?php } else { ?>
+<input type="hidden" name="a_list" id="a_list" value="gridupdate">
+<?php } ?>
+<input type="hidden" name="<?php echo $categories_list->FormKeyCountName ?>" id="<?php echo $categories_list->FormKeyCountName ?>" value="<?php echo $categories_list->KeyCount ?>">
+<?php echo $categories_list->MultiSelectKey ?>
 <?php } ?>
 <?php if ($categories->CurrentAction == "") { ?>
 <input type="hidden" name="a_list" id="a_list" value="">

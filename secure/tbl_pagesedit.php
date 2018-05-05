@@ -427,6 +427,7 @@ class ctbl_pages_edit extends ctbl_pages {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -518,6 +519,12 @@ class ctbl_pages_edit extends ctbl_pages {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -538,6 +545,7 @@ class ctbl_pages_edit extends ctbl_pages {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("tbl_pageslist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -561,7 +569,11 @@ class ctbl_pages_edit extends ctbl_pages {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -637,6 +649,8 @@ class ctbl_pages_edit extends ctbl_pages {
 		if (!$this->lang->FldIsDetailKey) {
 			$this->lang->setFormValue($objForm->GetValue("x_lang"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -650,6 +664,8 @@ class ctbl_pages_edit extends ctbl_pages {
 		$this->page_detail->CurrentValue = $this->page_detail->FormValue;
 		$this->page_icon->CurrentValue = $this->page_icon->FormValue;
 		$this->lang->CurrentValue = $this->lang->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -695,6 +711,8 @@ class ctbl_pages_edit extends ctbl_pages {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -1023,6 +1041,19 @@ class ctbl_pages_edit extends ctbl_pages {
 			// lang
 			$this->lang->SetDbValueDef($rsnew, $this->lang->CurrentValue, NULL, $this->lang->ReadOnly);
 
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
 			if ($bUpdateRow) {
@@ -1053,6 +1084,34 @@ class ctbl_pages_edit extends ctbl_pages {
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('page_name')); // page_name
+		$sHash .= ew_GetFldHash($rs->fields('page_title')); // page_title
+		$sHash .= ew_GetFldHash($rs->fields('page_url')); // page_url
+		$sHash .= ew_GetFldHash($rs->fields('page_description')); // page_description
+		$sHash .= ew_GetFldHash($rs->fields('page_detail')); // page_detail
+		$sHash .= ew_GetFldHash($rs->fields('page_icon')); // page_icon
+		$sHash .= ew_GetFldHash($rs->fields('lang')); // lang
+		return md5($sHash);
 	}
 
 	// Set up Breadcrumb
@@ -1230,6 +1289,7 @@ ftbl_pagesedit.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 $tbl_pages_edit->ShowMessage();
 ?>
 <?php if (!$tbl_pages_edit->IsModal) { ?>
+<?php if ($tbl_pages->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($tbl_pages_edit->Pager)) $tbl_pages_edit->Pager = new cPrevNextPager($tbl_pages_edit->StartRec, $tbl_pages_edit->DisplayRecs, $tbl_pages_edit->TotalRecs, $tbl_pages_edit->AutoHidePager) ?>
 <?php if ($tbl_pages_edit->Pager->RecordCount > 0 && $tbl_pages_edit->Pager->Visible) { ?>
@@ -1274,23 +1334,41 @@ $tbl_pages_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="ftbl_pagesedit" id="ftbl_pagesedit" class="<?php echo $tbl_pages_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($tbl_pages_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $tbl_pages_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="tbl_pages">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $tbl_pages_edit->HashValue ?>">
+<?php if ($tbl_pages->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($tbl_pages->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($tbl_pages_edit->IsModal) ?>">
 <div class="ewEditDiv"><!-- page* -->
 <?php if ($tbl_pages->page_id->Visible) { // page_id ?>
 	<div id="r_page_id" class="form-group">
 		<label id="elh_tbl_pages_page_id" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->page_id->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->page_id->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_id">
 <span<?php echo $tbl_pages->page_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $tbl_pages->page_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="tbl_pages" data-field="x_page_id" name="x_page_id" id="x_page_id" value="<?php echo ew_HtmlEncode($tbl_pages->page_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_tbl_pages_page_id">
+<span<?php echo $tbl_pages->page_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_id" name="x_page_id" id="x_page_id" value="<?php echo ew_HtmlEncode($tbl_pages->page_id->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1298,9 +1376,17 @@ $tbl_pages_edit->ShowMessage();
 	<div id="r_page_name" class="form-group">
 		<label id="elh_tbl_pages_page_name" for="x_page_name" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->page_name->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->page_name->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_name">
 <input type="text" data-table="tbl_pages" data-field="x_page_name" name="x_page_name" id="x_page_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_name->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_name->EditValue ?>"<?php echo $tbl_pages->page_name->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_name">
+<span<?php echo $tbl_pages->page_name->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_name->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_name" name="x_page_name" id="x_page_name" value="<?php echo ew_HtmlEncode($tbl_pages->page_name->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_name->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1308,9 +1394,17 @@ $tbl_pages_edit->ShowMessage();
 	<div id="r_page_title" class="form-group">
 		<label id="elh_tbl_pages_page_title" for="x_page_title" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->page_title->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->page_title->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_title">
 <input type="text" data-table="tbl_pages" data-field="x_page_title" name="x_page_title" id="x_page_title" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_title->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_title->EditValue ?>"<?php echo $tbl_pages->page_title->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_title">
+<span<?php echo $tbl_pages->page_title->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_title->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_title" name="x_page_title" id="x_page_title" value="<?php echo ew_HtmlEncode($tbl_pages->page_title->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_title->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1318,9 +1412,17 @@ $tbl_pages_edit->ShowMessage();
 	<div id="r_page_url" class="form-group">
 		<label id="elh_tbl_pages_page_url" for="x_page_url" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->page_url->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->page_url->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_url">
 <input type="text" data-table="tbl_pages" data-field="x_page_url" name="x_page_url" id="x_page_url" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_url->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_url->EditValue ?>"<?php echo $tbl_pages->page_url->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_url">
+<span<?php echo $tbl_pages->page_url->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_url->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_url" name="x_page_url" id="x_page_url" value="<?php echo ew_HtmlEncode($tbl_pages->page_url->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_url->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1328,9 +1430,17 @@ $tbl_pages_edit->ShowMessage();
 	<div id="r_page_description" class="form-group">
 		<label id="elh_tbl_pages_page_description" for="x_page_description" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->page_description->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->page_description->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_description">
 <input type="text" data-table="tbl_pages" data-field="x_page_description" name="x_page_description" id="x_page_description" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_description->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_description->EditValue ?>"<?php echo $tbl_pages->page_description->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_description">
+<span<?php echo $tbl_pages->page_description->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_description->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_description" name="x_page_description" id="x_page_description" value="<?php echo ew_HtmlEncode($tbl_pages->page_description->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_description->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1338,9 +1448,17 @@ $tbl_pages_edit->ShowMessage();
 	<div id="r_page_detail" class="form-group">
 		<label id="elh_tbl_pages_page_detail" for="x_page_detail" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->page_detail->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->page_detail->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_detail">
 <textarea data-table="tbl_pages" data-field="x_page_detail" name="x_page_detail" id="x_page_detail" cols="35" rows="4" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_detail->getPlaceHolder()) ?>"<?php echo $tbl_pages->page_detail->EditAttributes() ?>><?php echo $tbl_pages->page_detail->EditValue ?></textarea>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_detail">
+<span<?php echo $tbl_pages->page_detail->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_detail->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_detail" name="x_page_detail" id="x_page_detail" value="<?php echo ew_HtmlEncode($tbl_pages->page_detail->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_detail->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1348,9 +1466,17 @@ $tbl_pages_edit->ShowMessage();
 	<div id="r_page_icon" class="form-group">
 		<label id="elh_tbl_pages_page_icon" for="x_page_icon" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->page_icon->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->page_icon->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_page_icon">
 <input type="text" data-table="tbl_pages" data-field="x_page_icon" name="x_page_icon" id="x_page_icon" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->page_icon->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->page_icon->EditValue ?>"<?php echo $tbl_pages->page_icon->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_page_icon">
+<span<?php echo $tbl_pages->page_icon->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->page_icon->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_page_icon" name="x_page_icon" id="x_page_icon" value="<?php echo ew_HtmlEncode($tbl_pages->page_icon->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->page_icon->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1358,9 +1484,17 @@ $tbl_pages_edit->ShowMessage();
 	<div id="r_lang" class="form-group">
 		<label id="elh_tbl_pages_lang" for="x_lang" class="<?php echo $tbl_pages_edit->LeftColumnClass ?>"><?php echo $tbl_pages->lang->FldCaption() ?></label>
 		<div class="<?php echo $tbl_pages_edit->RightColumnClass ?>"><div<?php echo $tbl_pages->lang->CellAttributes() ?>>
+<?php if ($tbl_pages->CurrentAction <> "F") { ?>
 <span id="el_tbl_pages_lang">
 <input type="text" data-table="tbl_pages" data-field="x_lang" name="x_lang" id="x_lang" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($tbl_pages->lang->getPlaceHolder()) ?>" value="<?php echo $tbl_pages->lang->EditValue ?>"<?php echo $tbl_pages->lang->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_tbl_pages_lang">
+<span<?php echo $tbl_pages->lang->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $tbl_pages->lang->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="tbl_pages" data-field="x_lang" name="x_lang" id="x_lang" value="<?php echo ew_HtmlEncode($tbl_pages->lang->FormValue) ?>">
+<?php } ?>
 <?php echo $tbl_pages->lang->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1368,12 +1502,23 @@ $tbl_pages_edit->ShowMessage();
 <?php if (!$tbl_pages_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $tbl_pages_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($tbl_pages->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($tbl_pages->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $tbl_pages_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$tbl_pages_edit->IsModal) { ?>
+<?php if ($tbl_pages->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($tbl_pages_edit->Pager)) $tbl_pages_edit->Pager = new cPrevNextPager($tbl_pages_edit->StartRec, $tbl_pages_edit->DisplayRecs, $tbl_pages_edit->TotalRecs, $tbl_pages_edit->AutoHidePager) ?>
 <?php if ($tbl_pages_edit->Pager->RecordCount > 0 && $tbl_pages_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -1415,6 +1560,7 @@ $tbl_pages_edit->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

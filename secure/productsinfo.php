@@ -48,9 +48,9 @@ class cproducts extends cTable {
 		$this->ExportExcelPageSize = ""; // Page size (PHPExcel only)
 		$this->ExportWordPageOrientation = "portrait"; // Page orientation (PHPWord only)
 		$this->ExportWordColumnWidth = NULL; // Cell width (PHPWord only)
-		$this->DetailAdd = FALSE; // Allow detail add
-		$this->DetailEdit = FALSE; // Allow detail edit
-		$this->DetailView = FALSE; // Allow detail view
+		$this->DetailAdd = TRUE; // Allow detail add
+		$this->DetailEdit = TRUE; // Allow detail edit
+		$this->DetailView = TRUE; // Allow detail view
 		$this->ShowMultipleDetails = FALSE; // Show multiple details
 		$this->GridAddRowCount = 5;
 		$this->AllowAddDeleteRow = TRUE; // Allow add/delete row
@@ -110,7 +110,7 @@ class cproducts extends cTable {
 		$this->fields['pro_features'] = &$this->pro_features;
 
 		// post_date
-		$this->post_date = new cField('products', 'products', 'x_post_date', 'post_date', '`post_date`', ew_CastDateFieldForLike('`post_date`', 0, "DB"), 135, 0, FALSE, '`post_date`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
+		$this->post_date = new cField('products', 'products', 'x_post_date', 'post_date', '`post_date`', ew_CastDateFieldForLike('`post_date`', 1, "DB"), 135, 1, FALSE, '`post_date`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'TEXT');
 		$this->post_date->Sortable = TRUE; // Allow sort
 		$this->post_date->FldDefaultErrMsg = str_replace("%s", $GLOBALS["EW_DATE_FORMAT"], $Language->Phrase("IncorrectDate"));
 		$this->fields['post_date'] = &$this->post_date;
@@ -138,7 +138,7 @@ class cproducts extends cTable {
 		$this->fields['featured_image'] = &$this->featured_image;
 
 		// folder_image
-		$this->folder_image = new cField('products', 'products', 'x_folder_image', 'folder_image', '`folder_image`', '`folder_image`', 200, -1, FALSE, '`folder_image`', FALSE, FALSE, FALSE, 'FORMATTED TEXT', 'SELECT');
+		$this->folder_image = new cField('products', 'products', 'x_folder_image', 'folder_image', '`folder_image`', '`folder_image`', 200, -1, FALSE, '`EV__folder_image`', TRUE, TRUE, FALSE, 'FORMATTED TEXT', 'SELECT');
 		$this->folder_image->Sortable = TRUE; // Allow sort
 		$this->folder_image->FldSelectMultiple = TRUE; // Multiple select
 		$this->fields['folder_image'] = &$this->folder_image;
@@ -238,6 +238,30 @@ class cproducts extends cTable {
 		$_SESSION[EW_PROJECT_NAME . "_" . $this->TableVar . "_" . EW_TABLE_ORDER_BY_LIST] = $v;
 	}
 
+	// Current detail table name
+	function getCurrentDetailTable() {
+		return @$_SESSION[EW_PROJECT_NAME . "_" . $this->TableVar . "_" . EW_TABLE_DETAIL_TABLE];
+	}
+
+	function setCurrentDetailTable($v) {
+		$_SESSION[EW_PROJECT_NAME . "_" . $this->TableVar . "_" . EW_TABLE_DETAIL_TABLE] = $v;
+	}
+
+	// Get detail url
+	function GetDetailUrl() {
+
+		// Detail url
+		$sDetailUrl = "";
+		if ($this->getCurrentDetailTable() == "product_gallery") {
+			$sDetailUrl = $GLOBALS["product_gallery"]->GetListUrl() . "?" . EW_TABLE_SHOW_MASTER . "=" . $this->TableVar;
+			$sDetailUrl .= "&fk_product_id=" . urlencode($this->product_id->CurrentValue);
+		}
+		if ($sDetailUrl == "") {
+			$sDetailUrl = "productslist.php";
+		}
+		return $sDetailUrl;
+	}
+
 	// Table level SQL
 	var $_SqlFrom = "";
 
@@ -270,7 +294,7 @@ class cproducts extends cTable {
 	function getSqlSelectList() { // Select for List page
 		$select = "";
 		$select = "SELECT * FROM (" .
-			"SELECT *, (SELECT `cat_name` FROM `categories` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`cat_id` = `products`.`cat_id` LIMIT 1) AS `EV__cat_id`, (SELECT DISTINCT CONCAT(COALESCE(`com_fname`, ''),'" . ew_ValueSeparator(1, $this->company_id) . "',COALESCE(`com_lname`,''),'" . ew_ValueSeparator(2, $this->company_id) . "',COALESCE(`com_name`,'')) FROM `company` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`company_id` = `products`.`company_id` LIMIT 1) AS `EV__company_id`, (SELECT `name` FROM `model` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`model_id` = `products`.`pro_model` LIMIT 1) AS `EV__pro_model` FROM `products`" .
+			"SELECT *, (SELECT `cat_name` FROM `categories` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`cat_id` = `products`.`cat_id` LIMIT 1) AS `EV__cat_id`, (SELECT DISTINCT CONCAT(COALESCE(`com_fname`, ''),'" . ew_ValueSeparator(1, $this->company_id) . "',COALESCE(`com_lname`,''),'" . ew_ValueSeparator(2, $this->company_id) . "',COALESCE(`com_name`,'')) FROM `company` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`company_id` = `products`.`company_id` LIMIT 1) AS `EV__company_id`, (SELECT `name` FROM `model` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`model_id` = `products`.`pro_model` LIMIT 1) AS `EV__pro_model`, (SELECT DISTINCT `image` FROM `product_gallery` `EW_TMP_LOOKUPTABLE` WHERE `EW_TMP_LOOKUPTABLE`.`pro_gallery_id` = `products`.`folder_image` LIMIT 1) AS `EV__folder_image` FROM `products`" .
 			") `EW_TMP_TABLE`";
 		return ($this->_SqlSelectList <> "") ? $this->_SqlSelectList : $select;
 	}
@@ -436,6 +460,12 @@ class cproducts extends cTable {
 			return TRUE;
 		if (strpos($sOrderBy, " " . $this->pro_model->FldVirtualExpression . " ") !== FALSE)
 			return TRUE;
+		if ($this->folder_image->AdvancedSearch->SearchValue <> "" ||
+			$this->folder_image->AdvancedSearch->SearchValue2 <> "" ||
+			strpos($sWhere, " " . $this->folder_image->FldVirtualExpression . " ") !== FALSE)
+			return TRUE;
+		if (strpos($sOrderBy, " " . $this->folder_image->FldVirtualExpression . " ") !== FALSE)
+			return TRUE;
 		return FALSE;
 	}
 
@@ -551,6 +581,37 @@ class cproducts extends cTable {
 	// Update
 	function Update(&$rs, $where = "", $rsold = NULL, $curfilter = TRUE) {
 		$conn = &$this->Connection();
+
+		// Cascade Update detail table 'product_gallery'
+		$bCascadeUpdate = FALSE;
+		$rscascade = array();
+		if (!is_null($rsold) && (isset($rs['product_id']) && $rsold['product_id'] <> $rs['product_id'])) { // Update detail field 'product_id'
+			$bCascadeUpdate = TRUE;
+			$rscascade['product_id'] = $rs['product_id']; 
+		}
+		if ($bCascadeUpdate) {
+			if (!isset($GLOBALS["product_gallery"])) $GLOBALS["product_gallery"] = new cproduct_gallery();
+			$rswrk = $GLOBALS["product_gallery"]->LoadRs("`product_id` = " . ew_QuotedValue($rsold['product_id'], EW_DATATYPE_NUMBER, 'DB')); 
+			while ($rswrk && !$rswrk->EOF) {
+				$rskey = array();
+				$fldname = 'pro_gallery_id';
+				$rskey[$fldname] = $rswrk->fields[$fldname];
+				$fldname = 'product_id';
+				$rskey[$fldname] = $rswrk->fields[$fldname];
+				$rsdtlold = &$rswrk->fields;
+				$rsdtlnew = array_merge($rsdtlold, $rscascade);
+
+				// Call Row_Updating event
+				$bUpdate = $GLOBALS["product_gallery"]->Row_Updating($rsdtlold, $rsdtlnew);
+				if ($bUpdate)
+					$bUpdate = $GLOBALS["product_gallery"]->Update($rscascade, $rskey, $rswrk->fields);
+				if (!$bUpdate) return FALSE;
+
+				// Call Row_Updated event
+				$GLOBALS["product_gallery"]->Row_Updated($rsdtlold, $rsdtlnew);
+				$rswrk->MoveNext();
+			}
+		}
 		$bUpdate = $conn->Execute($this->UpdateSQL($rs, $where, $curfilter));
 		return $bUpdate;
 	}
@@ -577,6 +638,31 @@ class cproducts extends cTable {
 	function Delete(&$rs, $where = "", $curfilter = TRUE) {
 		$bDelete = TRUE;
 		$conn = &$this->Connection();
+
+		// Cascade delete detail table 'product_gallery'
+		if (!isset($GLOBALS["product_gallery"])) $GLOBALS["product_gallery"] = new cproduct_gallery();
+		$rscascade = $GLOBALS["product_gallery"]->LoadRs("`product_id` = " . ew_QuotedValue($rs['product_id'], EW_DATATYPE_NUMBER, "DB")); 
+		$dtlrows = ($rscascade) ? $rscascade->GetRows() : array();
+
+		// Call Row Deleting event
+		foreach ($dtlrows as $dtlrow) {
+			$bDelete = $GLOBALS["product_gallery"]->Row_Deleting($dtlrow);
+			if (!$bDelete) break;
+		}
+		if ($bDelete) {
+			foreach ($dtlrows as $dtlrow) {
+				$bDelete = $GLOBALS["product_gallery"]->Delete($dtlrow); // Delete
+				if ($bDelete === FALSE)
+					break;
+			}
+		}
+
+		// Call Row Deleted event
+		if ($bDelete) {
+			foreach ($dtlrows as $dtlrow) {
+				$GLOBALS["product_gallery"]->Row_Deleted($dtlrow);
+			}
+		}
 		if ($bDelete)
 			$bDelete = $conn->Execute($this->DeleteSQL($rs, $where, $curfilter));
 		return $bDelete;
@@ -655,7 +741,10 @@ class cproducts extends cTable {
 
 	// Edit URL
 	function GetEditUrl($parm = "") {
-		$url = $this->KeyUrl("productsedit.php", $this->UrlParm($parm));
+		if ($parm <> "")
+			$url = $this->KeyUrl("productsedit.php", $this->UrlParm($parm));
+		else
+			$url = $this->KeyUrl("productsedit.php", $this->UrlParm(EW_TABLE_SHOW_DETAIL . "="));
 		return $this->AddMasterUrl($url);
 	}
 
@@ -667,7 +756,10 @@ class cproducts extends cTable {
 
 	// Copy URL
 	function GetCopyUrl($parm = "") {
-		$url = $this->KeyUrl("productsadd.php", $this->UrlParm($parm));
+		if ($parm <> "")
+			$url = $this->KeyUrl("productsadd.php", $this->UrlParm($parm));
+		else
+			$url = $this->KeyUrl("productsadd.php", $this->UrlParm(EW_TABLE_SHOW_DETAIL . "="));
 		return $this->AddMasterUrl($url);
 	}
 
@@ -934,7 +1026,7 @@ class cproducts extends cTable {
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
-		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 0);
+		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 1);
 		$this->post_date->ViewCustomAttributes = "";
 
 		// ads_id
@@ -962,6 +1054,9 @@ class cproducts extends cTable {
 		$this->featured_image->ViewCustomAttributes = "";
 
 		// folder_image
+		if ($this->folder_image->VirtualValue <> "") {
+			$this->folder_image->ViewValue = $this->folder_image->VirtualValue;
+		} else {
 		if (strval($this->folder_image->CurrentValue) <> "") {
 			$arwrk = explode(",", $this->folder_image->CurrentValue);
 			$sFilterWrk = "";
@@ -969,7 +1064,7 @@ class cproducts extends cTable {
 				if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
 				$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
 			}
-		$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+		$sSqlWrk = "SELECT DISTINCT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
 		$sWhereWrk = "";
 		$this->folder_image->LookupFilters = array("dx1" => '`image`');
 		ew_AddFilter($sWhereWrk, $sFilterWrk);
@@ -993,6 +1088,7 @@ class cproducts extends cTable {
 			}
 		} else {
 			$this->folder_image->ViewValue = NULL;
+		}
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
@@ -1192,12 +1288,8 @@ class cproducts extends cTable {
 		$this->pro_features->PlaceHolder = ew_RemoveHtml($this->pro_features->FldCaption());
 
 		// post_date
-		$this->post_date->EditAttrs["class"] = "form-control";
-		$this->post_date->EditCustomAttributes = "";
-		$this->post_date->EditValue = ew_FormatDateTime($this->post_date->CurrentValue, 8);
-		$this->post_date->PlaceHolder = ew_RemoveHtml($this->post_date->FldCaption());
-
 		// ads_id
+
 		$this->ads_id->EditAttrs["class"] = "form-control";
 		$this->ads_id->EditCustomAttributes = "";
 		$this->ads_id->EditValue = $this->ads_id->CurrentValue;

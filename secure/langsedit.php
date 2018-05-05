@@ -423,6 +423,7 @@ class clangs_edit extends clangs {
 	var $IsMobileOrModal = FALSE;
 	var $DbMasterFilter;
 	var $DbDetailFilter;
+	var $HashValue; // Hash Value
 	var $DisplayRecs = 1;
 	var $StartRec;
 	var $StopRec;
@@ -514,6 +515,12 @@ class clangs_edit extends clangs {
 		// Process form if post back
 		if ($postBack) {
 			$this->LoadFormValues(); // Get form values
+
+			// Overwrite record, reload hash value
+			if ($this->CurrentAction == "overwrite") {
+				$this->LoadRowHash();
+				$this->CurrentAction = "F";
+			}
 		}
 
 		// Validate form if post back
@@ -534,6 +541,7 @@ class clangs_edit extends clangs {
 						$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
 					$this->Page_Terminate("langslist.php"); // Return to list page
 				} else {
+					$this->HashValue = $this->GetRowHash($this->Recordset); // Get hash value for record
 				}
 				break;
 			Case "U": // Update
@@ -557,7 +565,11 @@ class clangs_edit extends clangs {
 		$this->SetupBreadcrumb();
 
 		// Render the record
-		$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render as View
+		} else {
+			$this->RowType = EW_ROWTYPE_EDIT; // Render as Edit
+		}
 		$this->ResetAttrs();
 		$this->RenderRow();
 	}
@@ -621,6 +633,8 @@ class clangs_edit extends clangs {
 		if (!$this->khmer->FldIsDetailKey) {
 			$this->khmer->setFormValue($objForm->GetValue("x_khmer"));
 		}
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Restore form values
@@ -630,6 +644,8 @@ class clangs_edit extends clangs {
 		$this->lang_name_lable->CurrentValue = $this->lang_name_lable->FormValue;
 		$this->english->CurrentValue = $this->english->FormValue;
 		$this->khmer->CurrentValue = $this->khmer->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -675,6 +691,8 @@ class clangs_edit extends clangs {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -899,6 +917,19 @@ class clangs_edit extends clangs {
 			// khmer
 			$this->khmer->SetDbValueDef($rsnew, $this->khmer->CurrentValue, NULL, $this->khmer->ReadOnly);
 
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
 			// Call Row Updating event
 			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
 			if ($bUpdateRow) {
@@ -929,6 +960,30 @@ class clangs_edit extends clangs {
 			$this->Row_Updated($rsold, $rsnew);
 		$rs->Close();
 		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('lang_name_lable')); // lang_name_lable
+		$sHash .= ew_GetFldHash($rs->fields('english')); // english
+		$sHash .= ew_GetFldHash($rs->fields('khmer')); // khmer
+		return md5($sHash);
 	}
 
 	// Set up Breadcrumb
@@ -1106,6 +1161,7 @@ flangsedit.ValidateRequired = <?php echo json_encode(EW_CLIENT_VALIDATE) ?>;
 $langs_edit->ShowMessage();
 ?>
 <?php if (!$langs_edit->IsModal) { ?>
+<?php if ($langs->CurrentAction <> "F") { // Confirm page ?>
 <form name="ewPagerForm" class="form-horizontal ewForm ewPagerForm" action="<?php echo ew_CurrentPage() ?>">
 <?php if (!isset($langs_edit->Pager)) $langs_edit->Pager = new cPrevNextPager($langs_edit->StartRec, $langs_edit->DisplayRecs, $langs_edit->TotalRecs, $langs_edit->AutoHidePager) ?>
 <?php if ($langs_edit->Pager->RecordCount > 0 && $langs_edit->Pager->Visible) { ?>
@@ -1150,23 +1206,41 @@ $langs_edit->ShowMessage();
 <div class="clearfix"></div>
 </form>
 <?php } ?>
+<?php } ?>
 <form name="flangsedit" id="flangsedit" class="<?php echo $langs_edit->FormClassName ?>" action="<?php echo ew_CurrentPage() ?>" method="post">
 <?php if ($langs_edit->CheckToken) { ?>
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $langs_edit->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="langs">
+<input type="hidden" name="k_hash" id="k_hash" value="<?php echo $langs_edit->HashValue ?>">
+<?php if ($langs->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_conflict" id="a_conflict" value="1">
+<?php } ?>
+<?php if ($langs->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_edit" id="a_edit" value="U">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_edit" id="a_edit" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($langs_edit->IsModal) ?>">
 <div class="ewEditDiv"><!-- page* -->
 <?php if ($langs->lang_id->Visible) { // lang_id ?>
 	<div id="r_lang_id" class="form-group">
 		<label id="elh_langs_lang_id" class="<?php echo $langs_edit->LeftColumnClass ?>"><?php echo $langs->lang_id->FldCaption() ?></label>
 		<div class="<?php echo $langs_edit->RightColumnClass ?>"><div<?php echo $langs->lang_id->CellAttributes() ?>>
+<?php if ($langs->CurrentAction <> "F") { ?>
 <span id="el_langs_lang_id">
 <span<?php echo $langs->lang_id->ViewAttributes() ?>>
 <p class="form-control-static"><?php echo $langs->lang_id->EditValue ?></p></span>
 </span>
 <input type="hidden" data-table="langs" data-field="x_lang_id" name="x_lang_id" id="x_lang_id" value="<?php echo ew_HtmlEncode($langs->lang_id->CurrentValue) ?>">
+<?php } else { ?>
+<span id="el_langs_lang_id">
+<span<?php echo $langs->lang_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $langs->lang_id->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="langs" data-field="x_lang_id" name="x_lang_id" id="x_lang_id" value="<?php echo ew_HtmlEncode($langs->lang_id->FormValue) ?>">
+<?php } ?>
 <?php echo $langs->lang_id->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1174,9 +1248,17 @@ $langs_edit->ShowMessage();
 	<div id="r_lang_name_lable" class="form-group">
 		<label id="elh_langs_lang_name_lable" for="x_lang_name_lable" class="<?php echo $langs_edit->LeftColumnClass ?>"><?php echo $langs->lang_name_lable->FldCaption() ?></label>
 		<div class="<?php echo $langs_edit->RightColumnClass ?>"><div<?php echo $langs->lang_name_lable->CellAttributes() ?>>
+<?php if ($langs->CurrentAction <> "F") { ?>
 <span id="el_langs_lang_name_lable">
 <input type="text" data-table="langs" data-field="x_lang_name_lable" name="x_lang_name_lable" id="x_lang_name_lable" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($langs->lang_name_lable->getPlaceHolder()) ?>" value="<?php echo $langs->lang_name_lable->EditValue ?>"<?php echo $langs->lang_name_lable->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_langs_lang_name_lable">
+<span<?php echo $langs->lang_name_lable->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $langs->lang_name_lable->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="langs" data-field="x_lang_name_lable" name="x_lang_name_lable" id="x_lang_name_lable" value="<?php echo ew_HtmlEncode($langs->lang_name_lable->FormValue) ?>">
+<?php } ?>
 <?php echo $langs->lang_name_lable->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1184,9 +1266,17 @@ $langs_edit->ShowMessage();
 	<div id="r_english" class="form-group">
 		<label id="elh_langs_english" for="x_english" class="<?php echo $langs_edit->LeftColumnClass ?>"><?php echo $langs->english->FldCaption() ?></label>
 		<div class="<?php echo $langs_edit->RightColumnClass ?>"><div<?php echo $langs->english->CellAttributes() ?>>
+<?php if ($langs->CurrentAction <> "F") { ?>
 <span id="el_langs_english">
 <input type="text" data-table="langs" data-field="x_english" name="x_english" id="x_english" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($langs->english->getPlaceHolder()) ?>" value="<?php echo $langs->english->EditValue ?>"<?php echo $langs->english->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_langs_english">
+<span<?php echo $langs->english->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $langs->english->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="langs" data-field="x_english" name="x_english" id="x_english" value="<?php echo ew_HtmlEncode($langs->english->FormValue) ?>">
+<?php } ?>
 <?php echo $langs->english->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1194,9 +1284,17 @@ $langs_edit->ShowMessage();
 	<div id="r_khmer" class="form-group">
 		<label id="elh_langs_khmer" for="x_khmer" class="<?php echo $langs_edit->LeftColumnClass ?>"><?php echo $langs->khmer->FldCaption() ?></label>
 		<div class="<?php echo $langs_edit->RightColumnClass ?>"><div<?php echo $langs->khmer->CellAttributes() ?>>
+<?php if ($langs->CurrentAction <> "F") { ?>
 <span id="el_langs_khmer">
 <input type="text" data-table="langs" data-field="x_khmer" name="x_khmer" id="x_khmer" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($langs->khmer->getPlaceHolder()) ?>" value="<?php echo $langs->khmer->EditValue ?>"<?php echo $langs->khmer->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_langs_khmer">
+<span<?php echo $langs->khmer->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $langs->khmer->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="langs" data-field="x_khmer" name="x_khmer" id="x_khmer" value="<?php echo ew_HtmlEncode($langs->khmer->FormValue) ?>">
+<?php } ?>
 <?php echo $langs->khmer->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1204,12 +1302,23 @@ $langs_edit->ShowMessage();
 <?php if (!$langs_edit->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $langs_edit->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("SaveBtn") ?></button>
+<?php if ($langs->UpdateConflict == "U") { // Record already updated by other user ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='overwrite';"><?php echo $Language->Phrase("OverwriteBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnReload" id="btnReload" type="submit" onclick="this.form.a_edit.value='I';"><?php echo $Language->Phrase("ReloadBtn") ?></button>
+<?php } else { ?>
+<?php if ($langs->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_edit.value='F';"><?php echo $Language->Phrase("SaveBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $langs_edit->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_edit.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>
 <?php if (!$langs_edit->IsModal) { ?>
+<?php if ($langs->CurrentAction <> "F") { // Confirm page ?>
 <?php if (!isset($langs_edit->Pager)) $langs_edit->Pager = new cPrevNextPager($langs_edit->StartRec, $langs_edit->DisplayRecs, $langs_edit->TotalRecs, $langs_edit->AutoHidePager) ?>
 <?php if ($langs_edit->Pager->RecordCount > 0 && $langs_edit->Pager->Visible) { ?>
 <div class="ewPager">
@@ -1251,6 +1360,7 @@ $langs_edit->ShowMessage();
 </div>
 <?php } ?>
 <div class="clearfix"></div>
+<?php } ?>
 <?php } ?>
 </form>
 <script type="text/javascript">

@@ -508,7 +508,11 @@ class clangs_add extends clangs {
 		$this->SetupBreadcrumb();
 
 		// Render row based on row type
-		$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		if ($this->CurrentAction == "F") { // Confirm page
+			$this->RowType = EW_ROWTYPE_VIEW; // Render view type
+		} else {
+			$this->RowType = EW_ROWTYPE_ADD; // Render add type
+		}
 
 		// Render row
 		$this->ResetAttrs();
@@ -982,16 +986,29 @@ $langs_add->ShowMessage();
 <input type="hidden" name="<?php echo EW_TOKEN_NAME ?>" value="<?php echo $langs_add->Token ?>">
 <?php } ?>
 <input type="hidden" name="t" value="langs">
+<?php if ($langs->CurrentAction == "F") { // Confirm page ?>
 <input type="hidden" name="a_add" id="a_add" value="A">
+<input type="hidden" name="a_confirm" id="a_confirm" value="F">
+<?php } else { ?>
+<input type="hidden" name="a_add" id="a_add" value="F">
+<?php } ?>
 <input type="hidden" name="modal" value="<?php echo intval($langs_add->IsModal) ?>">
 <div class="ewAddDiv"><!-- page* -->
 <?php if ($langs->lang_name_lable->Visible) { // lang_name_lable ?>
 	<div id="r_lang_name_lable" class="form-group">
 		<label id="elh_langs_lang_name_lable" for="x_lang_name_lable" class="<?php echo $langs_add->LeftColumnClass ?>"><?php echo $langs->lang_name_lable->FldCaption() ?></label>
 		<div class="<?php echo $langs_add->RightColumnClass ?>"><div<?php echo $langs->lang_name_lable->CellAttributes() ?>>
+<?php if ($langs->CurrentAction <> "F") { ?>
 <span id="el_langs_lang_name_lable">
 <input type="text" data-table="langs" data-field="x_lang_name_lable" name="x_lang_name_lable" id="x_lang_name_lable" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($langs->lang_name_lable->getPlaceHolder()) ?>" value="<?php echo $langs->lang_name_lable->EditValue ?>"<?php echo $langs->lang_name_lable->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_langs_lang_name_lable">
+<span<?php echo $langs->lang_name_lable->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $langs->lang_name_lable->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="langs" data-field="x_lang_name_lable" name="x_lang_name_lable" id="x_lang_name_lable" value="<?php echo ew_HtmlEncode($langs->lang_name_lable->FormValue) ?>">
+<?php } ?>
 <?php echo $langs->lang_name_lable->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -999,9 +1016,17 @@ $langs_add->ShowMessage();
 	<div id="r_english" class="form-group">
 		<label id="elh_langs_english" for="x_english" class="<?php echo $langs_add->LeftColumnClass ?>"><?php echo $langs->english->FldCaption() ?></label>
 		<div class="<?php echo $langs_add->RightColumnClass ?>"><div<?php echo $langs->english->CellAttributes() ?>>
+<?php if ($langs->CurrentAction <> "F") { ?>
 <span id="el_langs_english">
 <input type="text" data-table="langs" data-field="x_english" name="x_english" id="x_english" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($langs->english->getPlaceHolder()) ?>" value="<?php echo $langs->english->EditValue ?>"<?php echo $langs->english->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_langs_english">
+<span<?php echo $langs->english->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $langs->english->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="langs" data-field="x_english" name="x_english" id="x_english" value="<?php echo ew_HtmlEncode($langs->english->FormValue) ?>">
+<?php } ?>
 <?php echo $langs->english->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1009,9 +1034,17 @@ $langs_add->ShowMessage();
 	<div id="r_khmer" class="form-group">
 		<label id="elh_langs_khmer" for="x_khmer" class="<?php echo $langs_add->LeftColumnClass ?>"><?php echo $langs->khmer->FldCaption() ?></label>
 		<div class="<?php echo $langs_add->RightColumnClass ?>"><div<?php echo $langs->khmer->CellAttributes() ?>>
+<?php if ($langs->CurrentAction <> "F") { ?>
 <span id="el_langs_khmer">
 <input type="text" data-table="langs" data-field="x_khmer" name="x_khmer" id="x_khmer" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($langs->khmer->getPlaceHolder()) ?>" value="<?php echo $langs->khmer->EditValue ?>"<?php echo $langs->khmer->EditAttributes() ?>>
 </span>
+<?php } else { ?>
+<span id="el_langs_khmer">
+<span<?php echo $langs->khmer->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $langs->khmer->ViewValue ?></p></span>
+</span>
+<input type="hidden" data-table="langs" data-field="x_khmer" name="x_khmer" id="x_khmer" value="<?php echo ew_HtmlEncode($langs->khmer->FormValue) ?>">
+<?php } ?>
 <?php echo $langs->khmer->CustomMsg ?></div></div>
 	</div>
 <?php } ?>
@@ -1019,8 +1052,13 @@ $langs_add->ShowMessage();
 <?php if (!$langs_add->IsModal) { ?>
 <div class="form-group"><!-- buttons .form-group -->
 	<div class="<?php echo $langs_add->OffsetColumnClass ?>"><!-- buttons offset -->
-<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("AddBtn") ?></button>
+<?php if ($langs->CurrentAction <> "F") { // Confirm page ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit" onclick="this.form.a_add.value='F';"><?php echo $Language->Phrase("AddBtn") ?></button>
 <button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="button" data-href="<?php echo $langs_add->getReturnUrl() ?>"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } else { ?>
+<button class="btn btn-primary ewButton" name="btnAction" id="btnAction" type="submit"><?php echo $Language->Phrase("ConfirmBtn") ?></button>
+<button class="btn btn-default ewButton" name="btnCancel" id="btnCancel" type="submit" onclick="this.form.a_add.value='X';"><?php echo $Language->Phrase("CancelBtn") ?></button>
+<?php } ?>
 	</div><!-- /buttons offset -->
 </div><!-- /buttons .form-group -->
 <?php } ?>

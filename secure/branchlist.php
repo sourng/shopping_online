@@ -393,8 +393,11 @@ class cbranch_list extends cbranch {
 		// 
 		// Security = null;
 		// 
-		// Get export parameters
+		// Create form object
 
+		$objForm = new cFormObj();
+
+		// Get export parameters
 		$custom = "";
 		if (@$_GET["export"] <> "") {
 			$this->Export = $_GET["export"];
@@ -551,7 +554,7 @@ class cbranch_list extends cbranch {
 	var $ListActions; // List actions
 	var $SelectedCount = 0;
 	var $SelectedIndex = 0;
-	var $DisplayRecs = 20;
+	var $DisplayRecs = 10;
 	var $StartRec;
 	var $StopRec;
 	var $TotalRecs = 0;
@@ -583,6 +586,7 @@ class cbranch_list extends cbranch {
 	var $MultiSelectKey;
 	var $Command;
 	var $RestoreSearch = FALSE;
+	var $HashValue; // Hash value
 	var $DetailPages;
 	var $Recordset;
 	var $OldRecordset;
@@ -613,6 +617,71 @@ class cbranch_list extends cbranch {
 			if ($this->Export == "")
 				$this->SetupBreadcrumb();
 
+			// Check QueryString parameters
+			if (@$_GET["a"] <> "") {
+				$this->CurrentAction = $_GET["a"];
+
+				// Clear inline mode
+				if ($this->CurrentAction == "cancel")
+					$this->ClearInlineMode();
+
+				// Switch to grid edit mode
+				if ($this->CurrentAction == "gridedit")
+					$this->GridEditMode();
+
+				// Switch to inline edit mode
+				if ($this->CurrentAction == "edit")
+					$this->InlineEditMode();
+
+				// Switch to inline add mode
+				if ($this->CurrentAction == "add" || $this->CurrentAction == "copy")
+					$this->InlineAddMode();
+
+				// Switch to grid add mode
+				if ($this->CurrentAction == "gridadd")
+					$this->GridAddMode();
+			} else {
+				if (@$_POST["a_list"] <> "") {
+					$this->CurrentAction = $_POST["a_list"]; // Get action
+
+					// Grid Update
+					if (($this->CurrentAction == "gridupdate" || $this->CurrentAction == "gridoverwrite") && @$_SESSION[EW_SESSION_INLINE_MODE] == "gridedit") {
+						if ($this->ValidateGridForm()) {
+							$bGridUpdate = $this->GridUpdate();
+						} else {
+							$bGridUpdate = FALSE;
+							$this->setFailureMessage($gsFormError);
+						}
+						if (!$bGridUpdate) {
+							$this->EventCancelled = TRUE;
+							$this->CurrentAction = "gridedit"; // Stay in Grid Edit mode
+						}
+					}
+
+					// Inline Update
+					if (($this->CurrentAction == "update" || $this->CurrentAction == "overwrite") && @$_SESSION[EW_SESSION_INLINE_MODE] == "edit")
+						$this->InlineUpdate();
+
+					// Insert Inline
+					if ($this->CurrentAction == "insert" && @$_SESSION[EW_SESSION_INLINE_MODE] == "add")
+						$this->InlineInsert();
+
+					// Grid Insert
+					if ($this->CurrentAction == "gridinsert" && @$_SESSION[EW_SESSION_INLINE_MODE] == "gridadd") {
+						if ($this->ValidateGridForm()) {
+							$bGridInsert = $this->GridInsert();
+						} else {
+							$bGridInsert = FALSE;
+							$this->setFailureMessage($gsFormError);
+						}
+						if (!$bGridInsert) {
+							$this->EventCancelled = TRUE;
+							$this->CurrentAction = "gridadd"; // Stay in Grid Add mode
+						}
+					}
+				}
+			}
+
 			// Hide list options
 			if ($this->Export <> "") {
 				$this->ListOptions->HideAllOptions(array("sequence"));
@@ -634,6 +703,14 @@ class cbranch_list extends cbranch {
 			if ($this->Export <> "") {
 				foreach ($this->OtherOptions as &$option)
 					$option->HideAllOptions();
+			}
+
+			// Show grid delete link for grid add / grid edit
+			if ($this->AllowAddDeleteRow) {
+				if ($this->CurrentAction == "gridadd" || $this->CurrentAction == "gridedit") {
+					$item = $this->ListOptions->GetItem("griddelete");
+					if ($item) $item->Visible = TRUE;
+				}
 			}
 
 			// Get default search criteria
@@ -664,7 +741,7 @@ class cbranch_list extends cbranch {
 		if ($this->Command <> "json" && $this->getRecordsPerPage() <> "") {
 			$this->DisplayRecs = $this->getRecordsPerPage(); // Restore from Session
 		} else {
-			$this->DisplayRecs = 20; // Load default
+			$this->DisplayRecs = 10; // Load default
 		}
 
 		// Load Sorting Order
@@ -738,6 +815,231 @@ class cbranch_list extends cbranch {
 		$this->SetupSearchOptions();
 	}
 
+	// Exit inline mode
+	function ClearInlineMode() {
+		$this->setKey("branch_id", ""); // Clear inline edit key
+		$this->LastAction = $this->CurrentAction; // Save last action
+		$this->CurrentAction = ""; // Clear action
+		$_SESSION[EW_SESSION_INLINE_MODE] = ""; // Clear inline mode
+	}
+
+	// Switch to Grid Add mode
+	function GridAddMode() {
+		$_SESSION[EW_SESSION_INLINE_MODE] = "gridadd"; // Enabled grid add
+	}
+
+	// Switch to Grid Edit mode
+	function GridEditMode() {
+		$_SESSION[EW_SESSION_INLINE_MODE] = "gridedit"; // Enable grid edit
+	}
+
+	// Switch to Inline Edit mode
+	function InlineEditMode() {
+		global $Security, $Language;
+		if (!$Security->CanEdit())
+			$this->Page_Terminate("login.php"); // Go to login page
+		$bInlineEdit = TRUE;
+		if (isset($_GET["branch_id"])) {
+			$this->branch_id->setQueryStringValue($_GET["branch_id"]);
+		} else {
+			$bInlineEdit = FALSE;
+		}
+		if ($bInlineEdit) {
+			if ($this->LoadRow()) {
+				$this->setKey("branch_id", $this->branch_id->CurrentValue); // Set up inline edit key
+				$_SESSION[EW_SESSION_INLINE_MODE] = "edit"; // Enable inline edit
+			}
+		}
+	}
+
+	// Perform update to Inline Edit record
+	function InlineUpdate() {
+		global $Language, $objForm, $gsFormError;
+		$objForm->Index = 1;
+		$this->LoadFormValues(); // Get form values
+
+		// Validate form
+		$bInlineUpdate = TRUE;
+		if (!$this->ValidateForm()) {
+			$bInlineUpdate = FALSE; // Form error, reset action
+			$this->setFailureMessage($gsFormError);
+		} else {
+
+			// Overwrite record, just reload hash value
+			if ($this->CurrentAction == "overwrite")
+				$this->LoadRowHash();
+			$bInlineUpdate = FALSE;
+			$rowkey = strval($objForm->GetValue($this->FormKeyName));
+			if ($this->SetupKeyValues($rowkey)) { // Set up key values
+				if ($this->CheckInlineEditKey()) { // Check key
+					$this->SendEmail = TRUE; // Send email on update success
+					$bInlineUpdate = $this->EditRow(); // Update record
+				} else {
+					$bInlineUpdate = FALSE;
+				}
+			}
+		}
+		if ($bInlineUpdate) { // Update success
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("UpdateSuccess")); // Set up success message
+			$this->ClearInlineMode(); // Clear inline edit mode
+		} else {
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("UpdateFailed")); // Set update failed message
+			$this->EventCancelled = TRUE; // Cancel event
+			$this->CurrentAction = "edit"; // Stay in edit mode
+		}
+	}
+
+	// Check Inline Edit key
+	function CheckInlineEditKey() {
+
+		//CheckInlineEditKey = True
+		if (strval($this->getKey("branch_id")) <> strval($this->branch_id->CurrentValue))
+			return FALSE;
+		return TRUE;
+	}
+
+	// Switch to Inline Add mode
+	function InlineAddMode() {
+		global $Security, $Language;
+		if (!$Security->CanAdd())
+			$this->Page_Terminate("login.php"); // Return to login page
+		$this->CurrentAction = "add";
+		$_SESSION[EW_SESSION_INLINE_MODE] = "add"; // Enable inline add
+	}
+
+	// Perform update to Inline Add/Copy record
+	function InlineInsert() {
+		global $Language, $objForm, $gsFormError;
+		$this->LoadOldRecord(); // Load old record
+		$objForm->Index = 0;
+		$this->LoadFormValues(); // Get form values
+
+		// Validate form
+		if (!$this->ValidateForm()) {
+			$this->setFailureMessage($gsFormError); // Set validation error message
+			$this->EventCancelled = TRUE; // Set event cancelled
+			$this->CurrentAction = "add"; // Stay in add mode
+			return;
+		}
+		$this->SendEmail = TRUE; // Send email on add success
+		if ($this->AddRow($this->OldRecordset)) { // Add record
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("AddSuccess")); // Set up add success message
+			$this->ClearInlineMode(); // Clear inline add mode
+		} else { // Add failed
+			$this->EventCancelled = TRUE; // Set event cancelled
+			$this->CurrentAction = "add"; // Stay in add mode
+		}
+	}
+
+	// Perform update to grid
+	function GridUpdate() {
+		global $Language, $objForm, $gsFormError;
+		$bGridUpdate = TRUE;
+
+		// Get old recordset
+		$this->CurrentFilter = $this->BuildKeyFilter();
+		if ($this->CurrentFilter == "")
+			$this->CurrentFilter = "0=1";
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		if ($rs = $conn->Execute($sSql)) {
+			$rsold = $rs->GetRows();
+			$rs->Close();
+		}
+
+		// Call Grid Updating event
+		if (!$this->Grid_Updating($rsold)) {
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("GridEditCancelled")); // Set grid edit cancelled message
+			return FALSE;
+		}
+
+		// Begin transaction
+		$conn->BeginTrans();
+		$sKey = "";
+
+		// Update row index and get row key
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Update all rows based on key
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+			$objForm->Index = $rowindex;
+			$rowkey = strval($objForm->GetValue($this->FormKeyName));
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+
+			// Load all values and keys
+			if ($rowaction <> "insertdelete") { // Skip insert then deleted rows
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "" || $rowaction == "edit" || $rowaction == "delete") {
+					$bGridUpdate = $this->SetupKeyValues($rowkey); // Set up key values
+				} else {
+					$bGridUpdate = TRUE;
+				}
+
+				// Skip empty row
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// No action required
+				// Validate form and insert/update/delete record
+
+				} elseif ($bGridUpdate) {
+					if ($rowaction == "delete") {
+						$this->CurrentFilter = $this->KeyFilter();
+						$bGridUpdate = $this->DeleteRows(); // Delete this row
+					} else if (!$this->ValidateForm()) {
+						$bGridUpdate = FALSE; // Form error, reset action
+						$this->setFailureMessage($gsFormError);
+					} else {
+						if ($rowaction == "insert") {
+							$bGridUpdate = $this->AddRow(); // Insert this row
+						} else {
+							if ($rowkey <> "") {
+
+								// Overwrite record, just reload hash value
+								if ($this->CurrentAction == "gridoverwrite")
+									$this->LoadRowHash();
+								$this->SendEmail = FALSE; // Do not send email on update success
+								$bGridUpdate = $this->EditRow(); // Update this row
+							}
+						} // End update
+					}
+				}
+				if ($bGridUpdate) {
+					if ($sKey <> "") $sKey .= ", ";
+					$sKey .= $rowkey;
+				} else {
+					break;
+				}
+			}
+		}
+		if ($bGridUpdate) {
+			$conn->CommitTrans(); // Commit transaction
+
+			// Get new recordset
+			if ($rs = $conn->Execute($sSql)) {
+				$rsnew = $rs->GetRows();
+				$rs->Close();
+			}
+
+			// Call Grid_Updated event
+			$this->Grid_Updated($rsold, $rsnew);
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("UpdateSuccess")); // Set up update success message
+			$this->ClearInlineMode(); // Clear inline edit mode
+		} else {
+			$conn->RollbackTrans(); // Rollback transaction
+			if ($this->getFailureMessage() == "")
+				$this->setFailureMessage($Language->Phrase("UpdateFailed")); // Set update failed message
+		}
+		return $bGridUpdate;
+	}
+
 	// Build filter for all keys
 	function BuildKeyFilter() {
 		global $objForm;
@@ -774,6 +1076,179 @@ class cbranch_list extends cbranch {
 				return FALSE;
 		}
 		return TRUE;
+	}
+
+	// Perform Grid Add
+	function GridInsert() {
+		global $Language, $objForm, $gsFormError;
+		$rowindex = 1;
+		$bGridInsert = FALSE;
+		$conn = &$this->Connection();
+
+		// Call Grid Inserting event
+		if (!$this->Grid_Inserting()) {
+			if ($this->getFailureMessage() == "") {
+				$this->setFailureMessage($Language->Phrase("GridAddCancelled")); // Set grid add cancelled message
+			}
+			return FALSE;
+		}
+
+		// Begin transaction
+		$conn->BeginTrans();
+
+		// Init key filter
+		$sWrkFilter = "";
+		$addcnt = 0;
+		$sKey = "";
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Insert all rows
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "" && $rowaction <> "insert")
+				continue; // Skip
+			$this->LoadFormValues(); // Get form values
+			if (!$this->EmptyRow()) {
+				$addcnt++;
+				$this->SendEmail = FALSE; // Do not send email on insert success
+
+				// Validate form
+				if (!$this->ValidateForm()) {
+					$bGridInsert = FALSE; // Form error, reset action
+					$this->setFailureMessage($gsFormError);
+				} else {
+					$bGridInsert = $this->AddRow($this->OldRecordset); // Insert this row
+				}
+				if ($bGridInsert) {
+					if ($sKey <> "") $sKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+					$sKey .= $this->branch_id->CurrentValue;
+
+					// Add filter for this record
+					$sFilter = $this->KeyFilter();
+					if ($sWrkFilter <> "") $sWrkFilter .= " OR ";
+					$sWrkFilter .= $sFilter;
+				} else {
+					break;
+				}
+			}
+		}
+		if ($addcnt == 0) { // No record inserted
+			$this->setFailureMessage($Language->Phrase("NoAddRecord"));
+			$bGridInsert = FALSE;
+		}
+		if ($bGridInsert) {
+			$conn->CommitTrans(); // Commit transaction
+
+			// Get new recordset
+			$this->CurrentFilter = $sWrkFilter;
+			$sSql = $this->SQL();
+			if ($rs = $conn->Execute($sSql)) {
+				$rsnew = $rs->GetRows();
+				$rs->Close();
+			}
+
+			// Call Grid_Inserted event
+			$this->Grid_Inserted($rsnew);
+			if ($this->getSuccessMessage() == "")
+				$this->setSuccessMessage($Language->Phrase("InsertSuccess")); // Set up insert success message
+			$this->ClearInlineMode(); // Clear grid add mode
+		} else {
+			$conn->RollbackTrans(); // Rollback transaction
+			if ($this->getFailureMessage() == "") {
+				$this->setFailureMessage($Language->Phrase("InsertFailed")); // Set insert failed message
+			}
+		}
+		return $bGridInsert;
+	}
+
+	// Check if empty row
+	function EmptyRow() {
+		global $objForm;
+		if ($objForm->HasValue("x_name") && $objForm->HasValue("o_name") && $this->name->CurrentValue <> $this->name->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_image") && $objForm->HasValue("o_image") && $this->image->CurrentValue <> $this->image->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_status") && $objForm->HasValue("o_status") && $this->status->CurrentValue <> $this->status->OldValue)
+			return FALSE;
+		if ($objForm->HasValue("x_lang") && $objForm->HasValue("o_lang") && $this->lang->CurrentValue <> $this->lang->OldValue)
+			return FALSE;
+		return TRUE;
+	}
+
+	// Validate grid form
+	function ValidateGridForm() {
+		global $objForm;
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+
+		// Validate all records
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "delete" && $rowaction <> "insertdelete") {
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// Ignore
+				} else if (!$this->ValidateForm()) {
+					return FALSE;
+				}
+			}
+		}
+		return TRUE;
+	}
+
+	// Get all form values of the grid
+	function GetGridFormValues() {
+		global $objForm;
+
+		// Get row count
+		$objForm->Index = -1;
+		$rowcnt = strval($objForm->GetValue($this->FormKeyCountName));
+		if ($rowcnt == "" || !is_numeric($rowcnt))
+			$rowcnt = 0;
+		$rows = array();
+
+		// Loop through all records
+		for ($rowindex = 1; $rowindex <= $rowcnt; $rowindex++) {
+
+			// Load current row values
+			$objForm->Index = $rowindex;
+			$rowaction = strval($objForm->GetValue($this->FormActionName));
+			if ($rowaction <> "delete" && $rowaction <> "insertdelete") {
+				$this->LoadFormValues(); // Get form values
+				if ($rowaction == "insert" && $this->EmptyRow()) {
+
+					// Ignore
+				} else {
+					$rows[] = $this->GetFieldValues("FormValue"); // Return row as array
+				}
+			}
+		}
+		return $rows; // Return as array of array
+	}
+
+	// Restore form values for current row
+	function RestoreCurrentRowFormValues($idx) {
+		global $objForm;
+
+		// Get row based on current index
+		$objForm->Index = $idx;
+		$this->LoadFormValues(); // Load form values
 	}
 
 	// Get list of filters
@@ -1084,6 +1559,14 @@ class cbranch_list extends cbranch {
 	function SetupListOptions() {
 		global $Security, $Language;
 
+		// "griddelete"
+		if ($this->AllowAddDeleteRow) {
+			$item = &$this->ListOptions->Add("griddelete");
+			$item->CssClass = "text-nowrap";
+			$item->OnLeft = TRUE;
+			$item->Visible = FALSE; // Default hidden
+		}
+
 		// Add group option item
 		$item = &$this->ListOptions->Add($this->ListOptions->GroupOptionName);
 		$item->Body = "";
@@ -1149,11 +1632,81 @@ class cbranch_list extends cbranch {
 		// Call ListOptions_Rendering event
 		$this->ListOptions_Rendering();
 
+		// Set up row action and key
+		if (is_numeric($this->RowIndex) && $this->CurrentMode <> "view") {
+			$objForm->Index = $this->RowIndex;
+			$ActionName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormActionName);
+			$OldKeyName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormOldKeyName);
+			$KeyName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormKeyName);
+			$BlankRowName = str_replace("k_", "k" . $this->RowIndex . "_", $this->FormBlankRowName);
+			if ($this->RowAction <> "")
+				$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $ActionName . "\" id=\"" . $ActionName . "\" value=\"" . $this->RowAction . "\">";
+			if ($this->RowAction == "delete") {
+				$rowkey = $objForm->GetValue($this->FormKeyName);
+				$this->SetupKeyValues($rowkey);
+			}
+			if ($this->RowAction == "insert" && $this->CurrentAction == "F" && $this->EmptyRow())
+				$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $BlankRowName . "\" id=\"" . $BlankRowName . "\" value=\"1\">";
+		}
+
+		// "delete"
+		if ($this->AllowAddDeleteRow) {
+			if ($this->CurrentAction == "gridadd" || $this->CurrentAction == "gridedit") {
+				$option = &$this->ListOptions;
+				$option->UseButtonGroup = TRUE; // Use button group for grid delete button
+				$option->UseImageAndText = TRUE; // Use image and text for grid delete button
+				$oListOpt = &$option->Items["griddelete"];
+				if (!$Security->CanDelete() && is_numeric($this->RowIndex) && ($this->RowAction == "" || $this->RowAction == "edit")) { // Do not allow delete existing record
+					$oListOpt->Body = "&nbsp;";
+				} else {
+					$oListOpt->Body = "<a class=\"ewGridLink ewGridDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteLink")) . "\" onclick=\"return ew_DeleteGridRow(this, " . $this->RowIndex . ");\">" . $Language->Phrase("DeleteLink") . "</a>";
+				}
+			}
+		}
+
+		// "copy"
+		$oListOpt = &$this->ListOptions->Items["copy"];
+		if (($this->CurrentAction == "add" || $this->CurrentAction == "copy") && $this->RowType == EW_ROWTYPE_ADD) { // Inline Add/Copy
+			$this->ListOptions->CustomItem = "copy"; // Show copy column only
+			$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+			$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+				"<a class=\"ewGridLink ewInlineInsert\" title=\"" . ew_HtmlTitle($Language->Phrase("InsertLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InsertLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("InsertLink") . "</a>&nbsp;" .
+				"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("CancelLink") . "</a>" .
+				"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"insert\"></div>";
+			return;
+		}
+
+		// "edit"
+		$oListOpt = &$this->ListOptions->Items["edit"];
+		if ($this->CurrentAction == "edit" && $this->RowType == EW_ROWTYPE_EDIT) { // Inline-Edit
+			$this->ListOptions->CustomItem = "edit"; // Show edit column only
+			$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+			if ($this->UpdateConflict == "U") {
+				$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+					"<a class=\"ewGridLink ewInlineReload\" title=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" href=\"" . ew_HtmlEncode(ew_UrlAddHash($this->InlineEditUrl, "r" . $this->RowCnt . "_" . $this->TableVar)) . "\">" .
+					$Language->Phrase("ReloadLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineOverwrite\" title=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . ew_UrlAddHash($this->PageName(), "r" . $this->RowCnt . "_" . $this->TableVar) . "');\">" . $Language->Phrase("OverwriteLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("ConflictCancelLink") . "</a>" .
+					"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"overwrite\"></div>";
+			} else {
+				$oListOpt->Body = "<div" . (($oListOpt->OnLeft) ? " style=\"text-align: right\"" : "") . ">" .
+					"<a class=\"ewGridLink ewInlineUpdate\" title=\"" . ew_HtmlTitle($Language->Phrase("UpdateLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("UpdateLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . ew_UrlAddHash($this->PageName(), "r" . $this->RowCnt . "_" . $this->TableVar) . "');\">" . $Language->Phrase("UpdateLink") . "</a>&nbsp;" .
+					"<a class=\"ewGridLink ewInlineCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("CancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("CancelLink") . "</a>" .
+					"<input type=\"hidden\" name=\"a_list\" id=\"a_list\" value=\"update\"></div>";
+			}
+			$oListOpt->Body .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_hash\" id=\"k" . $this->RowIndex . "_hash\" value=\"" . $this->HashValue . "\">";
+			$oListOpt->Body .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_key\" id=\"k" . $this->RowIndex . "_key\" value=\"" . ew_HtmlEncode($this->branch_id->CurrentValue) . "\">";
+			return;
+		}
+
 		// "view"
 		$oListOpt = &$this->ListOptions->Items["view"];
 		$viewcaption = ew_HtmlTitle($Language->Phrase("ViewLink"));
 		if ($Security->CanView()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-caption=\"" . $viewcaption . "\" href=\"" . ew_HtmlEncode($this->ViewUrl) . "\">" . $Language->Phrase("ViewLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-caption=\"" . $viewcaption . "\" href=\"" . ew_HtmlEncode($this->ViewUrl) . "\">" . $Language->Phrase("ViewLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewView\" title=\"" . $viewcaption . "\" data-table=\"branch\" data-caption=\"" . $viewcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,url:'" . ew_HtmlEncode($this->ViewUrl) . "',btn:null});\">" . $Language->Phrase("ViewLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1162,7 +1715,11 @@ class cbranch_list extends cbranch {
 		$oListOpt = &$this->ListOptions->Items["edit"];
 		$editcaption = ew_HtmlTitle($Language->Phrase("EditLink"));
 		if ($Security->CanEdit()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("EditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("EditLink")) . "\" href=\"" . ew_HtmlEncode($this->EditUrl) . "\">" . $Language->Phrase("EditLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . $editcaption . "\" data-caption=\"" . $editcaption . "\" href=\"" . ew_HtmlEncode($this->EditUrl) . "\">" . $Language->Phrase("EditLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewEdit\" title=\"" . $editcaption . "\" data-table=\"branch\" data-caption=\"" . $editcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'SaveBtn',url:'" . ew_HtmlEncode($this->EditUrl) . "'});\">" . $Language->Phrase("EditLink") . "</a>";
+			$oListOpt->Body .= "<a class=\"ewRowLink ewInlineEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("InlineEditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InlineEditLink")) . "\" href=\"" . ew_HtmlEncode(ew_UrlAddHash($this->InlineEditUrl, "r" . $this->RowCnt . "_" . $this->TableVar)) . "\">" . $Language->Phrase("InlineEditLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1171,7 +1728,10 @@ class cbranch_list extends cbranch {
 		$oListOpt = &$this->ListOptions->Items["copy"];
 		$copycaption = ew_HtmlTitle($Language->Phrase("CopyLink"));
 		if ($Security->CanAdd()) {
-			$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-caption=\"" . $copycaption . "\" href=\"" . ew_HtmlEncode($this->CopyUrl) . "\">" . $Language->Phrase("CopyLink") . "</a>";
+			if (ew_IsMobile())
+				$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-caption=\"" . $copycaption . "\" href=\"" . ew_HtmlEncode($this->CopyUrl) . "\">" . $Language->Phrase("CopyLink") . "</a>";
+			else
+				$oListOpt->Body = "<a class=\"ewRowLink ewCopy\" title=\"" . $copycaption . "\" data-table=\"branch\" data-caption=\"" . $copycaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'AddBtn',url:'" . ew_HtmlEncode($this->CopyUrl) . "'});\">" . $Language->Phrase("CopyLink") . "</a>";
 		} else {
 			$oListOpt->Body = "";
 		}
@@ -1208,6 +1768,10 @@ class cbranch_list extends cbranch {
 		// "checkbox"
 		$oListOpt = &$this->ListOptions->Items["checkbox"];
 		$oListOpt->Body = "<input type=\"checkbox\" name=\"key_m[]\" class=\"ewMultiSelect\" value=\"" . ew_HtmlEncode($this->branch_id->CurrentValue) . "\" onclick=\"ew_ClickMultiCheckbox(event);\">";
+		if ($this->CurrentAction == "gridedit" && is_numeric($this->RowIndex)) {
+			$this->MultiSelectKey .= "<input type=\"hidden\" name=\"" . $KeyName . "\" id=\"" . $KeyName . "\" value=\"" . $this->branch_id->CurrentValue . "\">";
+			$this->MultiSelectKey .= "<input type=\"hidden\" name=\"k" . $this->RowIndex . "_hash\" id=\"k" . $this->RowIndex . "_hash\" value=\"" . $this->HashValue . "\">";
+		}
 		$this->RenderListOptionsExt();
 
 		// Call ListOptions_Rendered event
@@ -1223,14 +1787,36 @@ class cbranch_list extends cbranch {
 		// Add
 		$item = &$option->Add("add");
 		$addcaption = ew_HtmlTitle($Language->Phrase("AddLink"));
-		$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-caption=\"" . $addcaption . "\" href=\"" . ew_HtmlEncode($this->AddUrl) . "\">" . $Language->Phrase("AddLink") . "</a>";
+		if (ew_IsMobile())
+			$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-caption=\"" . $addcaption . "\" href=\"" . ew_HtmlEncode($this->AddUrl) . "\">" . $Language->Phrase("AddLink") . "</a>";
+		else
+			$item->Body = "<a class=\"ewAddEdit ewAdd\" title=\"" . $addcaption . "\" data-table=\"branch\" data-caption=\"" . $addcaption . "\" href=\"javascript:void(0);\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'AddBtn',url:'" . ew_HtmlEncode($this->AddUrl) . "'});\">" . $Language->Phrase("AddLink") . "</a>";
 		$item->Visible = ($this->AddUrl <> "" && $Security->CanAdd());
+
+		// Inline Add
+		$item = &$option->Add("inlineadd");
+		$item->Body = "<a class=\"ewAddEdit ewInlineAdd\" title=\"" . ew_HtmlTitle($Language->Phrase("InlineAddLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("InlineAddLink")) . "\" href=\"" . ew_HtmlEncode($this->InlineAddUrl) . "\">" .$Language->Phrase("InlineAddLink") . "</a>";
+		$item->Visible = ($this->InlineAddUrl <> "" && $Security->CanAdd());
+		$item = &$option->Add("gridadd");
+		$item->Body = "<a class=\"ewAddEdit ewGridAdd\" title=\"" . ew_HtmlTitle($Language->Phrase("GridAddLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridAddLink")) . "\" href=\"" . ew_HtmlEncode($this->GridAddUrl) . "\">" . $Language->Phrase("GridAddLink") . "</a>";
+		$item->Visible = ($this->GridAddUrl <> "" && $Security->CanAdd());
+
+		// Add grid edit
+		$option = $options["addedit"];
+		$item = &$option->Add("gridedit");
+		$item->Body = "<a class=\"ewAddEdit ewGridEdit\" title=\"" . ew_HtmlTitle($Language->Phrase("GridEditLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridEditLink")) . "\" href=\"" . ew_HtmlEncode($this->GridEditUrl) . "\">" . $Language->Phrase("GridEditLink") . "</a>";
+		$item->Visible = ($this->GridEditUrl <> "" && $Security->CanEdit());
 		$option = $options["action"];
 
 		// Add multi delete
 		$item = &$option->Add("multidelete");
-		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fbranchlist,url:'" . $this->MultiDeleteUrl . "'});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
+		$item->Body = "<a class=\"ewAction ewMultiDelete\" title=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("DeleteSelectedLink")) . "\" href=\"\" onclick=\"ew_SubmitAction(event,{f:document.fbranchlist,url:'" . $this->MultiDeleteUrl . "',msg:ewLanguage.Phrase('DeleteConfirmMsg')});return false;\">" . $Language->Phrase("DeleteSelectedLink") . "</a>";
 		$item->Visible = ($Security->CanDelete());
+
+		// Add multi update
+		$item = &$option->Add("multiupdate");
+		$item->Body = "<a class=\"ewAction ewMultiUpdate\" title=\"" . ew_HtmlTitle($Language->Phrase("UpdateSelectedLink")) . "\" data-table=\"branch\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("UpdateSelectedLink")) . "\" href=\"\" onclick=\"ew_ModalDialogShow({lnk:this,btn:'UpdateBtn',f:document.fbranchlist,url:'" . $this->MultiUpdateUrl . "'});return false;\">" . $Language->Phrase("UpdateSelectedLink") . "</a>";
+		$item->Visible = ($Security->CanEdit());
 
 		// Set up options default
 		foreach ($options as &$option) {
@@ -1267,6 +1853,7 @@ class cbranch_list extends cbranch {
 	function RenderOtherOptions() {
 		global $Language, $Security;
 		$options = &$this->OtherOptions;
+		if ($this->CurrentAction <> "gridadd" && $this->CurrentAction <> "gridedit") { // Not grid add/edit mode
 			$option = &$options["action"];
 
 			// Set up list action buttons
@@ -1288,6 +1875,66 @@ class cbranch_list extends cbranch {
 				$option = &$options["action"];
 				$option->HideAllOptions();
 			}
+		} else { // Grid add/edit mode
+
+			// Hide all options first
+			foreach ($options as &$option)
+				$option->HideAllOptions();
+			if ($this->CurrentAction == "gridadd") {
+				if ($this->AllowAddDeleteRow) {
+
+					// Add add blank row
+					$option = &$options["addedit"];
+					$option->UseDropDownButton = FALSE;
+					$option->UseImageAndText = TRUE;
+					$item = &$option->Add("addblankrow");
+					$item->Body = "<a class=\"ewAddEdit ewAddBlankRow\" title=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" href=\"javascript:void(0);\" onclick=\"ew_AddGridRow(this);\">" . $Language->Phrase("AddBlankRow") . "</a>";
+					$item->Visible = $Security->CanAdd();
+				}
+				$option = &$options["action"];
+				$option->UseDropDownButton = FALSE;
+				$option->UseImageAndText = TRUE;
+
+				// Add grid insert
+				$item = &$option->Add("gridinsert");
+				$item->Body = "<a class=\"ewAction ewGridInsert\" title=\"" . ew_HtmlTitle($Language->Phrase("GridInsertLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridInsertLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("GridInsertLink") . "</a>";
+
+				// Add grid cancel
+				$item = &$option->Add("gridcancel");
+				$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+				$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("GridCancelLink") . "</a>";
+			}
+			if ($this->CurrentAction == "gridedit") {
+				if ($this->AllowAddDeleteRow) {
+
+					// Add add blank row
+					$option = &$options["addedit"];
+					$option->UseDropDownButton = FALSE;
+					$option->UseImageAndText = TRUE;
+					$item = &$option->Add("addblankrow");
+					$item->Body = "<a class=\"ewAddEdit ewAddBlankRow\" title=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("AddBlankRow")) . "\" href=\"javascript:void(0);\" onclick=\"ew_AddGridRow(this);\">" . $Language->Phrase("AddBlankRow") . "</a>";
+					$item->Visible = $Security->CanAdd();
+				}
+				$option = &$options["action"];
+				$option->UseDropDownButton = FALSE;
+				$option->UseImageAndText = TRUE;
+				if ($this->UpdateConflict == "U") { // Record already updated by other user
+					$item = &$option->Add("reload");
+					$item->Body = "<a class=\"ewAction ewGridReload\" title=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ReloadLink")) . "\" href=\"" . ew_HtmlEncode($this->GridEditUrl) . "\">" . $Language->Phrase("ReloadLink") . "</a>";
+					$item = &$option->Add("overwrite");
+					$item->Body = "<a class=\"ewAction ewGridOverwrite\" title=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("OverwriteLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("OverwriteLink") . "</a>";
+					$item = &$option->Add("cancel");
+					$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+					$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("ConflictCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("ConflictCancelLink") . "</a>";
+				} else {
+					$item = &$option->Add("gridsave");
+					$item->Body = "<a class=\"ewAction ewGridSave\" title=\"" . ew_HtmlTitle($Language->Phrase("GridSaveLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridSaveLink")) . "\" href=\"\" onclick=\"return ewForms(this).Submit('" . $this->PageName() . "');\">" . $Language->Phrase("GridSaveLink") . "</a>";
+					$item = &$option->Add("gridcancel");
+					$cancelurl = $this->AddMasterUrl($this->PageUrl() . "a=cancel");
+					$item->Body = "<a class=\"ewAction ewGridCancel\" title=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" data-caption=\"" . ew_HtmlTitle($Language->Phrase("GridCancelLink")) . "\" href=\"" . $cancelurl . "\">" . $Language->Phrase("GridCancelLink") . "</a>";
+				}
+			}
+		}
 	}
 
 	// Process list action
@@ -1387,6 +2034,11 @@ class cbranch_list extends cbranch {
 		$item->Body = "<a class=\"btn btn-default ewShowAll\" title=\"" . $Language->Phrase("ShowAll") . "\" data-caption=\"" . $Language->Phrase("ShowAll") . "\" href=\"" . $this->PageUrl() . "cmd=reset\">" . $Language->Phrase("ShowAllBtn") . "</a>";
 		$item->Visible = ($this->SearchWhere <> $this->DefaultSearchWhere && $this->SearchWhere <> "0=101");
 
+		// Search highlight button
+		$item = &$this->SearchOptions->Add("searchhighlight");
+		$item->Body = "<button type=\"button\" class=\"btn btn-default ewHighlight active\" title=\"" . $Language->Phrase("Highlight") . "\" data-caption=\"" . $Language->Phrase("Highlight") . "\" data-toggle=\"button\" data-form=\"fbranchlistsrch\" data-name=\"" . $this->HighlightName() . "\">" . $Language->Phrase("HighlightBtn") . "</button>";
+		$item->Visible = ($this->SearchWhere <> "" && $this->TotalRecs > 0);
+
 		// Button group for search
 		$this->SearchOptions->UseDropDownButton = FALSE;
 		$this->SearchOptions->UseImageAndText = TRUE;
@@ -1452,11 +2104,65 @@ class cbranch_list extends cbranch {
 		}
 	}
 
+	// Load default values
+	function LoadDefaultValues() {
+		$this->branch_id->CurrentValue = NULL;
+		$this->branch_id->OldValue = $this->branch_id->CurrentValue;
+		$this->name->CurrentValue = NULL;
+		$this->name->OldValue = $this->name->CurrentValue;
+		$this->image->CurrentValue = NULL;
+		$this->image->OldValue = $this->image->CurrentValue;
+		$this->status->CurrentValue = NULL;
+		$this->status->OldValue = $this->status->CurrentValue;
+		$this->lang->CurrentValue = "english";
+		$this->lang->OldValue = $this->lang->CurrentValue;
+	}
+
 	// Load basic search values
 	function LoadBasicSearchValues() {
 		$this->BasicSearch->Keyword = @$_GET[EW_TABLE_BASIC_SEARCH];
 		if ($this->BasicSearch->Keyword <> "" && $this->Command == "") $this->Command = "search";
 		$this->BasicSearch->Type = @$_GET[EW_TABLE_BASIC_SEARCH_TYPE];
+	}
+
+	// Load form values
+	function LoadFormValues() {
+
+		// Load from form
+		global $objForm;
+		if (!$this->branch_id->FldIsDetailKey && $this->CurrentAction <> "gridadd" && $this->CurrentAction <> "add")
+			$this->branch_id->setFormValue($objForm->GetValue("x_branch_id"));
+		if (!$this->name->FldIsDetailKey) {
+			$this->name->setFormValue($objForm->GetValue("x_name"));
+		}
+		$this->name->setOldValue($objForm->GetValue("o_name"));
+		if (!$this->image->FldIsDetailKey) {
+			$this->image->setFormValue($objForm->GetValue("x_image"));
+		}
+		$this->image->setOldValue($objForm->GetValue("o_image"));
+		if (!$this->status->FldIsDetailKey) {
+			$this->status->setFormValue($objForm->GetValue("x_status"));
+		}
+		$this->status->setOldValue($objForm->GetValue("o_status"));
+		if (!$this->lang->FldIsDetailKey) {
+			$this->lang->setFormValue($objForm->GetValue("x_lang"));
+		}
+		$this->lang->setOldValue($objForm->GetValue("o_lang"));
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
+	}
+
+	// Restore form values
+	function RestoreFormValues() {
+		global $objForm;
+		if ($this->CurrentAction <> "gridadd" && $this->CurrentAction <> "add")
+			$this->branch_id->CurrentValue = $this->branch_id->FormValue;
+		$this->name->CurrentValue = $this->name->FormValue;
+		$this->image->CurrentValue = $this->image->FormValue;
+		$this->status->CurrentValue = $this->status->FormValue;
+		$this->lang->CurrentValue = $this->lang->FormValue;
+		if ($this->CurrentAction <> "overwrite")
+			$this->HashValue = $objForm->GetValue("k_hash");
 	}
 
 	// Load recordset
@@ -1502,6 +2208,8 @@ class cbranch_list extends cbranch {
 		if ($rs && !$rs->EOF) {
 			$res = TRUE;
 			$this->LoadRowValues($rs); // Load row values
+			if (!$this->EventCancelled)
+				$this->HashValue = $this->GetRowHash($rs); // Get hash value for record
 			$rs->Close();
 		}
 		return $res;
@@ -1527,12 +2235,13 @@ class cbranch_list extends cbranch {
 
 	// Return a row with default values
 	function NewRow() {
+		$this->LoadDefaultValues();
 		$row = array();
-		$row['branch_id'] = NULL;
-		$row['name'] = NULL;
-		$row['image'] = NULL;
-		$row['status'] = NULL;
-		$row['lang'] = NULL;
+		$row['branch_id'] = $this->branch_id->CurrentValue;
+		$row['name'] = $this->name->CurrentValue;
+		$row['image'] = $this->image->CurrentValue;
+		$row['status'] = $this->status->CurrentValue;
+		$row['lang'] = $this->lang->CurrentValue;
 		return $row;
 	}
 
@@ -1631,11 +2340,15 @@ class cbranch_list extends cbranch {
 			$this->name->LinkCustomAttributes = "";
 			$this->name->HrefValue = "";
 			$this->name->TooltipValue = "";
+			if ($this->Export == "")
+				$this->name->ViewValue = $this->HighlightValue($this->name);
 
 			// image
 			$this->image->LinkCustomAttributes = "";
 			$this->image->HrefValue = "";
 			$this->image->TooltipValue = "";
+			if ($this->Export == "")
+				$this->image->ViewValue = $this->HighlightValue($this->image);
 
 			// status
 			$this->status->LinkCustomAttributes = "";
@@ -1646,11 +2359,368 @@ class cbranch_list extends cbranch {
 			$this->lang->LinkCustomAttributes = "";
 			$this->lang->HrefValue = "";
 			$this->lang->TooltipValue = "";
+		} elseif ($this->RowType == EW_ROWTYPE_ADD) { // Add row
+
+			// branch_id
+			// name
+
+			$this->name->EditAttrs["class"] = "form-control";
+			$this->name->EditCustomAttributes = "";
+			$this->name->EditValue = ew_HtmlEncode($this->name->CurrentValue);
+			$this->name->PlaceHolder = ew_RemoveHtml($this->name->FldCaption());
+
+			// image
+			$this->image->EditAttrs["class"] = "form-control";
+			$this->image->EditCustomAttributes = "";
+			$this->image->EditValue = ew_HtmlEncode($this->image->CurrentValue);
+			$this->image->PlaceHolder = ew_RemoveHtml($this->image->FldCaption());
+
+			// status
+			$this->status->EditCustomAttributes = "";
+			$this->status->EditValue = $this->status->Options(FALSE);
+
+			// lang
+			$this->lang->EditCustomAttributes = "";
+			$this->lang->EditValue = $this->lang->Options(TRUE);
+
+			// Add refer script
+			// branch_id
+
+			$this->branch_id->LinkCustomAttributes = "";
+			$this->branch_id->HrefValue = "";
+
+			// name
+			$this->name->LinkCustomAttributes = "";
+			$this->name->HrefValue = "";
+
+			// image
+			$this->image->LinkCustomAttributes = "";
+			$this->image->HrefValue = "";
+
+			// status
+			$this->status->LinkCustomAttributes = "";
+			$this->status->HrefValue = "";
+
+			// lang
+			$this->lang->LinkCustomAttributes = "";
+			$this->lang->HrefValue = "";
+		} elseif ($this->RowType == EW_ROWTYPE_EDIT) { // Edit row
+
+			// branch_id
+			$this->branch_id->EditAttrs["class"] = "form-control";
+			$this->branch_id->EditCustomAttributes = "";
+			$this->branch_id->EditValue = $this->branch_id->CurrentValue;
+			$this->branch_id->ViewCustomAttributes = "";
+
+			// name
+			$this->name->EditAttrs["class"] = "form-control";
+			$this->name->EditCustomAttributes = "";
+			$this->name->EditValue = ew_HtmlEncode($this->name->CurrentValue);
+			$this->name->PlaceHolder = ew_RemoveHtml($this->name->FldCaption());
+
+			// image
+			$this->image->EditAttrs["class"] = "form-control";
+			$this->image->EditCustomAttributes = "";
+			$this->image->EditValue = ew_HtmlEncode($this->image->CurrentValue);
+			$this->image->PlaceHolder = ew_RemoveHtml($this->image->FldCaption());
+
+			// status
+			$this->status->EditCustomAttributes = "";
+			$this->status->EditValue = $this->status->Options(FALSE);
+
+			// lang
+			$this->lang->EditCustomAttributes = "";
+			$this->lang->EditValue = $this->lang->Options(TRUE);
+
+			// Edit refer script
+			// branch_id
+
+			$this->branch_id->LinkCustomAttributes = "";
+			$this->branch_id->HrefValue = "";
+
+			// name
+			$this->name->LinkCustomAttributes = "";
+			$this->name->HrefValue = "";
+
+			// image
+			$this->image->LinkCustomAttributes = "";
+			$this->image->HrefValue = "";
+
+			// status
+			$this->status->LinkCustomAttributes = "";
+			$this->status->HrefValue = "";
+
+			// lang
+			$this->lang->LinkCustomAttributes = "";
+			$this->lang->HrefValue = "";
 		}
+		if ($this->RowType == EW_ROWTYPE_ADD || $this->RowType == EW_ROWTYPE_EDIT || $this->RowType == EW_ROWTYPE_SEARCH) // Add/Edit/Search row
+			$this->SetupFieldTitles();
 
 		// Call Row Rendered event
 		if ($this->RowType <> EW_ROWTYPE_AGGREGATEINIT)
 			$this->Row_Rendered();
+	}
+
+	// Validate form
+	function ValidateForm() {
+		global $Language, $gsFormError;
+
+		// Initialize form error message
+		$gsFormError = "";
+
+		// Check if validation required
+		if (!EW_SERVER_VALIDATE)
+			return ($gsFormError == "");
+
+		// Return validate result
+		$ValidateForm = ($gsFormError == "");
+
+		// Call Form_CustomValidate event
+		$sFormCustomError = "";
+		$ValidateForm = $ValidateForm && $this->Form_CustomValidate($sFormCustomError);
+		if ($sFormCustomError <> "") {
+			ew_AddMessage($gsFormError, $sFormCustomError);
+		}
+		return $ValidateForm;
+	}
+
+	//
+	// Delete records based on current filter
+	//
+	function DeleteRows() {
+		global $Language, $Security;
+		if (!$Security->CanDelete()) {
+			$this->setFailureMessage($Language->Phrase("NoDeletePermission")); // No delete permission
+			return FALSE;
+		}
+		$DeleteRows = TRUE;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+		$rs = $conn->Execute($sSql);
+		$conn->raiseErrorFn = '';
+		if ($rs === FALSE) {
+			return FALSE;
+		} elseif ($rs->EOF) {
+			$this->setFailureMessage($Language->Phrase("NoRecord")); // No record found
+			$rs->Close();
+			return FALSE;
+		}
+		$rows = ($rs) ? $rs->GetRows() : array();
+
+		// Clone old rows
+		$rsold = $rows;
+		if ($rs)
+			$rs->Close();
+
+		// Call row deleting event
+		if ($DeleteRows) {
+			foreach ($rsold as $row) {
+				$DeleteRows = $this->Row_Deleting($row);
+				if (!$DeleteRows) break;
+			}
+		}
+		if ($DeleteRows) {
+			$sKey = "";
+			foreach ($rsold as $row) {
+				$sThisKey = "";
+				if ($sThisKey <> "") $sThisKey .= $GLOBALS["EW_COMPOSITE_KEY_SEPARATOR"];
+				$sThisKey .= $row['branch_id'];
+
+				// Delete old files
+				$this->LoadDbValues($row);
+				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+				$DeleteRows = $this->Delete($row); // Delete
+				$conn->raiseErrorFn = '';
+				if ($DeleteRows === FALSE)
+					break;
+				if ($sKey <> "") $sKey .= ", ";
+				$sKey .= $sThisKey;
+			}
+		}
+		if (!$DeleteRows) {
+
+			// Set up error message
+			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+				// Use the message, do nothing
+			} elseif ($this->CancelMessage <> "") {
+				$this->setFailureMessage($this->CancelMessage);
+				$this->CancelMessage = "";
+			} else {
+				$this->setFailureMessage($Language->Phrase("DeleteCancelled"));
+			}
+		}
+		if ($DeleteRows) {
+		} else {
+		}
+
+		// Call Row Deleted event
+		if ($DeleteRows) {
+			foreach ($rsold as $row) {
+				$this->Row_Deleted($row);
+			}
+		}
+		return $DeleteRows;
+	}
+
+	// Update record based on key values
+	function EditRow() {
+		global $Security, $Language;
+		$sFilter = $this->KeyFilter();
+		$sFilter = $this->ApplyUserIDFilters($sFilter);
+		$conn = &$this->Connection();
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+		$rs = $conn->Execute($sSql);
+		$conn->raiseErrorFn = '';
+		if ($rs === FALSE)
+			return FALSE;
+		if ($rs->EOF) {
+			$this->setFailureMessage($Language->Phrase("NoRecord")); // Set no record message
+			$EditRow = FALSE; // Update Failed
+		} else {
+
+			// Save old values
+			$rsold = &$rs->fields;
+			$this->LoadDbValues($rsold);
+			$rsnew = array();
+
+			// name
+			$this->name->SetDbValueDef($rsnew, $this->name->CurrentValue, NULL, $this->name->ReadOnly);
+
+			// image
+			$this->image->SetDbValueDef($rsnew, $this->image->CurrentValue, NULL, $this->image->ReadOnly);
+
+			// status
+			$this->status->SetDbValueDef($rsnew, $this->status->CurrentValue, NULL, $this->status->ReadOnly);
+
+			// lang
+			$this->lang->SetDbValueDef($rsnew, $this->lang->CurrentValue, NULL, $this->lang->ReadOnly);
+
+			// Check hash value
+			$bRowHasConflict = ($this->GetRowHash($rs) <> $this->HashValue);
+
+			// Call Row Update Conflict event
+			if ($bRowHasConflict)
+				$bRowHasConflict = $this->Row_UpdateConflict($rsold, $rsnew);
+			if ($bRowHasConflict) {
+				$this->setFailureMessage($Language->Phrase("RecordChangedByOtherUser"));
+				$this->UpdateConflict = "U";
+				$rs->Close();
+				return FALSE; // Update Failed
+			}
+
+			// Call Row Updating event
+			$bUpdateRow = $this->Row_Updating($rsold, $rsnew);
+			if ($bUpdateRow) {
+				$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+				if (count($rsnew) > 0)
+					$EditRow = $this->Update($rsnew, "", $rsold);
+				else
+					$EditRow = TRUE; // No field to update
+				$conn->raiseErrorFn = '';
+				if ($EditRow) {
+				}
+			} else {
+				if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+					// Use the message, do nothing
+				} elseif ($this->CancelMessage <> "") {
+					$this->setFailureMessage($this->CancelMessage);
+					$this->CancelMessage = "";
+				} else {
+					$this->setFailureMessage($Language->Phrase("UpdateCancelled"));
+				}
+				$EditRow = FALSE;
+			}
+		}
+
+		// Call Row_Updated event
+		if ($EditRow)
+			$this->Row_Updated($rsold, $rsnew);
+		$rs->Close();
+		return $EditRow;
+	}
+
+	// Load row hash
+	function LoadRowHash() {
+		$sFilter = $this->KeyFilter();
+
+		// Load SQL based on filter
+		$this->CurrentFilter = $sFilter;
+		$sSql = $this->SQL();
+		$conn = &$this->Connection();
+		$RsRow = $conn->Execute($sSql);
+		$this->HashValue = ($RsRow && !$RsRow->EOF) ? $this->GetRowHash($RsRow) : ""; // Get hash value for record
+		$RsRow->Close();
+	}
+
+	// Get Row Hash
+	function GetRowHash(&$rs) {
+		if (!$rs)
+			return "";
+		$sHash = "";
+		$sHash .= ew_GetFldHash($rs->fields('name')); // name
+		$sHash .= ew_GetFldHash($rs->fields('image')); // image
+		$sHash .= ew_GetFldHash($rs->fields('status')); // status
+		$sHash .= ew_GetFldHash($rs->fields('lang')); // lang
+		return md5($sHash);
+	}
+
+	// Add record
+	function AddRow($rsold = NULL) {
+		global $Language, $Security;
+		$conn = &$this->Connection();
+
+		// Load db values from rsold
+		$this->LoadDbValues($rsold);
+		if ($rsold) {
+		}
+		$rsnew = array();
+
+		// name
+		$this->name->SetDbValueDef($rsnew, $this->name->CurrentValue, NULL, FALSE);
+
+		// image
+		$this->image->SetDbValueDef($rsnew, $this->image->CurrentValue, NULL, FALSE);
+
+		// status
+		$this->status->SetDbValueDef($rsnew, $this->status->CurrentValue, NULL, FALSE);
+
+		// lang
+		$this->lang->SetDbValueDef($rsnew, $this->lang->CurrentValue, NULL, strval($this->lang->CurrentValue) == "");
+
+		// Call Row Inserting event
+		$rs = ($rsold == NULL) ? NULL : $rsold->fields;
+		$bInsertRow = $this->Row_Inserting($rs, $rsnew);
+		if ($bInsertRow) {
+			$conn->raiseErrorFn = $GLOBALS["EW_ERROR_FN"];
+			$AddRow = $this->Insert($rsnew);
+			$conn->raiseErrorFn = '';
+			if ($AddRow) {
+			}
+		} else {
+			if ($this->getSuccessMessage() <> "" || $this->getFailureMessage() <> "") {
+
+				// Use the message, do nothing
+			} elseif ($this->CancelMessage <> "") {
+				$this->setFailureMessage($this->CancelMessage);
+				$this->CancelMessage = "";
+			} else {
+				$this->setFailureMessage($Language->Phrase("InsertCancelled"));
+			}
+			$AddRow = FALSE;
+		}
+		if ($AddRow) {
+
+			// Call Row Inserted event
+			$rs = ($rsold == NULL) ? NULL : $rsold->fields;
+			$this->Row_Inserted($rs, $rsnew);
+		}
+		return $AddRow;
 	}
 
 	// Build export filter for selected records
@@ -1711,7 +2781,7 @@ class cbranch_list extends cbranch {
 		// Drop down button for export
 		$this->ExportOptions->UseButtonGroup = TRUE;
 		$this->ExportOptions->UseImageAndText = TRUE;
-		$this->ExportOptions->UseDropDownButton = TRUE;
+		$this->ExportOptions->UseDropDownButton = FALSE;
 		if ($this->ExportOptions->UseButtonGroup && ew_IsMobile())
 			$this->ExportOptions->UseDropDownButton = TRUE;
 		$this->ExportOptions->DropDownButtonPhrase = $Language->Phrase("ButtonExport");
@@ -2106,6 +3176,47 @@ var CurrentPageID = EW_PAGE_ID = "list";
 var CurrentForm = fbranchlist = new ew_Form("fbranchlist", "list");
 fbranchlist.FormKeyCountName = '<?php echo $branch_list->FormKeyCountName ?>';
 
+// Validate form
+fbranchlist.Validate = function() {
+	if (!this.ValidateRequired)
+		return true; // Ignore validation
+	var $ = jQuery, fobj = this.GetForm(), $fobj = $(fobj);
+	if ($fobj.find("#a_confirm").val() == "F")
+		return true;
+	var elm, felm, uelm, addcnt = 0;
+	var $k = $fobj.find("#" + this.FormKeyCountName); // Get key_count
+	var rowcnt = ($k[0]) ? parseInt($k.val(), 10) : 1;
+	var startcnt = (rowcnt == 0) ? 0 : 1; // Check rowcnt == 0 => Inline-Add
+	var gridinsert = $fobj.find("#a_list").val() == "gridinsert";
+	for (var i = startcnt; i <= rowcnt; i++) {
+		var infix = ($k[0]) ? String(i) : "";
+		$fobj.data("rowindex", infix);
+		var checkrow = (gridinsert) ? !this.EmptyRow(infix) : true;
+		if (checkrow) {
+			addcnt++;
+
+			// Fire Form_CustomValidate event
+			if (!this.Form_CustomValidate(fobj))
+				return false;
+		} // End Grid Add checking
+	}
+	if (gridinsert && addcnt == 0) { // No row added
+		ew_Alert(ewLanguage.Phrase("NoAddRecord"));
+		return false;
+	}
+	return true;
+}
+
+// Check empty row
+fbranchlist.EmptyRow = function(infix) {
+	var fobj = this.Form;
+	if (ew_ValueChanged(fobj, infix, "name", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "image", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "status", false)) return false;
+	if (ew_ValueChanged(fobj, infix, "lang", false)) return false;
+	return true;
+}
+
 // Form_CustomValidate event
 fbranchlist.Form_CustomValidate = 
  function(fobj) { // DO NOT CHANGE THIS LINE!
@@ -2146,6 +3257,13 @@ var CurrentSearchForm = fbranchlistsrch = new ew_Form("fbranchlistsrch");
 </div>
 <?php } ?>
 <?php
+if ($branch->CurrentAction == "gridadd") {
+	$branch->CurrentFilter = "0=1";
+	$branch_list->StartRec = 1;
+	$branch_list->DisplayRecs = $branch->GridAddRowCount;
+	$branch_list->TotalRecs = $branch_list->DisplayRecs;
+	$branch_list->StopRec = $branch_list->DisplayRecs;
+} else {
 	$bSelectLimit = $branch_list->UseSelectLimit;
 	if ($bSelectLimit) {
 		if ($branch_list->TotalRecs <= 0)
@@ -2171,6 +3289,7 @@ var CurrentSearchForm = fbranchlistsrch = new ew_Form("fbranchlistsrch");
 		else
 			$branch_list->setWarningMessage($Language->Phrase("NoRecord"));
 	}
+}
 $branch_list->RenderOtherOptions();
 ?>
 <?php if ($Security->CanSearch()) { ?>
@@ -2275,7 +3394,7 @@ $branch_list->ShowMessage();
 <input type="hidden" name="t" value="branch">
 <input type="hidden" name="exporttype" id="exporttype" value="">
 <div id="gmp_branch" class="<?php if (ew_IsResponsiveLayout()) { ?>table-responsive <?php } ?>ewGridMiddlePanel">
-<?php if ($branch_list->TotalRecs > 0 || $branch->CurrentAction == "gridedit") { ?>
+<?php if ($branch_list->TotalRecs > 0 || $branch->CurrentAction == "add" || $branch->CurrentAction == "copy" || $branch->CurrentAction == "gridedit") { ?>
 <table id="tbl_branchlist" class="table ewTable">
 <thead>
 	<tr class="ewTableHeader">
@@ -2344,6 +3463,99 @@ $branch_list->ListOptions->Render("header", "right");
 </thead>
 <tbody>
 <?php
+	if ($branch->CurrentAction == "add" || $branch->CurrentAction == "copy") {
+		$branch_list->RowIndex = 0;
+		$branch_list->KeyCount = $branch_list->RowIndex;
+		if ($branch->CurrentAction == "add")
+			$branch_list->LoadRowValues();
+		if ($branch->EventCancelled) // Insert failed
+			$branch_list->RestoreFormValues(); // Restore form values
+
+		// Set row properties
+		$branch->ResetAttrs();
+		$branch->RowAttrs = array_merge($branch->RowAttrs, array('data-rowindex'=>0, 'id'=>'r0_branch', 'data-rowtype'=>EW_ROWTYPE_ADD));
+		$branch->RowType = EW_ROWTYPE_ADD;
+
+		// Render row
+		$branch_list->RenderRow();
+
+		// Render list options
+		$branch_list->RenderListOptions();
+		$branch_list->StartRowCnt = 0;
+?>
+	<tr<?php echo $branch->RowAttributes() ?>>
+<?php
+
+// Render list options (body, left)
+$branch_list->ListOptions->Render("body", "left", $branch_list->RowCnt);
+?>
+	<?php if ($branch->branch_id->Visible) { // branch_id ?>
+		<td data-name="branch_id">
+<input type="hidden" data-table="branch" data-field="x_branch_id" name="o<?php echo $branch_list->RowIndex ?>_branch_id" id="o<?php echo $branch_list->RowIndex ?>_branch_id" value="<?php echo ew_HtmlEncode($branch->branch_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->name->Visible) { // name ?>
+		<td data-name="name">
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_name" class="form-group branch_name">
+<input type="text" data-table="branch" data-field="x_name" name="x<?php echo $branch_list->RowIndex ?>_name" id="x<?php echo $branch_list->RowIndex ?>_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->name->getPlaceHolder()) ?>" value="<?php echo $branch->name->EditValue ?>"<?php echo $branch->name->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="branch" data-field="x_name" name="o<?php echo $branch_list->RowIndex ?>_name" id="o<?php echo $branch_list->RowIndex ?>_name" value="<?php echo ew_HtmlEncode($branch->name->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->image->Visible) { // image ?>
+		<td data-name="image">
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_image" class="form-group branch_image">
+<input type="text" data-table="branch" data-field="x_image" name="x<?php echo $branch_list->RowIndex ?>_image" id="x<?php echo $branch_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->image->getPlaceHolder()) ?>" value="<?php echo $branch->image->EditValue ?>"<?php echo $branch->image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="branch" data-field="x_image" name="o<?php echo $branch_list->RowIndex ?>_image" id="o<?php echo $branch_list->RowIndex ?>_image" value="<?php echo ew_HtmlEncode($branch->image->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->status->Visible) { // status ?>
+		<td data-name="status">
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_status" class="form-group branch_status">
+<div id="tp_x<?php echo $branch_list->RowIndex ?>_status" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_status" data-value-separator="<?php echo $branch->status->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_status" id="x<?php echo $branch_list->RowIndex ?>_status" value="{value}"<?php echo $branch->status->EditAttributes() ?>></div>
+<div id="dsl_x<?php echo $branch_list->RowIndex ?>_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
+<?php echo $branch->status->RadioButtonListHtml(FALSE, "x{$branch_list->RowIndex}_status") ?>
+</div></div>
+</span>
+<input type="hidden" data-table="branch" data-field="x_status" name="o<?php echo $branch_list->RowIndex ?>_status" id="o<?php echo $branch_list->RowIndex ?>_status" value="<?php echo ew_HtmlEncode($branch->status->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->lang->Visible) { // lang ?>
+		<td data-name="lang">
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_lang" class="form-group branch_lang">
+<div class="ewDropdownList has-feedback">
+	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($branch->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
+		<?php echo $branch->lang->ViewValue ?>
+	</span>
+	<?php if (!$branch->lang->ReadOnly) { ?>
+	<span class="glyphicon glyphicon-remove form-control-feedback ewDropdownListClear"></span>
+	<span class="form-control-feedback"><span class="caret"></span></span>
+	<?php } ?>
+	<div id="dsl_x<?php echo $branch_list->RowIndex ?>_lang" data-repeatcolumn="1" class="dropdown-menu">
+		<div class="ewItems" style="position: relative; overflow-x: hidden;">
+<?php echo $branch->lang->RadioButtonListHtml(TRUE, "x{$branch_list->RowIndex}_lang") ?>
+		</div>
+	</div>
+	<div id="tp_x<?php echo $branch_list->RowIndex ?>_lang" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_lang" data-value-separator="<?php echo $branch->lang->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_lang" id="x<?php echo $branch_list->RowIndex ?>_lang" value="{value}"<?php echo $branch->lang->EditAttributes() ?>></div>
+</div>
+</span>
+<input type="hidden" data-table="branch" data-field="x_lang" name="o<?php echo $branch_list->RowIndex ?>_lang" id="o<?php echo $branch_list->RowIndex ?>_lang" value="<?php echo ew_HtmlEncode($branch->lang->OldValue) ?>">
+</td>
+	<?php } ?>
+<?php
+
+// Render list options (body, right)
+$branch_list->ListOptions->Render("body", "right", $branch_list->RowCnt);
+?>
+<script type="text/javascript">
+fbranchlist.UpdateOpts(<?php echo $branch_list->RowIndex ?>);
+</script>
+	</tr>
+<?php
+}
+?>
+<?php
 if ($branch->ExportAll && $branch->Export <> "") {
 	$branch_list->StopRec = $branch_list->TotalRecs;
 } else {
@@ -2353,6 +3565,15 @@ if ($branch->ExportAll && $branch->Export <> "") {
 		$branch_list->StopRec = $branch_list->StartRec + $branch_list->DisplayRecs - 1;
 	else
 		$branch_list->StopRec = $branch_list->TotalRecs;
+}
+
+// Restore number of post back records
+if ($objForm) {
+	$objForm->Index = -1;
+	if ($objForm->HasValue($branch_list->FormKeyCountName) && ($branch->CurrentAction == "gridadd" || $branch->CurrentAction == "gridedit" || $branch->CurrentAction == "F")) {
+		$branch_list->KeyCount = $objForm->GetValue($branch_list->FormKeyCountName);
+		$branch_list->StopRec = $branch_list->StartRec + $branch_list->KeyCount - 1;
+	}
 }
 $branch_list->RecCnt = $branch_list->StartRec - 1;
 if ($branch_list->Recordset && !$branch_list->Recordset->EOF) {
@@ -2368,10 +3589,27 @@ if ($branch_list->Recordset && !$branch_list->Recordset->EOF) {
 $branch->RowType = EW_ROWTYPE_AGGREGATEINIT;
 $branch->ResetAttrs();
 $branch_list->RenderRow();
+$branch_list->EditRowCnt = 0;
+if ($branch->CurrentAction == "edit")
+	$branch_list->RowIndex = 1;
+if ($branch->CurrentAction == "gridadd")
+	$branch_list->RowIndex = 0;
+if ($branch->CurrentAction == "gridedit")
+	$branch_list->RowIndex = 0;
 while ($branch_list->RecCnt < $branch_list->StopRec) {
 	$branch_list->RecCnt++;
 	if (intval($branch_list->RecCnt) >= intval($branch_list->StartRec)) {
 		$branch_list->RowCnt++;
+		if ($branch->CurrentAction == "gridadd" || $branch->CurrentAction == "gridedit" || $branch->CurrentAction == "F") {
+			$branch_list->RowIndex++;
+			$objForm->Index = $branch_list->RowIndex;
+			if ($objForm->HasValue($branch_list->FormActionName))
+				$branch_list->RowAction = strval($objForm->GetValue($branch_list->FormActionName));
+			elseif ($branch->CurrentAction == "gridadd")
+				$branch_list->RowAction = "insert";
+			else
+				$branch_list->RowAction = "";
+		}
 
 		// Set up key count
 		$branch_list->KeyCount = $branch_list->RowIndex;
@@ -2380,10 +3618,41 @@ while ($branch_list->RecCnt < $branch_list->StopRec) {
 		$branch->ResetAttrs();
 		$branch->CssClass = "";
 		if ($branch->CurrentAction == "gridadd") {
+			$branch_list->LoadRowValues(); // Load default values
 		} else {
 			$branch_list->LoadRowValues($branch_list->Recordset); // Load row values
 		}
 		$branch->RowType = EW_ROWTYPE_VIEW; // Render view
+		if ($branch->CurrentAction == "gridadd") // Grid add
+			$branch->RowType = EW_ROWTYPE_ADD; // Render add
+		if ($branch->CurrentAction == "gridadd" && $branch->EventCancelled && !$objForm->HasValue("k_blankrow")) // Insert failed
+			$branch_list->RestoreCurrentRowFormValues($branch_list->RowIndex); // Restore form values
+		if ($branch->CurrentAction == "edit") {
+			if ($branch_list->CheckInlineEditKey() && $branch_list->EditRowCnt == 0) { // Inline edit
+				$branch->RowType = EW_ROWTYPE_EDIT; // Render edit
+				if (!$branch->EventCancelled)
+					$branch_list->HashValue = $branch_list->GetRowHash($branch_list->Recordset); // Get hash value for record
+			}
+		}
+		if ($branch->CurrentAction == "gridedit") { // Grid edit
+			if ($branch->EventCancelled) {
+				$branch_list->RestoreCurrentRowFormValues($branch_list->RowIndex); // Restore form values
+			}
+			if ($branch_list->RowAction == "insert")
+				$branch->RowType = EW_ROWTYPE_ADD; // Render add
+			else
+				$branch->RowType = EW_ROWTYPE_EDIT; // Render edit
+			if (!$branch->EventCancelled)
+				$branch_list->HashValue = $branch_list->GetRowHash($branch_list->Recordset); // Get hash value for record
+		}
+		if ($branch->CurrentAction == "edit" && $branch->RowType == EW_ROWTYPE_EDIT && $branch->EventCancelled) { // Update failed
+			$objForm->Index = 1;
+			$branch_list->RestoreFormValues(); // Restore form values
+		}
+		if ($branch->CurrentAction == "gridedit" && ($branch->RowType == EW_ROWTYPE_EDIT || $branch->RowType == EW_ROWTYPE_ADD) && $branch->EventCancelled) // Update failed
+			$branch_list->RestoreCurrentRowFormValues($branch_list->RowIndex); // Restore form values
+		if ($branch->RowType == EW_ROWTYPE_EDIT) // Edit row
+			$branch_list->EditRowCnt++;
 
 		// Set up row id / data-rowindex
 		$branch->RowAttrs = array_merge($branch->RowAttrs, array('data-rowindex'=>$branch_list->RowCnt, 'id'=>'r' . $branch_list->RowCnt . '_branch', 'data-rowtype'=>$branch->RowType));
@@ -2393,6 +3662,9 @@ while ($branch_list->RecCnt < $branch_list->StopRec) {
 
 		// Render list options
 		$branch_list->RenderListOptions();
+
+		// Skip delete row / empty row for confirm page
+		if ($branch_list->RowAction <> "delete" && $branch_list->RowAction <> "insertdelete" && !($branch_list->RowAction == "insert" && $branch->CurrentAction == "F" && $branch_list->EmptyRow())) {
 ?>
 	<tr<?php echo $branch->RowAttributes() ?>>
 <?php
@@ -2402,42 +3674,140 @@ $branch_list->ListOptions->Render("body", "left", $branch_list->RowCnt);
 ?>
 	<?php if ($branch->branch_id->Visible) { // branch_id ?>
 		<td data-name="branch_id"<?php echo $branch->branch_id->CellAttributes() ?>>
+<?php if ($branch->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<input type="hidden" data-table="branch" data-field="x_branch_id" name="o<?php echo $branch_list->RowIndex ?>_branch_id" id="o<?php echo $branch_list->RowIndex ?>_branch_id" value="<?php echo ew_HtmlEncode($branch->branch_id->OldValue) ?>">
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_branch_id" class="form-group branch_branch_id">
+<span<?php echo $branch->branch_id->ViewAttributes() ?>>
+<p class="form-control-static"><?php echo $branch->branch_id->EditValue ?></p></span>
+</span>
+<input type="hidden" data-table="branch" data-field="x_branch_id" name="x<?php echo $branch_list->RowIndex ?>_branch_id" id="x<?php echo $branch_list->RowIndex ?>_branch_id" value="<?php echo ew_HtmlEncode($branch->branch_id->CurrentValue) ?>">
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $branch_list->RowCnt ?>_branch_branch_id" class="branch_branch_id">
 <span<?php echo $branch->branch_id->ViewAttributes() ?>>
 <?php echo $branch->branch_id->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($branch->name->Visible) { // name ?>
 		<td data-name="name"<?php echo $branch->name->CellAttributes() ?>>
+<?php if ($branch->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_name" class="form-group branch_name">
+<input type="text" data-table="branch" data-field="x_name" name="x<?php echo $branch_list->RowIndex ?>_name" id="x<?php echo $branch_list->RowIndex ?>_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->name->getPlaceHolder()) ?>" value="<?php echo $branch->name->EditValue ?>"<?php echo $branch->name->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="branch" data-field="x_name" name="o<?php echo $branch_list->RowIndex ?>_name" id="o<?php echo $branch_list->RowIndex ?>_name" value="<?php echo ew_HtmlEncode($branch->name->OldValue) ?>">
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_name" class="form-group branch_name">
+<input type="text" data-table="branch" data-field="x_name" name="x<?php echo $branch_list->RowIndex ?>_name" id="x<?php echo $branch_list->RowIndex ?>_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->name->getPlaceHolder()) ?>" value="<?php echo $branch->name->EditValue ?>"<?php echo $branch->name->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $branch_list->RowCnt ?>_branch_name" class="branch_name">
 <span<?php echo $branch->name->ViewAttributes() ?>>
 <?php echo $branch->name->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($branch->image->Visible) { // image ?>
 		<td data-name="image"<?php echo $branch->image->CellAttributes() ?>>
+<?php if ($branch->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_image" class="form-group branch_image">
+<input type="text" data-table="branch" data-field="x_image" name="x<?php echo $branch_list->RowIndex ?>_image" id="x<?php echo $branch_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->image->getPlaceHolder()) ?>" value="<?php echo $branch->image->EditValue ?>"<?php echo $branch->image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="branch" data-field="x_image" name="o<?php echo $branch_list->RowIndex ?>_image" id="o<?php echo $branch_list->RowIndex ?>_image" value="<?php echo ew_HtmlEncode($branch->image->OldValue) ?>">
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_image" class="form-group branch_image">
+<input type="text" data-table="branch" data-field="x_image" name="x<?php echo $branch_list->RowIndex ?>_image" id="x<?php echo $branch_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->image->getPlaceHolder()) ?>" value="<?php echo $branch->image->EditValue ?>"<?php echo $branch->image->EditAttributes() ?>>
+</span>
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $branch_list->RowCnt ?>_branch_image" class="branch_image">
 <span<?php echo $branch->image->ViewAttributes() ?>>
 <?php echo $branch->image->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($branch->status->Visible) { // status ?>
 		<td data-name="status"<?php echo $branch->status->CellAttributes() ?>>
+<?php if ($branch->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_status" class="form-group branch_status">
+<div id="tp_x<?php echo $branch_list->RowIndex ?>_status" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_status" data-value-separator="<?php echo $branch->status->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_status" id="x<?php echo $branch_list->RowIndex ?>_status" value="{value}"<?php echo $branch->status->EditAttributes() ?>></div>
+<div id="dsl_x<?php echo $branch_list->RowIndex ?>_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
+<?php echo $branch->status->RadioButtonListHtml(FALSE, "x{$branch_list->RowIndex}_status") ?>
+</div></div>
+</span>
+<input type="hidden" data-table="branch" data-field="x_status" name="o<?php echo $branch_list->RowIndex ?>_status" id="o<?php echo $branch_list->RowIndex ?>_status" value="<?php echo ew_HtmlEncode($branch->status->OldValue) ?>">
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_status" class="form-group branch_status">
+<div id="tp_x<?php echo $branch_list->RowIndex ?>_status" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_status" data-value-separator="<?php echo $branch->status->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_status" id="x<?php echo $branch_list->RowIndex ?>_status" value="{value}"<?php echo $branch->status->EditAttributes() ?>></div>
+<div id="dsl_x<?php echo $branch_list->RowIndex ?>_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
+<?php echo $branch->status->RadioButtonListHtml(FALSE, "x{$branch_list->RowIndex}_status") ?>
+</div></div>
+</span>
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $branch_list->RowCnt ?>_branch_status" class="branch_status">
 <span<?php echo $branch->status->ViewAttributes() ?>>
 <?php echo $branch->status->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 	<?php if ($branch->lang->Visible) { // lang ?>
 		<td data-name="lang"<?php echo $branch->lang->CellAttributes() ?>>
+<?php if ($branch->RowType == EW_ROWTYPE_ADD) { // Add record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_lang" class="form-group branch_lang">
+<div class="ewDropdownList has-feedback">
+	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($branch->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
+		<?php echo $branch->lang->ViewValue ?>
+	</span>
+	<?php if (!$branch->lang->ReadOnly) { ?>
+	<span class="glyphicon glyphicon-remove form-control-feedback ewDropdownListClear"></span>
+	<span class="form-control-feedback"><span class="caret"></span></span>
+	<?php } ?>
+	<div id="dsl_x<?php echo $branch_list->RowIndex ?>_lang" data-repeatcolumn="1" class="dropdown-menu">
+		<div class="ewItems" style="position: relative; overflow-x: hidden;">
+<?php echo $branch->lang->RadioButtonListHtml(TRUE, "x{$branch_list->RowIndex}_lang") ?>
+		</div>
+	</div>
+	<div id="tp_x<?php echo $branch_list->RowIndex ?>_lang" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_lang" data-value-separator="<?php echo $branch->lang->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_lang" id="x<?php echo $branch_list->RowIndex ?>_lang" value="{value}"<?php echo $branch->lang->EditAttributes() ?>></div>
+</div>
+</span>
+<input type="hidden" data-table="branch" data-field="x_lang" name="o<?php echo $branch_list->RowIndex ?>_lang" id="o<?php echo $branch_list->RowIndex ?>_lang" value="<?php echo ew_HtmlEncode($branch->lang->OldValue) ?>">
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_EDIT) { // Edit record ?>
+<span id="el<?php echo $branch_list->RowCnt ?>_branch_lang" class="form-group branch_lang">
+<div class="ewDropdownList has-feedback">
+	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($branch->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
+		<?php echo $branch->lang->ViewValue ?>
+	</span>
+	<?php if (!$branch->lang->ReadOnly) { ?>
+	<span class="glyphicon glyphicon-remove form-control-feedback ewDropdownListClear"></span>
+	<span class="form-control-feedback"><span class="caret"></span></span>
+	<?php } ?>
+	<div id="dsl_x<?php echo $branch_list->RowIndex ?>_lang" data-repeatcolumn="1" class="dropdown-menu">
+		<div class="ewItems" style="position: relative; overflow-x: hidden;">
+<?php echo $branch->lang->RadioButtonListHtml(TRUE, "x{$branch_list->RowIndex}_lang") ?>
+		</div>
+	</div>
+	<div id="tp_x<?php echo $branch_list->RowIndex ?>_lang" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_lang" data-value-separator="<?php echo $branch->lang->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_lang" id="x<?php echo $branch_list->RowIndex ?>_lang" value="{value}"<?php echo $branch->lang->EditAttributes() ?>></div>
+</div>
+</span>
+<?php } ?>
+<?php if ($branch->RowType == EW_ROWTYPE_VIEW) { // View record ?>
 <span id="el<?php echo $branch_list->RowCnt ?>_branch_lang" class="branch_lang">
 <span<?php echo $branch->lang->ViewAttributes() ?>>
 <?php echo $branch->lang->ListViewValue() ?></span>
 </span>
+<?php } ?>
 </td>
 	<?php } ?>
 <?php
@@ -2446,14 +3816,130 @@ $branch_list->ListOptions->Render("body", "left", $branch_list->RowCnt);
 $branch_list->ListOptions->Render("body", "right", $branch_list->RowCnt);
 ?>
 	</tr>
+<?php if ($branch->RowType == EW_ROWTYPE_ADD || $branch->RowType == EW_ROWTYPE_EDIT) { ?>
+<script type="text/javascript">
+fbranchlist.UpdateOpts(<?php echo $branch_list->RowIndex ?>);
+</script>
+<?php } ?>
 <?php
 	}
+	} // End delete row checking
 	if ($branch->CurrentAction <> "gridadd")
-		$branch_list->Recordset->MoveNext();
+		if (!$branch_list->Recordset->EOF) $branch_list->Recordset->MoveNext();
+}
+?>
+<?php
+	if ($branch->CurrentAction == "gridadd" || $branch->CurrentAction == "gridedit") {
+		$branch_list->RowIndex = '$rowindex$';
+		$branch_list->LoadRowValues();
+
+		// Set row properties
+		$branch->ResetAttrs();
+		$branch->RowAttrs = array_merge($branch->RowAttrs, array('data-rowindex'=>$branch_list->RowIndex, 'id'=>'r0_branch', 'data-rowtype'=>EW_ROWTYPE_ADD));
+		ew_AppendClass($branch->RowAttrs["class"], "ewTemplate");
+		$branch->RowType = EW_ROWTYPE_ADD;
+
+		// Render row
+		$branch_list->RenderRow();
+
+		// Render list options
+		$branch_list->RenderListOptions();
+		$branch_list->StartRowCnt = 0;
+?>
+	<tr<?php echo $branch->RowAttributes() ?>>
+<?php
+
+// Render list options (body, left)
+$branch_list->ListOptions->Render("body", "left", $branch_list->RowIndex);
+?>
+	<?php if ($branch->branch_id->Visible) { // branch_id ?>
+		<td data-name="branch_id">
+<input type="hidden" data-table="branch" data-field="x_branch_id" name="o<?php echo $branch_list->RowIndex ?>_branch_id" id="o<?php echo $branch_list->RowIndex ?>_branch_id" value="<?php echo ew_HtmlEncode($branch->branch_id->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->name->Visible) { // name ?>
+		<td data-name="name">
+<span id="el$rowindex$_branch_name" class="form-group branch_name">
+<input type="text" data-table="branch" data-field="x_name" name="x<?php echo $branch_list->RowIndex ?>_name" id="x<?php echo $branch_list->RowIndex ?>_name" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->name->getPlaceHolder()) ?>" value="<?php echo $branch->name->EditValue ?>"<?php echo $branch->name->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="branch" data-field="x_name" name="o<?php echo $branch_list->RowIndex ?>_name" id="o<?php echo $branch_list->RowIndex ?>_name" value="<?php echo ew_HtmlEncode($branch->name->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->image->Visible) { // image ?>
+		<td data-name="image">
+<span id="el$rowindex$_branch_image" class="form-group branch_image">
+<input type="text" data-table="branch" data-field="x_image" name="x<?php echo $branch_list->RowIndex ?>_image" id="x<?php echo $branch_list->RowIndex ?>_image" size="30" maxlength="250" placeholder="<?php echo ew_HtmlEncode($branch->image->getPlaceHolder()) ?>" value="<?php echo $branch->image->EditValue ?>"<?php echo $branch->image->EditAttributes() ?>>
+</span>
+<input type="hidden" data-table="branch" data-field="x_image" name="o<?php echo $branch_list->RowIndex ?>_image" id="o<?php echo $branch_list->RowIndex ?>_image" value="<?php echo ew_HtmlEncode($branch->image->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->status->Visible) { // status ?>
+		<td data-name="status">
+<span id="el$rowindex$_branch_status" class="form-group branch_status">
+<div id="tp_x<?php echo $branch_list->RowIndex ?>_status" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_status" data-value-separator="<?php echo $branch->status->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_status" id="x<?php echo $branch_list->RowIndex ?>_status" value="{value}"<?php echo $branch->status->EditAttributes() ?>></div>
+<div id="dsl_x<?php echo $branch_list->RowIndex ?>_status" data-repeatcolumn="5" class="ewItemList" style="display: none;"><div>
+<?php echo $branch->status->RadioButtonListHtml(FALSE, "x{$branch_list->RowIndex}_status") ?>
+</div></div>
+</span>
+<input type="hidden" data-table="branch" data-field="x_status" name="o<?php echo $branch_list->RowIndex ?>_status" id="o<?php echo $branch_list->RowIndex ?>_status" value="<?php echo ew_HtmlEncode($branch->status->OldValue) ?>">
+</td>
+	<?php } ?>
+	<?php if ($branch->lang->Visible) { // lang ?>
+		<td data-name="lang">
+<span id="el$rowindex$_branch_lang" class="form-group branch_lang">
+<div class="ewDropdownList has-feedback">
+	<span onclick="" class="form-control dropdown-toggle" aria-expanded="false"<?php if ($branch->lang->ReadOnly) { ?> readonly<?php } else { ?>data-toggle="dropdown"<?php } ?>>
+		<?php echo $branch->lang->ViewValue ?>
+	</span>
+	<?php if (!$branch->lang->ReadOnly) { ?>
+	<span class="glyphicon glyphicon-remove form-control-feedback ewDropdownListClear"></span>
+	<span class="form-control-feedback"><span class="caret"></span></span>
+	<?php } ?>
+	<div id="dsl_x<?php echo $branch_list->RowIndex ?>_lang" data-repeatcolumn="1" class="dropdown-menu">
+		<div class="ewItems" style="position: relative; overflow-x: hidden;">
+<?php echo $branch->lang->RadioButtonListHtml(TRUE, "x{$branch_list->RowIndex}_lang") ?>
+		</div>
+	</div>
+	<div id="tp_x<?php echo $branch_list->RowIndex ?>_lang" class="ewTemplate"><input type="radio" data-table="branch" data-field="x_lang" data-value-separator="<?php echo $branch->lang->DisplayValueSeparatorAttribute() ?>" name="x<?php echo $branch_list->RowIndex ?>_lang" id="x<?php echo $branch_list->RowIndex ?>_lang" value="{value}"<?php echo $branch->lang->EditAttributes() ?>></div>
+</div>
+</span>
+<input type="hidden" data-table="branch" data-field="x_lang" name="o<?php echo $branch_list->RowIndex ?>_lang" id="o<?php echo $branch_list->RowIndex ?>_lang" value="<?php echo ew_HtmlEncode($branch->lang->OldValue) ?>">
+</td>
+	<?php } ?>
+<?php
+
+// Render list options (body, right)
+$branch_list->ListOptions->Render("body", "right", $branch_list->RowIndex);
+?>
+<script type="text/javascript">
+fbranchlist.UpdateOpts(<?php echo $branch_list->RowIndex ?>);
+</script>
+	</tr>
+<?php
 }
 ?>
 </tbody>
 </table>
+<?php } ?>
+<?php if ($branch->CurrentAction == "add" || $branch->CurrentAction == "copy") { ?>
+<input type="hidden" name="<?php echo $branch_list->FormKeyCountName ?>" id="<?php echo $branch_list->FormKeyCountName ?>" value="<?php echo $branch_list->KeyCount ?>">
+<?php } ?>
+<?php if ($branch->CurrentAction == "gridadd") { ?>
+<input type="hidden" name="a_list" id="a_list" value="gridinsert">
+<input type="hidden" name="<?php echo $branch_list->FormKeyCountName ?>" id="<?php echo $branch_list->FormKeyCountName ?>" value="<?php echo $branch_list->KeyCount ?>">
+<?php echo $branch_list->MultiSelectKey ?>
+<?php } ?>
+<?php if ($branch->CurrentAction == "edit") { ?>
+<input type="hidden" name="<?php echo $branch_list->FormKeyCountName ?>" id="<?php echo $branch_list->FormKeyCountName ?>" value="<?php echo $branch_list->KeyCount ?>">
+<?php } ?>
+<?php if ($branch->CurrentAction == "gridedit") { ?>
+<?php if ($branch->UpdateConflict == "U") { // Record already updated by other user ?>
+<input type="hidden" name="a_list" id="a_list" value="gridoverwrite">
+<?php } else { ?>
+<input type="hidden" name="a_list" id="a_list" value="gridupdate">
+<?php } ?>
+<input type="hidden" name="<?php echo $branch_list->FormKeyCountName ?>" id="<?php echo $branch_list->FormKeyCountName ?>" value="<?php echo $branch_list->KeyCount ?>">
+<?php echo $branch_list->MultiSelectKey ?>
 <?php } ?>
 <?php if ($branch->CurrentAction == "") { ?>
 <input type="hidden" name="a_list" id="a_list" value="">

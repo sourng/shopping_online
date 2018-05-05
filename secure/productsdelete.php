@@ -423,7 +423,7 @@ class cproducts_delete extends cproducts {
 		} elseif (@$_GET["a_delete"] == "1") {
 			$this->CurrentAction = "D"; // Delete record directly
 		} else {
-			$this->CurrentAction = "I"; // Display record
+			$this->CurrentAction = "D"; // Delete record directly
 		}
 		if ($this->CurrentAction == "D") {
 			$this->SendEmail = TRUE; // Send email on delete success
@@ -432,7 +432,7 @@ class cproducts_delete extends cproducts {
 					$this->setSuccessMessage($Language->Phrase("DeleteSuccess")); // Set up success message
 				$this->Page_Terminate($this->getReturnUrl()); // Return to caller
 			} else { // Delete failed
-				$this->CurrentAction = "I"; // Display record
+				$this->Page_Terminate($this->getReturnUrl()); // Return to caller
 			}
 		}
 		if ($this->CurrentAction == "I") { // Load records for display
@@ -535,6 +535,11 @@ class cproducts_delete extends cproducts {
 		$this->featured_image->Upload->DbValue = $row['featured_image'];
 		$this->featured_image->setDbValue($this->featured_image->Upload->DbValue);
 		$this->folder_image->setDbValue($row['folder_image']);
+		if (array_key_exists('EV__folder_image', $rs->fields)) {
+			$this->folder_image->VirtualValue = $rs->fields('EV__folder_image'); // Set up virtual field value
+		} else {
+			$this->folder_image->VirtualValue = ""; // Clear value
+		}
 		$this->pro_status->setDbValue($row['pro_status']);
 		$this->branch_id->setDbValue($row['branch_id']);
 		$this->lang->setDbValue($row['lang']);
@@ -730,7 +735,7 @@ class cproducts_delete extends cproducts {
 
 		// post_date
 		$this->post_date->ViewValue = $this->post_date->CurrentValue;
-		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 0);
+		$this->post_date->ViewValue = ew_FormatDateTime($this->post_date->ViewValue, 1);
 		$this->post_date->ViewCustomAttributes = "";
 
 		// ads_id
@@ -758,6 +763,9 @@ class cproducts_delete extends cproducts {
 		$this->featured_image->ViewCustomAttributes = "";
 
 		// folder_image
+		if ($this->folder_image->VirtualValue <> "") {
+			$this->folder_image->ViewValue = $this->folder_image->VirtualValue;
+		} else {
 		if (strval($this->folder_image->CurrentValue) <> "") {
 			$arwrk = explode(",", $this->folder_image->CurrentValue);
 			$sFilterWrk = "";
@@ -765,7 +773,7 @@ class cproducts_delete extends cproducts {
 				if ($sFilterWrk <> "") $sFilterWrk .= " OR ";
 				$sFilterWrk .= "`pro_gallery_id`" . ew_SearchString("=", trim($wrk), EW_DATATYPE_NUMBER, "");
 			}
-		$sSqlWrk = "SELECT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
+		$sSqlWrk = "SELECT DISTINCT `pro_gallery_id`, `image` AS `DispFld`, '' AS `Disp2Fld`, '' AS `Disp3Fld`, '' AS `Disp4Fld` FROM `product_gallery`";
 		$sWhereWrk = "";
 		$this->folder_image->LookupFilters = array("dx1" => '`image`');
 		ew_AddFilter($sWhereWrk, $sFilterWrk);
@@ -789,6 +797,7 @@ class cproducts_delete extends cproducts {
 			}
 		} else {
 			$this->folder_image->ViewValue = NULL;
+		}
 		}
 		$this->folder_image->ViewCustomAttributes = "";
 
