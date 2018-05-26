@@ -39,7 +39,7 @@
 								<li><a href="#">Russia</a></li>
 							</ul>								
 						</div><!-- language-dropdown -->
-					
+					<?php echo "lang:".$lang; ?>
 						<input type="text" class="form-control" placeholder="<?php echo $this->m_crud->get_langs('Type_Your_key_word',$lang); ?>">
 						<button type="submit" class="form-control" value="Search"><?php echo $this->m_crud->get_langs('Search',$lang); ?></button>
 					</form>

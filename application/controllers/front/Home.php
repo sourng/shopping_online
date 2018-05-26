@@ -43,7 +43,8 @@ class Home extends CI_Controller {
 	
 	public function details($pro_id){	
 	$data=array();
-		$data['lang']=$this->session->userdata('site_lang');
+
+		$data['lang']=$this->session->userdata('site_lang')?$this->session->userdata('site_lang'):'english';
 		$sql="SELECT cat.cat_id,cat.cat_name,cat.cat_ico_class,
 		count(cat.cat_name) as number from categories as cat inner join products as 
 		p ON cat.cat_id=p.cat_id group by cat.cat_id";

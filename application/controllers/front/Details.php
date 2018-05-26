@@ -14,7 +14,10 @@ class Details extends CI_Controller {
 	public function index($cat_id='',$pro_id='')
 	{		
 		$data=array();
-		$data['lang']=$this->session->userdata('site_lang');
+
+
+
+		$data['lang']='english';
 		$sql="SELECT * FROM categories";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
 		
