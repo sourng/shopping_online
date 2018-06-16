@@ -17,7 +17,12 @@
 						<img src="images/user.jpg" alt="User Images" class="img-responsive">
 					</div>
 					<div class="user">
-						<h2>Hello, <a href="#">Jhon Doe</a></h2>
+						<h2>Hello, <a href="#">
+							<?php 
+						echo $getprofile[0]['com_fname'].$getprofile[0]['com_lname'];
+						?>
+								
+						</a></h2>
 						<h5>You last logged in at: 14-01-2016 6:40 AM [ USA time (GMT + 6:00hrs)]</h5>
 					</div>
 
@@ -47,31 +52,28 @@
 								<!-- form -->
 								<div class="form-group">
 									<label>Username</label>
-									<input type="text" class="form-control" placeholder="Jhon Doe">
+									<input type="text" class="form-control" placeholder="<?php echo $getprofile[0]['com_username'];?>">  
 								</div>
 
 								<div class="form-group">
 									<label>Email ID</label>
-									<input type="email" class="form-control" placeholder="jhondoe@mail.com">
+									<input type="email" class="form-control" placeholder="<?php echo $getprofile[0]['com_email'];?>">
 								</div>
 
 								<div class="form-group">
 									<label for="name-three">Mobile</label>
-									<input type="text" class="form-control" placeholder="+213 1234 56789">
+									<input type="text" class="form-control" placeholder="<?php echo $getprofile[0]['com_phone'];?>">
 								</div>
-
 								<div class="form-group">
 									<label>Your City</label>
 									<select class="form-control">
-										<option value="#">Los Angeles, USA</option>
-										<option value="#">Dhaka, BD</option>
-										<option value="#">Shanghai</option>
-										<option value="#">Karachi</option>
-										<option value="#">Beijing</option>
-										<option value="#">Lagos</option>
-										<option value="#">Delhi</option>
-										<option value="#">Tianjin</option>
-										<option value="#">Rio de Janeiro</option>
+									<?php
+									foreach ($getprovince as $get_pro) { ?>
+										<option value="#"><?php echo $get_pro['province_name_en'] ;?></option>	
+									<?php	
+										}
+									 ?>
+										
 									</select>
 								</div>	
 

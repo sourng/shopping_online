@@ -22,7 +22,10 @@ class Profile extends CI_Controller {
 		// $sql_product="SELECT * FROM products WHERE product_id=".$pro_id;
 		// $data['getItem']=$this->m_cat->get_by_sql($sql_product,FALSE);
 		
-		
+		$sql_getprofile="SELECT * FROM company WHERE company_id=3";
+		$data['getprofile']=$this->m_cat->get_by_sql($sql_getprofile,FALSE);
+		$sql_getprovince="SELECT * FROM province";
+		$data['getprovince']=$this->m_cat->get_by_sql($sql_getprovince,FALSE);
 		include_once 'langs.php';
 
 		$data['title']="Trade Title";
