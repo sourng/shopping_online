@@ -33,13 +33,16 @@
 						<div class="dropdown category-dropdown language-dropdown ">						
 							<a data-toggle="dropdown" href="#"><span class="change-text">United Kingdom</span> <i class="fa fa-angle-down"></i></a>
 							<ul class="dropdown-menu  language-change">
-								<li><a href="#">United Kingdom</a></li>
-								<li><a href="#">United States</a></li>
-								<li><a href="#">China</a></li>
-								<li><a href="#">Russia</a></li>
+								<?php
+									foreach($province as $m_pro){
+										?>
+											<li><a href="#"><?php echo $m_pro['province_name_en'];?></a></li>
+										<?php
+									}  
+								?>
 							</ul>								
 						</div><!-- language-dropdown -->
-					<?php echo "lang:".$lang; ?>
+					<?php //echo "lang:".$lang; ?>
 						<input type="text" class="form-control" placeholder="<?php echo $this->m_crud->get_langs('Type_Your_key_word',$lang); ?>">
 						<button type="submit" class="form-control" value="Search"><?php echo $this->m_crud->get_langs('Search',$lang); ?></button>
 					</form>
@@ -147,7 +150,12 @@
 							<div class="short-info">
 								<h4><?php echo $this->m_crud->get_langs('short_info',$lang); ?></h4>
 								<p><strong><?php echo $this->m_crud->get_langs('Condition',$lang); ?>: </strong><a href="#">New</a> </p>
-								<p><strong><?php echo $this->m_crud->get_langs('Brand',$lang); ?>: </strong><a href="#">Apple</a> </p>
+								<p><strong><?php echo $this->m_crud->get_langs('Brand',$lang); ?>: </strong>
+
+									<a href="<?php echo site_url(); ?>"><?php echo $getBranch[0]['name'];?></a> 
+
+								</p>
+
 								<p><strong><?php echo $this->m_crud->get_langs('Features',$lang); ?>: </strong>
 									<!-- <a href="#">Camera,</a> 
 									<a href="#">Dual SIM,</a> 

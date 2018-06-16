@@ -50,6 +50,10 @@ class Home extends CI_Controller {
 		p ON cat.cat_id=p.cat_id group by cat.cat_id";
 		$data['categories']=$this->m_cat->get_by_sql($sql,FALSE);
 		
+
+		$sql_branch="SELECT * FROM products as p INNER JOIN branch as b ON p.branch_id=b.branch_id where p.product_id=".$pro_id;
+		$data['getBranch']=$this->m_cat->get_by_sql($sql_branch,FALSE);
+
 		$sql_product="SELECT * FROM products as p INNER JOIN model as m ON p.pro_model=m.model_id where p.product_id=".$pro_id;
 		$data['getItem']=$this->m_cat->get_by_sql($sql_product,FALSE);
 
@@ -61,6 +65,8 @@ class Home extends CI_Controller {
 		$sql_productRecommended="SELECT * FROM products WHERE product_id<>".$pro_id;
 		$data['getRecommendedAds']=$this->m_cat->get_by_sql($sql_productRecommended,FALSE);
 
+		$pro="SELECT * FROM province";
+		$data['province']=$this->m_cat->get_by_sql($pro,FALSE);
 
 		
 		$data['title']="Trade Title";
