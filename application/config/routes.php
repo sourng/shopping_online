@@ -23,6 +23,16 @@ $route['categories/pages.html'] = 'front/categories/pages';
 $route['categories/find.html'] = 'front/categories/find';
 $route['categories/find.html/(:any)'] = 'front/categories/find/$1';
 $route['categories/find.html/(:any)/(:any)'] = 'front/categories/find/$1/$2';
+
+// By Brands
+// $route['brands.html/(:any)'] = 'front/categories/brand/$1';
+$route['brands/find.html/(:any)'] = 'front/brands/find/$1';
+$route['brands/find.html/(:any)/(:any)'] = 'front/brands/find/$1/$2';
+
+$route['brands/findpage/(:any)'] = 'front/brands/findpage/$1';
+$route['brands/findpage/(:any)/(:any)'] = 'front/brands/findpage/$1/$2';
+
+
 // categories/find.html
 // $route['categories/find.html'] = 'front/categories/find';
 $route['categories/findpage/(:any)'] = 'front/categories/findpage/$1';
