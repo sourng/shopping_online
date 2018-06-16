@@ -137,7 +137,14 @@ class Brands extends CI_Controller {
 
 
 		if($brand_id!=false){
-			$sql_product="SELECT * FROM products as p INNER JOIN branch as b ON p.branch_id=b.branch_id where b.branch_id=".$brand_id;
+			$sql_product="SELECT p.product_id,p.pro_name,p.pro_model,p.pro_description,p.pro_condition,p.pro_features,
+p.post_date,p.ads_id,p.pro_base_price,p.pro_sell_price,p.featured_image,p.folder_image,p.pro_status,
+cat.cat_name,cat.cat_ico_class,cat.cat_ico_image,cat.cat_id
+
+FROM products as p 
+LEFT JOIN categories as cat ON p.cat_id=cat.cat_id
+
+WHERE p.branch_id=2";
 		}else{
 			$sql_product="SELECT * FROM products";
 		}
